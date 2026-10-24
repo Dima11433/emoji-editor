@@ -33,6 +33,7 @@ import {
 import { collectColors, grayscale, invert, replaceColor, shiftHue } from './lib/colors';
 import { applyShapeEffects, getEffects, type Effects } from './lib/effects';
 import { loadFont, type FontId } from './lib/fonts';
+import { fileToVectorLogo, type VectorLogo } from './lib/logoVector';
 import {
   adjustNodeTransform,
   buildTree,
@@ -148,6 +149,7 @@ export default function App() {
   const [modalAddToPack, setModalAddToPack] = useState(false);
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [fontBusy, setFontBusy] = useState(false);
+  const [uploadedLogo, setUploadedLogo] = useState<VectorLogo | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const fontsCacheRef = useRef<Map<FontId, Font[]>>(new Map());
@@ -341,6 +343,37 @@ export default function App() {
         return;
       }
 
+      if (
+        files.length === 1 &&
+        (/\.(svg|png|webp|jpe?g)$/i.test(files[0].name) || files[0].type.startsWith('image/'))
+      ) {
+        const imgFile = files[0];
+        say(`Векторизую логотип ${imgFile.name}...`);
+        const vec = await fileToVectorLogo(imgFile);
+        setUploadedLogo(vec);
+        const curInfo = readBrandSlotInfo(doc);
+        if (curInfo.count > 0) {
+          const nextOpts: BrandSlotOptions = {
+            ...curInfo.options,
+            mode: curInfo.options.mode === 'logo+text' ? 'logo+text' : 'logo',
+            logo: vec,
+            tintLogo: false,
+            hidden: false,
+            useOriginalGlyphs: false,
+          };
+          const fonts =
+            nextOpts.mode === 'logo+text' ? await ensureFont(nextOpts.fontId) : null;
+          edit((d) => {
+            applyBrandSlot(d, nextOpts, fonts);
+          });
+          setTab('brand');
+          say(`Логотип «${vec.name}» установлен на место MAGNAT!`);
+        } else {
+          say(`Логотип «${vec.name}» загружен — выберите эмодзи MAGNAT, чтобы вставить его.`);
+        }
+        return;
+      }
+
       if (files.length === 1) {
         const file = files[0];
         const parsed = parseSticker(new Uint8Array(await file.arrayBuffer()));
@@ -382,7 +415,11 @@ export default function App() {
 
   const handleBrandChange = useCallback(
     (nextOpts: BrandSlotOptions, mergeKey?: string) => {
-      if (nextOpts.useOriginalGlyphs) {
+      const needsFont =
+        nextOpts.mode === 'logo+text' ||
+        (nextOpts.mode === 'text' && !nextOpts.useOriginalGlyphs);
+
+      if (!needsFont) {
         edit((d) => {
           applyBrandSlot(d, nextOpts, null);
         }, mergeKey ?? null);
@@ -432,7 +469,9 @@ export default function App() {
     async (opts: BrandSlotOptions, keepStickerColor: boolean) => {
       setFontBusy(true);
       try {
-        const fonts = opts.useOriginalGlyphs ? null : await ensureFont(opts.fontId);
+        const needsFont =
+          opts.mode === 'logo+text' || (opts.mode === 'text' && !opts.useOriginalGlyphs);
+        const fonts = needsFont ? await ensureFont(opts.fontId) : null;
         let updatedCount = 0;
         const nextPack = pack.map((item) => {
           const cloned = structuredClone(item.doc);
@@ -449,9 +488,15 @@ export default function App() {
             at: Date.now(),
           });
         }
-        say(`Надпись обновлена в ${updatedCount} из ${pack.length} эмодзи пака!`);
+        const what =
+          opts.mode === 'logo'
+            ? 'Логотип установлен'
+            : opts.mode === 'logo+text'
+              ? 'Логотип + ник установлены'
+              : 'Надпись обновлена';
+        say(`${what} в ${updatedCount} из ${pack.length} эмодзи пака!`);
       } catch (e) {
-        say(e instanceof Error ? e.message : 'Ошибка пакетной замены текста', true);
+        say(e instanceof Error ? e.message : 'Ошибка пакетной замены', true);
       } finally {
         setFontBusy(false);
       }
@@ -718,7 +763,7 @@ export default function App() {
           ref={fileInput}
           type="file"
           multiple
-          accept=".tgs,.json,.zip,application/json,application/zip"
+          accept=".tgs,.json,.zip,.svg,.png,.webp,.jpg,.jpeg,application/json,application/zip,image/*"
           hidden
           onChange={(e) => {
             if (e.target.files?.length) openFiles(e.target.files);
@@ -741,9 +786,9 @@ export default function App() {
             type="button"
             className={tab === 'brand' ? 'on' : ''}
             onClick={() => setTab('brand')}
-            title="Замена и настройка надписи MAGNAT"
+            title="Замена MAGNAT на свой ник или логотип"
           >
-            <Tag size={14} /> Надпись
+            <Tag size={14} /> Бренд
           </button>
           <button
             type="button"
@@ -848,10 +893,13 @@ export default function App() {
               options={brandInfo.options}
               packCount={pack.length}
               busy={fontBusy}
+              uploadedLogo={uploadedLogo}
+              onUploadedLogoChange={setUploadedLogo}
               onChange={handleBrandChange}
               onReset={handleBrandReset}
               onApplyToPack={handleApplyBrandToPack}
               onSwitchToAddText={() => setTab('text')}
+              onSay={say}
             />
           )}
 
@@ -899,7 +947,7 @@ export default function App() {
       >
         <Preview doc={outDoc} />
         <p className="muted small hint">
-          Перетащите сюда <code>.tgs</code>, <code>.json</code> или целый архив пака <code>.zip</code>
+          Перетащите сюда <code>.svg</code> / <code>.png</code> логотип, <code>.tgs</code> или архив <code>.zip</code>
         </p>
       </main>
 

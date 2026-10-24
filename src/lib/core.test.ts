@@ -11,6 +11,7 @@ import {
   resetBrandSlot,
 } from './brandSlot';
 import { CATALOG } from './catalog';
+import { BUILTIN_LOGOS, svgPathToShapes, traceRgbaToVectorLogo } from './logoVector';
 import { collectColors, replaceColor, shiftHue } from './colors';
 import {
   adjustNodeTransform,
@@ -114,6 +115,70 @@ describe('brandSlot replacement & reset', () => {
       expect(afterReset[0].it!.filter((x) => x.ty === 'sh')).toHaveLength(origShapeCount);
       expect(doc._brandState).toBeUndefined();
     }
+  });
+
+  it('replaces MAGNAT with a multi-color vector logo AND [logo + text] while passing Telegram checks', () => {
+    const doc = loadPublicTgs('templates/characters/002.tgs');
+    const verifiedLogo = BUILTIN_LOGOS.find((l) => l.id === 'preset_verified')!;
+
+    // 1. Logo-only mode
+    const updatedLogo = applyBrandSlot(
+      doc,
+      { ...DEFAULT_BRAND_OPTIONS, mode: 'logo', logo: verifiedLogo, scale: 125 },
+      null,
+    );
+    expect(updatedLogo).toBe(1);
+    const gz = toTgs(doc);
+    expect(gz.byteLength).toBeLessThanOrEqual(MAX_BYTES);
+    expect(checkTelegram(doc, gz.byteLength).filter((c) => c.status === 'error')).toEqual([]);
+
+    // Re-imported .tgs still detects tier_logo_slot!
+    const reimported = parseSticker(gz);
+    expect(findBrandSlots(reimported)).toHaveLength(1);
+
+    // 2. Logo + Text side-by-side mode
+    applyBrandSlot(
+      doc,
+      {
+        ...DEFAULT_BRAND_OPTIONS,
+        mode: 'logo+text',
+        logo: verifiedLogo,
+        text: 'SHOP',
+        useOriginalGlyphs: false,
+      },
+      montserrat,
+    );
+    const slotItems = findBrandSlots(doc)[0].it!;
+    expect(slotItems.filter((x) => x.ty === 'gr').length).toBeGreaterThanOrEqual(3); // text group + 2 logo color groups
+    expect(tgsSize(doc)).toBeLessThanOrEqual(MAX_BYTES);
+
+    // 3. Reset back to MAGNAT
+    resetBrandSlot(doc);
+    expect(findBrandSlots(doc)[0].it!.some((x) => x.ty === 'sh')).toBe(true);
+  });
+
+  it('parses SVG arcs/curves and vectorizes raster RGBA logos with auto background removal', () => {
+    const circleShapes = svgPathToShapes('M 10 50 A 40 40 0 1 0 90 50 A 40 40 0 1 0 10 50 Z');
+    expect(circleShapes).toHaveLength(1);
+
+    // 32x32 white background (#ffffff) with a red outer ring (#ff0000) and blue center dot (#0088ff)
+    const w = 32;
+    const h = 32;
+    const rgba = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const d = Math.hypot(x - 15.5, y - 15.5);
+        if (d < 5) rgba.set([0, 136, 255, 255], i);
+        else if (d < 12) rgba.set([255, 0, 0, 255], i);
+        else rgba.set([255, 255, 255, 255], i); // white corner background -> auto-removed!
+      }
+    }
+    const traced = traceRgbaToVectorLogo(rgba, w, h, 'TestBadge', { maxColors: 4, removeBg: 'auto' });
+    expect(traced.layers.length).toBe(2);
+    const hexes = traced.layers.map((l) => l.fillHex);
+    expect(hexes).not.toContain('#ffffff');
+    expect(traced.width).toBeGreaterThan(15);
   });
 });
 

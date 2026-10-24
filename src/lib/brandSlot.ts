@@ -1,9 +1,24 @@
 import type { Font } from 'opentype.js';
 import type { FontId } from './fonts';
-import { fill, groupTransform, rgbToHex, round, stroke, type Layer, type LottieDoc, type ShapeItem, type Vec } from './lottie';
+import type { VectorLogo } from './logoVector';
+import {
+  fill,
+  group,
+  groupTransform,
+  rgbToHex,
+  round,
+  stroke,
+  type Layer,
+  type LottieDoc,
+  type ShapeItem,
+  type Vec,
+} from './lottie';
 import { commandsToPaths, pathPoints, transformPath } from './text';
 
+export type BrandMode = 'text' | 'logo' | 'logo+text';
+
 export interface BrandSlotOptions {
+  mode: BrandMode;
   text: string;
   useOriginalGlyphs: boolean;
   fontId: FontId;
@@ -15,9 +30,13 @@ export interface BrandSlotOptions {
   offsetY: number;
   letterSpacing: number;
   hidden: boolean;
+  logo: VectorLogo | null;
+  tintLogo: boolean;
+  logoGap: number;
 }
 
 export interface BrandSlotSnapshot {
+  origName?: string;
   cx: number;
   cy: number;
   w: number;
@@ -29,6 +48,7 @@ export interface BrandSlotSnapshot {
 }
 
 export const DEFAULT_BRAND_OPTIONS: BrandSlotOptions = {
+  mode: 'text',
   text: 'MAGNAT',
   useOriginalGlyphs: true,
   fontId: 'montserrat',
@@ -40,14 +60,24 @@ export const DEFAULT_BRAND_OPTIONS: BrandSlotOptions = {
   offsetY: 0,
   letterSpacing: 0,
   hidden: false,
+  logo: null,
+  tintLogo: false,
+  logoGap: 18,
 };
 
-/** Checks whether a layer, asset, or shape group represents the MAGNAT brand text slot. */
+/** Checks whether a layer, asset, or shape group represents the MAGNAT brand slot. */
 export function isBrandSlotNode(node: unknown): boolean {
   if (!node || typeof node !== 'object') return false;
   const obj = node as Record<string, unknown>;
   if (obj._brandSlot) return true;
-  if (obj.nm === 'tier_text' || obj.id === 'mylogo' || obj.refId === 'mylogo') return true;
+  if (
+    obj.nm === 'tier_text' ||
+    obj.nm === 'tier_logo_slot' ||
+    obj.id === 'mylogo' ||
+    obj.refId === 'mylogo'
+  ) {
+    return true;
+  }
   if (obj.ty === 'gr' && Array.isArray(obj.it)) {
     return (obj.it as ShapeItem[]).some((x) => x.ty === 'sh' && x.nm === 'tier_glyph');
   }
@@ -59,14 +89,14 @@ export function isBrandSlotNode(node: unknown): boolean {
 
 function isSlotGroup(gr: ShapeItem): boolean {
   if (gr.ty !== 'gr') return false;
-  if (gr._brandSlot) return true;
+  if (gr._brandSlot || gr.nm === 'tier_logo_slot') return true;
   const items = gr.it ?? [];
   const hasShapes = items.some((x) => x.ty === 'sh');
   if (!hasShapes) return false;
   return gr.nm === 'tier_text' || items.some((x) => x.ty === 'sh' && x.nm === 'tier_glyph');
 }
 
-/** Finds all MAGNAT brand text groups across root layers and nested precomp assets. */
+/** Finds all MAGNAT brand slots across root layers and nested precomp assets. */
 export function findBrandSlots(doc: LottieDoc): ShapeItem[] {
   const slots: ShapeItem[] = [];
   const visitShapes = (items: ShapeItem[] | undefined) => {
@@ -103,11 +133,21 @@ function readFillColorHex(fl: ShapeItem | undefined): string {
   return '#ffffff';
 }
 
+function collectAllShapes(items: ShapeItem[] | undefined, out: ShapeItem[] = []): ShapeItem[] {
+  if (!items) return out;
+  for (const it of items) {
+    if (it.ty === 'sh') out.push(it);
+    else if (it.ty === 'gr') collectAllShapes(it.it, out);
+  }
+  return out;
+}
+
 function ensureSnapshot(gr: ShapeItem): BrandSlotSnapshot {
   if (gr._brandSlot) return gr._brandSlot as BrandSlotSnapshot;
   const items = gr.it ?? [];
-  const shItems = items.filter((x) => x.ty === 'sh');
-  const pts = shItems.flatMap((p) => {
+  const directShapes = items.filter((x) => x.ty === 'sh');
+  const allShapes = directShapes.length > 0 ? directShapes : collectAllShapes(items);
+  const pts = allShapes.flatMap((p) => {
     try {
       return pathPoints(p);
     } catch {
@@ -126,6 +166,7 @@ function ensureSnapshot(gr: ShapeItem): BrandSlotSnapshot {
   }
   const fl = items.find((x) => x.ty === 'fl');
   const snap: BrandSlotSnapshot = {
+    origName: gr.nm,
     cx: round((minX + maxX) / 2, 2),
     cy: round((minY + maxY) / 2, 2),
     w: Math.max(8, round(maxX - minX, 2)),
@@ -133,7 +174,7 @@ function ensureSnapshot(gr: ShapeItem): BrandSlotSnapshot {
     origHex: readFillColorHex(fl),
     origFillRule: typeof fl?.r === 'number' ? fl.r : 1,
     origOpacity: fl?.o ? structuredClone(fl.o) : undefined,
-    origShapes: structuredClone(shItems),
+    origShapes: structuredClone(directShapes),
   };
   gr._brandSlot = snap;
   return snap;
@@ -184,9 +225,56 @@ function layoutBrandGlyphs(text: string, fonts: Font[], letterSpacing: number): 
   return out;
 }
 
+function buildLogoGroups(
+  logo: VectorLogo,
+  mapPt: (pt: Vec) => Vec,
+  scaleFactor: number,
+  opts: BrandSlotOptions,
+  effectiveHex: string,
+  localOutlineWidth: number,
+): ShapeItem[] {
+  const groups: ShapeItem[] = [];
+
+  for (let i = 0; i < logo.layers.length; i++) {
+    const layer = logo.layers[i];
+    const paths = structuredClone(layer.paths);
+    for (const p of paths) {
+      p.nm = 'logo_path';
+      transformPath(p, mapPt);
+    }
+
+    const paints: ShapeItem[] = [];
+    const op = layer.opacity ?? 100;
+
+    if (opts.tintLogo) {
+      paints.push({ ...fill(effectiveHex, op), r: layer.fillRule ?? 1 });
+      if (opts.strokeHex && opts.strokeWidth > 0) {
+        paints.push(stroke(opts.strokeHex, localOutlineWidth, op));
+      }
+    } else {
+      if (layer.fillHex) {
+        paints.push({ ...fill(layer.fillHex, op), r: layer.fillRule ?? 1 });
+      }
+      if (layer.strokeHex && (layer.strokeWidth ?? 0) > 0) {
+        paints.push(stroke(layer.strokeHex, Math.max(0.5, round((layer.strokeWidth ?? 1) * scaleFactor, 2)), op));
+      }
+      if (opts.strokeHex && opts.strokeWidth > 0) {
+        paints.push(stroke(opts.strokeHex, localOutlineWidth, op));
+      }
+    }
+
+    if (paints.length > 0 && paths.length > 0) {
+      groups.push(group(`logo_${i + 1}`, [...paths, ...paints]));
+    }
+  }
+
+  // Lottie renders group items from end (bottom) to start (top), so reverse DOM painter's order!
+  return groups.reverse();
+}
+
 /**
- * Replaces, recolors, outlines, scales, or shifts all MAGNAT brand text slots in `doc`
- * while preserving all animations, parent links, 3D extrusions, and precomp hierarchies.
+ * Replaces, recolors, outlines, scales, or shifts all MAGNAT brand slots in `doc`
+ * with custom text, a custom vector/traced logo, or `[Logo + Text]` side-by-side!
  */
 export function applyBrandSlot(
   doc: LottieDoc,
@@ -197,20 +285,119 @@ export function applyBrandSlot(
   const slots = findBrandSlots(doc);
   if (!slots.length) return 0;
 
+  const hasLogo = (opts.mode === 'logo' || opts.mode === 'logo+text') && Boolean(opts.logo);
+
   for (const gr of slots) {
     const snap = ensureSnapshot(gr);
     const existingItems = gr.it ?? [];
     const trItem = existingItems.find((x) => x.ty === 'tr') ?? groupTransform();
-    const otherMods = existingItems.filter((x) => !['sh', 'fl', 'st', 'gf', 'gs', 'tr'].includes(x.ty));
+    const otherMods = existingItems.filter(
+      (x) => !['sh', 'fl', 'st', 'gf', 'gs', 'tr', 'gr'].includes(x.ty),
+    );
 
     gr.hd = opts.hidden;
 
     const userScale = Math.max(0.1, opts.scale / 100);
     const dx = (opts.offsetX / 100) * snap.w;
     const dy = (opts.offsetY / 100) * snap.h * 2;
+    const effectiveHex = options?.keepStickerColor ? snap.origHex : opts.fillHex;
+    const localStrokeWidth = round(opts.strokeWidth * Math.max(0.25, snap.h / 46) * 2, 2);
 
+    // MODE 1: LOGO ONLY
+    if (opts.mode === 'logo' && hasLogo && opts.logo) {
+      const logo = opts.logo;
+      const lCx = logo.minX + logo.width / 2;
+      const lCy = logo.minY + logo.height / 2;
+      const fitScale = Math.min(snap.w / logo.width, (snap.h * 1.55) / logo.height) * userScale;
+
+      const logoGroups = buildLogoGroups(
+        logo,
+        (pt): Vec => [
+          (pt[0] - lCx) * fitScale + snap.cx + dx,
+          (pt[1] - lCy) * fitScale + snap.cy + dy,
+        ],
+        fitScale,
+        opts,
+        effectiveHex,
+        localStrokeWidth,
+      );
+
+      gr.nm = 'tier_logo_slot';
+      gr.it = [...logoGroups, ...otherMods, trItem];
+      continue;
+    }
+
+    // MODE 2: LOGO + TEXT SIDE-BY-SIDE
+    if (opts.mode === 'logo+text' && hasLogo && opts.logo && fonts && opts.text.trim().length > 0) {
+      const logo = opts.logo;
+      const rawTextPaths = layoutBrandGlyphs(opts.text.trim(), fonts, opts.letterSpacing);
+      const tPts = rawTextPaths.flatMap((p) => pathPoints(p));
+      if (tPts.length > 0) {
+        const tMinX = Math.min(...tPts.map((p) => p[0]));
+        const tMaxX = Math.max(...tPts.map((p) => p[0]));
+        const tMinY = Math.min(...tPts.map((p) => p[1]));
+        const tMaxY = Math.max(...tPts.map((p) => p[1]));
+        const tH = Math.max(1, tMaxY - tMinY);
+        const tCy = (tMinY + tMaxY) / 2;
+
+        // Size logo in raw text units (1.28x cap height) and place to the left of text
+        const logoRawScale = (tH * 1.28) / logo.height;
+        const logoRawW = logo.width * logoRawScale;
+        const logoRawH = logo.height * logoRawScale;
+        const gapRaw = (opts.logoGap / 100) * tH * 1.6;
+
+        const combMinX = tMinX - gapRaw - logoRawW;
+        const combMaxX = tMaxX;
+        const combW = Math.max(1, combMaxX - combMinX);
+        const combH = Math.max(tH, logoRawH);
+        const combCx = (combMinX + combMaxX) / 2;
+
+        const fitScale = Math.min(snap.w / combW, (snap.h * 1.28) / combH) * userScale;
+
+        const logoRawCx = combMinX + logoRawW / 2;
+        const lOrigCx = logo.minX + logo.width / 2;
+        const lOrigCy = logo.minY + logo.height / 2;
+
+        const logoGroups = buildLogoGroups(
+          logo,
+          (pt): Vec => {
+            const rx = (pt[0] - lOrigCx) * logoRawScale + logoRawCx;
+            const ry = (pt[1] - lOrigCy) * logoRawScale + tCy;
+            return [
+              (rx - combCx) * fitScale + snap.cx + dx,
+              (ry - tCy) * fitScale + snap.cy + dy,
+            ];
+          },
+          logoRawScale * fitScale,
+          opts,
+          effectiveHex,
+          localStrokeWidth,
+        );
+
+        for (const p of rawTextPaths) {
+          transformPath(p, (pt): Vec => [
+            (pt[0] - combCx) * fitScale + snap.cx + dx,
+            (pt[1] - tCy) * fitScale + snap.cy + dy,
+          ]);
+        }
+
+        const textFill: ShapeItem = { ...fill(effectiveHex), r: 1 };
+        if (snap.origOpacity !== undefined) textFill.o = structuredClone(snap.origOpacity);
+        const textPaints: ShapeItem[] = [textFill];
+        if (opts.strokeHex && opts.strokeWidth > 0) {
+          textPaints.push(stroke(opts.strokeHex, localStrokeWidth));
+        }
+        const textGroup = group('tier_text_part', [...rawTextPaths, ...textPaints]);
+
+        gr.nm = 'tier_logo_slot';
+        gr.it = [textGroup, ...logoGroups, ...otherMods, trItem];
+        continue;
+      }
+    }
+
+    // MODE 3: TEXT ONLY (or fallback when no logo chosen yet)
     let paths: ShapeItem[] = [];
-    const useOrig = opts.useOriginalGlyphs || !fonts;
+    const useOrig = opts.mode === 'text' && (opts.useOriginalGlyphs || !fonts);
 
     if (useOrig) {
       paths = structuredClone(snap.origShapes);
@@ -223,7 +410,7 @@ export function applyBrandSlot(
           ]);
         }
       }
-    } else {
+    } else if (fonts) {
       const trimmed = opts.text.trim();
       if (trimmed.length > 0) {
         const rawPaths = layoutBrandGlyphs(trimmed, fonts, opts.letterSpacing);
@@ -250,7 +437,6 @@ export function applyBrandSlot(
       }
     }
 
-    const effectiveHex = options?.keepStickerColor ? snap.origHex : opts.fillHex;
     const fillItem: ShapeItem = {
       ...fill(effectiveHex),
       r: useOrig ? snap.origFillRule : 1,
@@ -261,10 +447,10 @@ export function applyBrandSlot(
 
     const paintItems: ShapeItem[] = [fillItem];
     if (opts.strokeHex && opts.strokeWidth > 0) {
-      const localStrokeWidth = round(opts.strokeWidth * Math.max(0.25, snap.h / 46) * 2, 2);
       paintItems.push(stroke(opts.strokeHex, localStrokeWidth));
     }
 
+    if (snap.origName) gr.nm = snap.origName;
     gr.it = [...paths, ...otherMods, ...paintItems, trItem];
   }
 
@@ -283,13 +469,16 @@ export function resetBrandSlot(doc: LottieDoc): number {
     const snap = ensureSnapshot(gr);
     const existingItems = gr.it ?? [];
     const trItem = existingItems.find((x) => x.ty === 'tr') ?? groupTransform();
-    const otherMods = existingItems.filter((x) => !['sh', 'fl', 'st', 'gf', 'gs', 'tr'].includes(x.ty));
+    const otherMods = existingItems.filter(
+      (x) => !['sh', 'fl', 'st', 'gf', 'gs', 'tr', 'gr'].includes(x.ty),
+    );
     const fillItem: ShapeItem = {
       ...fill(snap.origHex),
       r: snap.origFillRule,
     };
     if (snap.origOpacity !== undefined) fillItem.o = structuredClone(snap.origOpacity);
     const origPaths = structuredClone(snap.origShapes);
+    if (snap.origName !== undefined) gr.nm = snap.origName;
     gr.hd = false;
     gr.it = [...origPaths, ...otherMods, fillItem, trItem];
   }
