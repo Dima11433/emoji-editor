@@ -1,6 +1,6 @@
-import { Copy, Download, FolderArchive, Plus, Trash2 } from 'lucide-react';
+import { Copy, Download, FolderArchive, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import type { LottieDoc } from '../lib/lottie';
-import { Thumb } from './Preview';
+import { LazyThumb } from './LazyThumb';
 
 export interface PackItem {
   id: string;
@@ -13,8 +13,10 @@ interface PackTrayProps {
   activeIndex: number;
   onSelect: (index: number) => void;
   onAdd: () => void;
+  onImportFiles: () => void;
   onDuplicate: (index: number) => void;
   onRemove: (index: number) => void;
+  onClearOther: () => void;
   onDownloadZip: () => void;
   isOpen: boolean;
   onToggle: () => void;
@@ -25,8 +27,10 @@ export function PackTray({
   activeIndex,
   onSelect,
   onAdd,
+  onImportFiles,
   onDuplicate,
   onRemove,
+  onClearOther,
   onDownloadZip,
   isOpen,
   onToggle,
@@ -36,8 +40,9 @@ export function PackTray({
       <div className="pack-tray-bar">
         <button type="button" className="pack-toggle-btn" onClick={onToggle}>
           <FolderArchive size={16} />
-          <span>Стикерпак</span>
+          <span>Пак эмодзи</span>
           <span className="pack-badge">{pack.length}</span>
+          <span className="muted small">{isOpen ? '▾ свернуть' : '▴ развернуть'}</span>
         </button>
 
         {isOpen && (
@@ -46,17 +51,35 @@ export function PackTray({
               type="button"
               className="pack-add-btn"
               onClick={onAdd}
-              title="Добавить новый стикер в пак"
+              title="Добавить эмодзи из каталога MAGNAT"
             >
-              <Plus size={15} /> Добавить
+              <Plus size={14} /> Из каталога
             </button>
+            <button
+              type="button"
+              className="pack-add-btn"
+              onClick={onImportFiles}
+              title="Импортировать .tgs, .json или целый .zip архив"
+            >
+              <FolderOpen size={14} /> Импорт .zip/.tgs
+            </button>
+            {pack.length > 1 && (
+              <button
+                type="button"
+                className="pack-add-btn danger-hover"
+                onClick={onClearOther}
+                title="Оставить только текущий эмодзи в паке"
+              >
+                <Trash2 size={14} /> Очистить ({pack.length - 1})
+              </button>
+            )}
             <button
               type="button"
               className="pack-zip-btn"
               onClick={onDownloadZip}
-              title="Скачать все стикеры архивом .zip"
+              title="Скачать весь пак готовых .tgs файлов в .zip архиве"
             >
-              <Download size={15} /> Скачать пак (.zip)
+              <Download size={14} /> Скачать пак .zip ({pack.length})
             </button>
           </div>
         )}
@@ -71,10 +94,10 @@ export function PackTray({
                 key={item.id}
                 className={`pack-item-card ${isActive ? 'active' : ''}`}
                 onClick={() => onSelect(idx)}
-                title={`Стикер #${idx + 1}: ${item.name}`}
+                title={`#${idx + 1}: ${item.name}`}
               >
                 <div className="pack-item-thumb">
-                  <Thumb doc={item.doc} />
+                  <LazyThumb doc={item.doc} />
                 </div>
                 <div className="pack-item-info">
                   <span className="pack-item-name">{item.name}</span>
@@ -86,7 +109,7 @@ export function PackTray({
                       e.stopPropagation();
                       onDuplicate(idx);
                     }}
-                    title="Дублировать стикер"
+                    title="Дублировать"
                   >
                     <Copy size={12} />
                   </button>
@@ -98,7 +121,7 @@ export function PackTray({
                         e.stopPropagation();
                         onRemove(idx);
                       }}
-                      title="Удалить стикер из пака"
+                      title="Убрать из пака"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -112,10 +135,10 @@ export function PackTray({
             type="button"
             className="pack-add-card"
             onClick={onAdd}
-            title="Добавить стикер из шаблонов"
+            title="Добавить эмодзи из каталога"
           >
-            <Plus size={24} />
-            <span>Новый</span>
+            <Plus size={22} />
+            <span>Добавить</span>
           </button>
         </div>
       )}

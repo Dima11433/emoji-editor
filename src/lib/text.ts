@@ -96,7 +96,7 @@ function layout(opts: TextOptions): GlyphShape[] {
   return out;
 }
 
-function commandsToPaths(commands: PathCommand[]): ShapeItem[] {
+export function commandsToPaths(commands: PathCommand[]): ShapeItem[] {
   const paths: ShapeItem[] = [];
   let start: Vec | null = null;
   let prev: Vec = [0, 0];
@@ -140,11 +140,11 @@ interface PathData {
 
 const pathData = (p: ShapeItem) => (p.ks as { k: PathData }).k;
 
-function pathPoints(p: ShapeItem): Vec[] {
+export function pathPoints(p: ShapeItem): Vec[] {
   return pathData(p).v;
 }
 
-function transformPath(p: ShapeItem, fn: (pt: Vec) => Vec) {
+export function transformPath(p: ShapeItem, fn: (pt: Vec) => Vec) {
   const d = pathData(p);
   const scaleOnly = (t: Vec): Vec => {
     const a = fn([0, 0]);

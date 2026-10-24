@@ -166,7 +166,7 @@ export function reindexLayers(layers: Layer[]): void {
   const used = new Set<number>();
   const missing: Layer[] = [];
   for (const layer of layers) {
-    if (typeof layer.ind === 'number' && layer.ind > 0 && !used.has(layer.ind)) used.add(layer.ind);
+    if (typeof layer.ind === 'number' && layer.ind >= 0 && !used.has(layer.ind)) used.add(layer.ind);
     else missing.push(layer);
   }
   let next = 1;

@@ -15,11 +15,28 @@ export function parseSticker(bytes: Uint8Array): LottieDoc {
     throw new Error('В файле нет анимации Lottie (нет слоёв или размеров).');
   }
   reindexLayers(doc.layers);
+  for (const asset of doc.assets ?? []) {
+    if (Array.isArray(asset.layers)) reindexLayers(asset.layers);
+  }
   return doc;
 }
 
+export function cleanForExport(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(cleanForExport);
+  if (node && typeof node === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (k.startsWith('_') || k === 'fx') continue;
+      out[k] = cleanForExport(v);
+    }
+    return out;
+  }
+  return node;
+}
+
 export function serialize(doc: LottieDoc): string {
-  return JSON.stringify({ ...doc, tgs: 1 });
+  const cleaned = cleanForExport(doc) as Record<string, unknown>;
+  return JSON.stringify({ ...cleaned, tgs: 1 });
 }
 
 export function toTgs(doc: LottieDoc): Uint8Array<ArrayBuffer> {
@@ -42,6 +59,10 @@ export function optimize(doc: LottieDoc, digits = 2): LottieDoc {
       const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(node)) {
         if (JUNK_KEYS.has(k)) continue;
+        if (k.startsWith('_')) {
+          out[k] = v;
+          continue;
+        }
         // Colors need more precision than 2 digits to stay exact.
         out[k] = k === 'c' || k === 'g' ? v : walk(v);
       }

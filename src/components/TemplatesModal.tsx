@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Layers, Plus, Search, X } from 'lucide-react';
-import type { Font } from 'opentype.js';
-import type { LottieDoc } from '../lib/lottie';
+import { FolderPlus, Layers, Plus, Search, X } from 'lucide-react';
 import {
-  TEMPLATES,
+  CATALOG,
+  loadCatalogDoc,
   TEMPLATE_CATEGORIES,
-  type Template,
+  type CatalogItem,
   type TemplateCategory,
 } from '../lib/templates';
-import { Thumb } from './Preview';
+import type { LottieDoc } from '../lib/lottie';
+import { formatKb } from '../lib/tgs';
+import { LazyThumb } from './LazyThumb';
 
 interface TemplatesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (doc: LottieDoc, template: Template, addToPack: boolean) => void;
-  templateFonts: Font[] | null;
+  onSelect: (doc: LottieDoc, item: CatalogItem, addToPack: boolean) => void;
+  onAddBatchToPack: (items: CatalogItem[]) => void;
   defaultAddToPack?: boolean;
 }
 
@@ -22,18 +23,18 @@ export function TemplatesModal({
   isOpen,
   onClose,
   onSelect,
-  templateFonts,
+  onAddBatchToPack,
   defaultAddToPack = false,
 }: TemplatesModalProps) {
   const [category, setCategory] = useState<'all' | TemplateCategory>('all');
   const [search, setSearch] = useState('');
   const [addToPack, setAddToPack] = useState(defaultAddToPack);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     setAddToPack(defaultAddToPack);
   }, [defaultAddToPack]);
 
-  // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -43,41 +44,50 @@ export function TemplatesModal({
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
-  const thumbs = useMemo(
-    () =>
-      TEMPLATES.map((t) => ({
-        t,
-        doc: t.needsFont && !templateFonts ? null : t.build(templateFonts),
-      })),
-    [templateFonts],
-  );
-
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: TEMPLATES.length };
-    for (const t of TEMPLATES) {
-      counts[t.category] = (counts[t.category] || 0) + 1;
+    const counts: Record<string, number> = { all: CATALOG.length };
+    for (const item of CATALOG) {
+      counts[item.category] = (counts[item.category] || 0) + 1;
     }
     return counts;
   }, []);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return thumbs.filter(({ t }) => {
-      if (category !== 'all' && t.category !== category) return false;
-      if (q && !t.name.toLowerCase().includes(q)) return false;
-      return true;
+    const q = search.trim().toLowerCase().replace(/^#/, '');
+    return CATALOG.filter((item) => {
+      if (category !== 'all' && item.category !== category) return false;
+      if (!q) return true;
+      const numStr = String(item.num);
+      const padStr = String(item.num).padStart(3, '0');
+      return (
+        item.name.toLowerCase().includes(q) ||
+        item.categoryLabel.toLowerCase().includes(q) ||
+        numStr === q ||
+        padStr.includes(q)
+      );
     });
-  }, [thumbs, category, search]);
+  }, [category, search]);
 
   if (!isOpen) return null;
+
+  const pickItem = async (item: CatalogItem, toPack: boolean) => {
+    if (loadingId) return;
+    setLoadingId(item.id);
+    try {
+      const doc = await loadCatalogDoc(item);
+      onSelect(doc, item, toPack);
+    } finally {
+      setLoadingId(null);
+    }
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-window" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h2>Шаблоны</h2>
-            <span className="modal-count">{TEMPLATES.length} стикеров</span>
+            <h2>Каталог MAGNAT</h2>
+            <span className="modal-count">{CATALOG.length} эмодзи</span>
           </div>
 
           <div className="modal-search-box">
@@ -85,7 +95,7 @@ export function TemplatesModal({
             <input
               type="text"
               className="modal-search-input"
-              placeholder="Поиск по названию..."
+              placeholder="Поиск по номеру (#001, 25...) или разделу"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -103,14 +113,28 @@ export function TemplatesModal({
           </div>
 
           <div className="modal-header-actions">
+            {filtered.length > 0 && filtered.length <= 150 && (
+              <button
+                type="button"
+                className="modal-mode-btn"
+                onClick={() => {
+                  onAddBatchToPack(filtered);
+                  onClose();
+                }}
+                title="Загрузить все показанные эмодзи в нижнюю панель пака для пакетной замены текста"
+              >
+                <FolderPlus size={15} />
+                <span>Все в пак ({filtered.length})</span>
+              </button>
+            )}
             <button
               type="button"
               className={`modal-mode-btn ${addToPack ? 'active' : ''}`}
               onClick={() => setAddToPack((v) => !v)}
-              title={addToPack ? 'Новый стикер добавится в пак' : 'Заменит текущий стикер на холсте'}
+              title={addToPack ? 'Клик по карточке добавит эмодзи в пак' : 'Клик откроет эмодзи на холсте'}
             >
               {addToPack ? <Plus size={15} /> : <Layers size={15} />}
-              <span>{addToPack ? 'Добавить в пак' : 'Заменить текущий'}</span>
+              <span>{addToPack ? 'Режим: в пак' : 'Режим: на холст'}</span>
             </button>
             <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Закрыть">
               <X size={20} />
@@ -133,31 +157,33 @@ export function TemplatesModal({
         </div>
 
         <div className="modal-grid">
-          {filtered.map(({ t, doc: tdoc }) => (
+          {filtered.map((item) => (
             <div
-              key={t.id}
-              className="modal-card"
+              key={item.id}
+              className={`modal-card ${loadingId === item.id ? 'busy' : ''}`}
               onClick={() => {
-                if (!tdoc) return;
-                onSelect(structuredClone(tdoc), t, addToPack);
+                pickItem(item, addToPack);
               }}
             >
               <div className="modal-card-thumb">
-                {tdoc ? <Thumb doc={tdoc} /> : <div className="thumb-placeholder" />}
+                <LazyThumb item={item} />
+                <span className="card-cat-tag">{item.categoryLabel}</span>
               </div>
               <div className="modal-card-info">
-                <span className="modal-card-name">{t.name}</span>
+                <div>
+                  <div className="modal-card-name">{item.name}</div>
+                  <div className="muted tiny">{formatKb(item.bytes)}</div>
+                </div>
                 <button
                   type="button"
                   className="modal-card-add"
-                  title="Добавить в пак"
+                  title="Добавить в пак без закрытия окна"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!tdoc) return;
-                    onSelect(structuredClone(tdoc), t, true);
+                    pickItem(item, true);
                   }}
                 >
-                  <Plus size={14} /> В пак
+                  <Plus size={13} /> В пак
                 </button>
               </div>
             </div>

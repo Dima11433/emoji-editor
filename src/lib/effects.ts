@@ -1,4 +1,5 @@
 import { hexToHsl, hslToHex, mapColors } from './colors';
+import { collectTransitiveAssets } from './layers';
 import { fixed, hexToRgb, layerTransform, rgbToHex, type Asset, type Layer, type LottieDoc, type ShapeItem } from './lottie';
 
 /**
@@ -67,10 +68,19 @@ export function layerFamily(layers: Layer[], target: number | null): Layer[] {
   return layers.filter((l) => l.ind !== undefined && inFamily.has(l.ind));
 }
 
-/** Layers and the precomp assets they use, so effects reach nested animations too. */
+/** Layers and all transitive precomp assets they use, so effects reach nested animations too. */
 function familyNodes(doc: LottieDoc, target: number | null): unknown[] {
   const family = layerFamily(doc.layers, target);
-  const assets = (doc.assets ?? []).filter((a) => family.some((l) => l.refId === a.id));
+  const seen = new Set<string>();
+  const assets: Asset[] = [];
+  for (const l of family) {
+    for (const a of collectTransitiveAssets(doc, l.refId)) {
+      if (!seen.has(a.id)) {
+        seen.add(a.id);
+        assets.push(a);
+      }
+    }
+  }
   return [...family, ...assets];
 }
 
@@ -313,6 +323,7 @@ function glitch(doc: LottieDoc, target: number | null, strength: number) {
   const familyInds = new Set(family.map((l) => l.ind));
   const isRoot = (l: Layer) => l.parent === undefined || !familyInds.has(l.parent);
 
+  const memo = new Map<string, string>();
   // Two tinted copies that jump sideways during short bursts.
   for (const [tint, dir, label] of [
     ['#ff2a6d', -1, 'красный'],
@@ -333,7 +344,7 @@ function glitch(doc: LottieDoc, target: number | null, strength: number) {
         copy.parent = indMap.get(l.parent!);
       }
       copy.ks = { ...copy.ks, o: hold([[0, [0]], ...BURSTS.flatMap(([a, b]): [number, number[]][] => [[a, [80]], [b, [0]]])]) };
-      if (copy.ty === 0 && copy.refId) copy.refId = tintedAsset(doc, copy.refId, tint);
+      if (copy.ty === 0 && copy.refId) copy.refId = tintedAsset(doc, copy.refId, tint, memo);
       mapColors(copy, () => tint);
       copies.push(copy);
     }
@@ -352,12 +363,20 @@ function glitch(doc: LottieDoc, target: number | null, strength: number) {
   doc.layers.push(...nulls);
 }
 
-function tintedAsset(doc: LottieDoc, refId: string, tint: string): string {
+function tintedAsset(doc: LottieDoc, refId: string, tint: string, memo: Map<string, string>): string {
+  const key = `${refId}:${tint}`;
+  const existing = memo.get(key);
+  if (existing) return existing;
   const asset = doc.assets?.find((a) => a.id === refId);
   if (!asset) return refId;
   const copy = structuredClone(asset);
   copy.id = `${refId}_glitch_${tint.slice(1)}`;
+  memo.set(key, copy.id);
+  for (const l of copy.layers ?? []) {
+    if (l.ty === 0 && l.refId) l.refId = tintedAsset(doc, l.refId, tint, memo);
+  }
   mapColors(copy, () => tint);
-  doc.assets!.push(copy);
+  if (!doc.assets) doc.assets = [];
+  doc.assets.push(copy);
   return copy.id;
 }

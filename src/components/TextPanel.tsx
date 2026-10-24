@@ -16,8 +16,8 @@ export interface TextRequest {
 
 export function TextPanel({ onAdd, busy }: { onAdd: (req: TextRequest) => void; busy: boolean }) {
   const [req, setReq] = useState<TextRequest>({
-    text: 'Привет',
-    fontId: 'rubik',
+    text: 'MAGNAT',
+    fontId: 'montserrat',
     size: DEFAULT_TEXT.size,
     fillHex: DEFAULT_TEXT.fillHex,
     strokeHex: DEFAULT_TEXT.strokeHex,
