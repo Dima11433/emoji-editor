@@ -19,12 +19,14 @@ import {
 } from './lottie';
 import { textToLayer } from './text';
 
-export type TemplateCategory = 'classic' | 'characters' | 'love' | 'finance' | 'misc';
+export type TemplateCategory = 'classic' | 'characters' | 'flags' | 'gifts' | 'love' | 'finance' | 'misc';
 
 export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string }[] = [
   { id: 'all', label: 'Все' },
   { id: 'classic', label: 'Классика' },
   { id: 'characters', label: 'Персонажи' },
+  { id: 'flags', label: 'Флаги' },
+  { id: 'gifts', label: 'Подарки' },
   { id: 'love', label: 'Любовь' },
   { id: 'finance', label: 'Финансы' },
   { id: 'misc', label: 'Разное' },
@@ -1058,6 +1060,214 @@ function warning(fonts: Font[] | null): LottieDoc {
   return doc;
 }
 
+function diamond(): LottieDoc {
+  const doc = emptyDoc('Бриллиант');
+  const cyan = '#06b6d4';
+  const cyanLight = '#67e8f9';
+  const dark = '#0e7490';
+  doc.layers.push(
+    sparkles(),
+    shapeLayer(
+      'Бриллиант',
+      [
+        group('Грань низ', [polygon([[-140, -40], [140, -40], [0, 130]]), fill(cyan), stroke(dark, 10)]),
+        group('Грань верх', [polygon([[-90, -110], [90, -110], [140, -40], [-140, -40]]), fill(cyanLight), stroke(dark, 10)]),
+        group('Блик центр', [polygon([[0, -110], [45, -40], [0, 130], [-45, -40]]), fill('#ffffff', 40)]),
+      ],
+      {
+        s: scaleKeys([[0, 100], [45, 108], [90, 100], [135, 108], [FRAMES, 100]]),
+        r: anim([[0, -4], [90, 4], [FRAMES, -4]]),
+      },
+    ),
+  );
+  reindexLayers(doc.layers);
+  return doc;
+}
+
+function bicep(fonts: Font[] | null): LottieDoc {
+  const doc = emptyDoc('Мускул');
+  const skin = '#fb923c';
+  const edge = '#c2410c';
+  const bicepLayer = shapeLayer(
+    'Мускул',
+    [
+      group('Кулак', [ellipse(70, -75, 76, 76), fill(skin), stroke(edge, 10)]),
+      group('Бицепс', [ellipse(5, -40, 106, 86), fill(skin), stroke(edge, 10)]),
+      group('Плечо', [rect(-70, 45, 130, 95, 24), fill(skin), stroke(edge, 10)]),
+      group('Предплечье', [rect(55, -20, 68, 120, 20), fill(skin), stroke(edge, 10)], { r: fixed(-20) }),
+    ],
+    {
+      s: scaleKeys([[0, 100], [20, 115, 90], [35, 100], [90, 100], [110, 115, 90], [125, 100], [FRAMES, 100]]),
+      r: anim([[0, -5], [20, 5], [35, 0], [90, 0], [110, 5], [125, 0], [FRAMES, 0]]),
+    },
+  );
+  bicepLayer.ind = 2;
+  if (fonts) {
+    const text = textToLayer({
+      text: 'ТОП',
+      fonts,
+      size: 44,
+      fillHex: '#ffffff',
+      strokeHex: edge,
+      strokeWidth: 4,
+      x: 0,
+      y: 85,
+      maxWidth: 140,
+      animation: 'none',
+    });
+    text.ind = 1;
+    text.parent = 2;
+    doc.layers.push(text);
+  }
+  doc.layers.push(sparkles(), bicepLayer);
+  reindexLayers(doc.layers);
+  return doc;
+}
+
+function handshake(): LottieDoc {
+  const doc = emptyDoc('Рукопожатие');
+  const skin = '#fbbf24';
+  const edge = '#b45309';
+  doc.layers.push(
+    sparkles(),
+    shapeLayer(
+      'Рукопожатие',
+      [
+        group('Рукав левый', [rect(-135, 30, 95, 80, 12), fill('#3b82f6'), stroke('#1d4ed8', 10)]),
+        group('Рукав правый', [rect(135, -30, 95, 80, 12), fill('#10b981'), stroke('#047857', 10)]),
+        group('Ладонь левая', [rect(-55, 15, 100, 68, 18), fill(skin), stroke(edge, 10)], { r: fixed(-15) }),
+        group('Ладонь правая', [rect(55, -15, 100, 68, 18), fill(skin), stroke(edge, 10)], { r: fixed(-15) }),
+        group('Пальцы захват', [ellipse(0, 0, 70, 50), fill(skin), stroke(edge, 8)]),
+      ],
+      {
+        p: anim([
+          [0, [256, 256, 0]],
+          [15, [256, 238, 0]],
+          [30, [256, 268, 0]],
+          [45, [256, 246, 0]],
+          [60, [256, 256, 0]],
+          [FRAMES, [256, 256, 0]],
+        ]),
+      },
+    ),
+  );
+  reindexLayers(doc.layers);
+  return doc;
+}
+
+function flag(fonts: Font[] | null): LottieDoc {
+  const doc = emptyDoc('Флаг');
+  const red = '#ef4444';
+  const blue = '#3b82f6';
+  const white = '#f8fafc';
+  const flagLayer = shapeLayer(
+    'Полотно',
+    [
+      group('Полоса белая', [rect(15, -60, 220, 55, 6), fill(white), stroke('#cbd5e1', 6)]),
+      group('Полоса синяя', [rect(15, -5, 220, 55, 6), fill(blue)]),
+      group('Полоса красная', [rect(15, 50, 220, 55, 6), fill(red)]),
+    ],
+    {
+      a: fixed([-95, 0]),
+      p: fixed([-95, 0]),
+      r: anim([[0, -4], [45, 4], [90, -4], [135, 4], [FRAMES, -4]]),
+    },
+  );
+  flagLayer.ind = 2;
+  if (fonts) {
+    const text = textToLayer({
+      text: 'TG',
+      fonts,
+      size: 50,
+      fillHex: '#ffffff',
+      strokeHex: '#1e3a8a',
+      strokeWidth: 4,
+      x: 15,
+      y: -5,
+      maxWidth: 180,
+      animation: 'none',
+    });
+    text.ind = 1;
+    text.parent = 2;
+    doc.layers.push(text);
+  }
+  doc.layers.push(
+    flagLayer,
+    shapeLayer('Флагшток', [
+      group('Наконечник', [ellipse(-95, -165, 30), fill('#fbbf24'), stroke('#b45309', 6)]),
+      group('Древко', [rect(-95, 20, 16, 350, 6), fill('#64748b'), stroke('#334155', 6)]),
+    ]),
+  );
+  reindexLayers(doc.layers);
+  return doc;
+}
+
+function handsHeart(): LottieDoc {
+  const doc = emptyDoc('Руки-сердце');
+  const skin = '#facc15';
+  const edge = '#ca8a04';
+  doc.layers.push(
+    sparkles(),
+    shapeLayer(
+      'Сердечко в центре',
+      [group('Сердце', [heartPath(), fill('#ff2d55')], { s: fixed([45, 45]), p: fixed([0, -10]) })],
+      {
+        s: scaleKeys([[0, 90], [14, 120], [28, 90], [42, 110], [56, 90], [FRAMES, 90]]),
+      },
+    ),
+    shapeLayer(
+      'Руки',
+      [
+        group('Кисть левая', [rect(-70, 20, 110, 80, 26), fill(skin), stroke(edge, 10)], { r: fixed(35) }),
+        group('Кисть правая', [rect(70, 20, 110, 80, 26), fill(skin), stroke(edge, 10)], { r: fixed(-35) }),
+        group('Палец левый', [rect(-45, -40, 40, 100, 18), fill(skin), stroke(edge, 10)], { r: fixed(-30) }),
+        group('Палец правый', [rect(45, -40, 40, 100, 18), fill(skin), stroke(edge, 10)], { r: fixed(30) }),
+      ],
+      {
+        s: scaleKeys([[0, 100], [45, 105], [90, 100], [135, 105], [FRAMES, 100]]),
+      },
+    ),
+  );
+  reindexLayers(doc.layers);
+  return doc;
+}
+
+function bomb(): LottieDoc {
+  const doc = emptyDoc('Бомба');
+  const dark = '#1e293b';
+  doc.layers.push(
+    shapeLayer(
+      'Искра фитиля',
+      [group('Искра', [polygon(starPoints(5, 34, 14)), fill('#ef4444')], { p: fixed([75, -155]) })],
+      {
+        r: anim([[0, 0], [FRAMES, 360]], 'linear'),
+        s: scaleKeys([[0, 90], [15, 130], [30, 80], [45, 120], [60, 90], [FRAMES, 90]]),
+      },
+    ),
+    shapeLayer(
+      'Бомба',
+      [
+        group('Блик', [ellipse(-55, 0, 52, 32), fill('#ffffff', 40)], { r: fixed(-30) }),
+        group('Кольцо фитиля', [rect(0, -95, 60, 26, 6), fill('#475569'), stroke(dark, 8)]),
+        group('Корпус', [ellipse(0, 35, 260, 260), fill(dark), stroke('#0f172a', 12)]),
+      ],
+      {
+        p: anim([
+          [0, [256, 256, 0]],
+          [40, [256, 256, 0]],
+          [44, [253, 256, 0]],
+          [48, [259, 256, 0]],
+          [52, [256, 256, 0]],
+          [FRAMES, [256, 256, 0]],
+        ]),
+        s: scaleKeys([[0, 100], [38, 96, 104], [44, 106, 94], [50, 100], [FRAMES, 100]]),
+      },
+    ),
+  );
+  reindexLayers(doc.layers);
+  return doc;
+}
+
 export const TEMPLATES: Template[] = [
   { id: 'heart', name: 'Сердце', category: 'love', build: heart },
   { id: 'smiley', name: 'Смайлик', category: 'characters', build: smiley },
@@ -1067,7 +1277,7 @@ export const TEMPLATES: Template[] = [
   { id: 'board', name: 'Табличка', category: 'classic', needsFont: true, build: board },
   { id: 'fire', name: 'Огонь', category: 'classic', build: fire },
   { id: 'like', name: 'Лайк', category: 'classic', build: like },
-  { id: 'gift', name: 'Подарок', category: 'misc', build: gift },
+  { id: 'gift', name: 'Подарок', category: 'gifts', build: gift },
   { id: 'crown', name: 'Корона', category: 'classic', build: crown },
   { id: 'lightning', name: 'Молния', category: 'misc', build: lightning },
   { id: 'rocket', name: 'Ракета', category: 'misc', build: rocket },
@@ -1088,4 +1298,10 @@ export const TEMPLATES: Template[] = [
   { id: 'chart', name: 'График', category: 'finance', needsFont: true, build: chart },
   { id: 'party', name: 'Праздник', category: 'misc', build: party },
   { id: 'warning', name: 'Внимание', category: 'misc', needsFont: true, build: warning },
+  { id: 'diamond', name: 'Бриллиант', category: 'gifts', build: diamond },
+  { id: 'bicep', name: 'Мускул', category: 'classic', needsFont: true, build: bicep },
+  { id: 'handshake', name: 'Рукопожатие', category: 'classic', build: handshake },
+  { id: 'flag', name: 'Флаг', category: 'flags', needsFont: true, build: flag },
+  { id: 'hands_heart', name: 'Руки-сердце', category: 'love', build: handsHeart },
+  { id: 'bomb', name: 'Бомба', category: 'misc', build: bomb },
 ];

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Download, FolderOpen, Layers, LayoutGrid, Redo2, Sparkles, Type, Undo2 } from 'lucide-react';
+import { Download, FilePlus2, FolderArchive, FolderOpen, Layers, LayoutGrid, Redo2, Sparkles, Type, Undo2 } from 'lucide-react';
 import type { Font } from 'opentype.js';
 import { ChecksPanel } from './components/ChecksPanel';
 import { EffectsPanel } from './components/EffectsPanel';
 import { LayersPanel } from './components/LayersPanel';
+import { PackTray, type PackItem } from './components/PackTray';
 import { PalettePanel } from './components/PalettePanel';
 import { Preview, Thumb } from './components/Preview';
+import { TemplatesModal } from './components/TemplatesModal';
 import { TextPanel, type TextRequest } from './components/TextPanel';
 import { applyShapeEffects, getEffects, type Effects } from './lib/effects';
 import { collectColors, grayscale, invert, replaceColor, shiftHue } from './lib/colors';
@@ -21,7 +23,8 @@ import {
   toggleHidden,
   type NodePath,
 } from './lib/layers';
-import { reindexLayers, type LottieDoc } from './lib/lottie';
+import { emptyDoc, reindexLayers, type LottieDoc } from './lib/lottie';
+import { createPackZip } from './lib/packZip';
 import { TEMPLATES, TEMPLATE_CATEGORIES, type TemplateCategory } from './lib/templates';
 import { pixelate } from './lib/pixelSample';
 import { DEFAULT_TEXT, textToLayer } from './lib/text';
@@ -85,6 +88,90 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('templates');
   const [tplCategory, setTplCategory] = useState<'all' | TemplateCategory>('all');
   const [tplSearch, setTplSearch] = useState('');
+  const [pack, setPack] = useState<PackItem[]>(() => [
+    { id: '1', name: 'Сердце', doc: TEMPLATES[0].build(null) },
+  ]);
+  const [activePackIndex, setActivePackIndex] = useState(0);
+  const [showPackTray, setShowPackTray] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalAddToPack, setModalAddToPack] = useState(false);
+
+  // Keep active pack item in sync with current doc & fileName
+  useEffect(() => {
+    setPack((prev) => {
+      if (!prev[activePackIndex]) return prev;
+      if (prev[activePackIndex].doc === doc && prev[activePackIndex].name === fileName) return prev;
+      const next = [...prev];
+      next[activePackIndex] = {
+        ...next[activePackIndex],
+        doc,
+        name: fileName,
+      };
+      return next;
+    });
+  }, [doc, fileName, activePackIndex]);
+
+  const selectPackSticker = (idx: number) => {
+    if (idx < 0 || idx >= pack.length) return;
+    setActivePackIndex(idx);
+    const target = pack[idx];
+    load(structuredClone(target.doc), target.name);
+    say(`Стикер #${idx + 1}: ${target.name}`);
+  };
+
+  const addToPack = (newDoc: LottieDoc, name: string) => {
+    const newItem: PackItem = {
+      id: String(Date.now()),
+      name,
+      doc: newDoc,
+    };
+    setPack((prev) => [...prev, newItem]);
+    setActivePackIndex(pack.length);
+    load(newDoc, name);
+    setShowPackTray(true);
+    say(`Добавлен стикер «${name}» в пак (#${pack.length + 1})`);
+  };
+
+  const duplicatePackSticker = (idx: number) => {
+    const src = pack[idx];
+    if (!src) return;
+    const clone: PackItem = {
+      id: String(Date.now()),
+      name: `${src.name}_copy`,
+      doc: structuredClone(src.doc),
+    };
+    const next = [...pack.slice(0, idx + 1), clone, ...pack.slice(idx + 1)];
+    setPack(next);
+    setActivePackIndex(idx + 1);
+    load(clone.doc, clone.name);
+    say(`Стикер скопирован: ${clone.name}`);
+  };
+
+  const removePackSticker = (idx: number) => {
+    if (pack.length <= 1) return;
+    const next = pack.filter((_, i) => i !== idx);
+    const nextActive = Math.min(activePackIndex, next.length - 1);
+    setPack(next);
+    setActivePackIndex(nextActive);
+    load(structuredClone(next[nextActive].doc), next[nextActive].name);
+    say('Стикер удалён из пака');
+  };
+
+  const downloadPackZip = async () => {
+    try {
+      say('Формирую .zip архив пака...');
+      const blob = await createPackZip(pack, 'telegram_emoji_pack');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `emoji_pack_${pack.length}_stickers.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      say(`Пак из ${pack.length} стикеров скачан!`);
+    } catch (err) {
+      say(err instanceof Error ? err.message : 'Ошибка создания архива', true);
+    }
+  };
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [templateFonts, setTemplateFonts] = useState<Font[] | null>(null);
   const [fontBusy, setFontBusy] = useState(false);
@@ -255,6 +342,36 @@ export default function App() {
           <Sparkles size={20} />
           <span>Мастерская эмодзи</span>
         </div>
+        <button
+          type="button"
+          className="topbar-btn"
+          onClick={() => {
+            setModalAddToPack(false);
+            setShowModal(true);
+          }}
+          title="Каталог готовых шаблонов (модальное окно)"
+        >
+          <LayoutGrid size={15} /> Шаблоны
+        </button>
+        <button
+          type="button"
+          className={`topbar-btn ${showPackTray ? 'active' : ''}`}
+          onClick={() => setShowPackTray((v) => !v)}
+          title="Стикерпак: открыть/скрыть панель пака"
+        >
+          <FolderArchive size={15} /> Пак ({pack.length})
+        </button>
+        <button
+          type="button"
+          className="topbar-btn"
+          onClick={() => {
+            load(emptyDoc(), 'новый_стикер');
+            say('Создан чистый холст');
+          }}
+          title="Создать новый пустой стикер"
+        >
+          <FilePlus2 size={15} /> Новый
+        </button>
         <input className="file-name" value={fileName} onChange={(e) => setFileName(e.target.value)} aria-label="Имя файла" />
         <div className="top-actions">
           <button onClick={() => fileInput.current?.click()} title="Открыть .tgs или Lottie .json">
@@ -269,6 +386,9 @@ export default function App() {
           <span className={`size-badge ${tooBig ? 'bad' : ''}`} title="Размер .tgs после сжатия">
             {formatKb(size)} / 64 кБ
           </span>
+          <button className="zip-btn" onClick={downloadPackZip} title="Скачать весь пак архивом .zip">
+            <Download size={15} /> Пак (.zip)
+          </button>
           <button disabled={pixelBusy} onClick={() => download('json')} title="Lottie JSON для других редакторов">
             JSON
           </button>
@@ -427,6 +547,37 @@ export default function App() {
           }}
         />
       </aside>
+
+      <PackTray
+        pack={pack}
+        activeIndex={activePackIndex}
+        onSelect={selectPackSticker}
+        onAdd={() => {
+          setModalAddToPack(true);
+          setShowModal(true);
+        }}
+        onDuplicate={duplicatePackSticker}
+        onRemove={removePackSticker}
+        onDownloadZip={downloadPackZip}
+        isOpen={showPackTray}
+        onToggle={() => setShowPackTray((v) => !v)}
+      />
+
+      <TemplatesModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSelect={(newDoc, tpl, isAdd) => {
+          if (isAdd) {
+            addToPack(newDoc, tpl.name);
+          } else {
+            load(newDoc, tpl.name);
+            say(`Шаблон «${tpl.name}». Отменить — Ctrl+Z.`);
+          }
+          setShowModal(false);
+        }}
+        templateFonts={templateFonts}
+        defaultAddToPack={modalAddToPack}
+      />
 
       {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
     </div>
