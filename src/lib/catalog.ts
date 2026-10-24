@@ -1,5 +1,5 @@
-// Auto-generated from MAGNAT packs (263 animated Telegram emojis)
-export type TemplateCategory = 'classic' | 'characters' | 'gifts' | 'love';
+// Auto-generated catalog: 11 custom templates + 263 MAGNAT animated Telegram emojis (274 total)
+export type TemplateCategory = 'shablony1' | 'classic' | 'characters' | 'gifts' | 'love';
 
 export interface CatalogItem {
   id: string;
@@ -13,6 +13,7 @@ export interface CatalogItem {
 
 export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string }[] = [
   { id: 'all', label: 'Все' },
+  { id: 'shablony1', label: 'Шаблоны' },
   { id: 'classic', label: 'Классика' },
   { id: 'characters', label: 'Персонажи' },
   { id: 'gifts', label: 'Подарки' },
@@ -20,6 +21,105 @@ export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string 
 ];
 
 export const CATALOG: CatalogItem[] = [
+  {
+    "id": "shablony1_001",
+    "num": 1,
+    "name": "Шаблон #001 · Лампа",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/001.tgs",
+    "bytes": 29578
+  },
+  {
+    "id": "shablony1_002",
+    "num": 2,
+    "name": "Шаблон #002 · Корона",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/002.tgs",
+    "bytes": 36148
+  },
+  {
+    "id": "shablony1_003",
+    "num": 3,
+    "name": "Шаблон #003 · Сцена 3D",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/003.tgs",
+    "bytes": 33098
+  },
+  {
+    "id": "shablony1_004",
+    "num": 4,
+    "name": "Шаблон #004 · Анимация",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/004.tgs",
+    "bytes": 5768
+  },
+  {
+    "id": "shablony1_005",
+    "num": 5,
+    "name": "Шаблон #005 · Всплеск",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/005.tgs",
+    "bytes": 2548
+  },
+  {
+    "id": "shablony1_006",
+    "num": 6,
+    "name": "Шаблон #006 · Персонаж",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/006.tgs",
+    "bytes": 57769
+  },
+  {
+    "id": "shablony1_007",
+    "num": 7,
+    "name": "Шаблон #007 · Купюры",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/007.tgs",
+    "bytes": 52743
+  },
+  {
+    "id": "shablony1_008",
+    "num": 8,
+    "name": "Шаблон #008 · Силуэт",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/008.tgs",
+    "bytes": 5268
+  },
+  {
+    "id": "shablony1_009",
+    "num": 9,
+    "name": "Шаблон #009 · Полумесяц",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/009.tgs",
+    "bytes": 5760
+  },
+  {
+    "id": "shablony1_010",
+    "num": 10,
+    "name": "Шаблон #010 · Щит",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/010.tgs",
+    "bytes": 6495
+  },
+  {
+    "id": "shablony1_011",
+    "num": 11,
+    "name": "Шаблон #011 · Иконка 3D",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/011.tgs",
+    "bytes": 57335
+  },
   {
     "id": "classic_001",
     "num": 1,

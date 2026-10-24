@@ -13,16 +13,18 @@ import {
   type Layer,
   type Segment,
   type ShapeItem,
+  type TransformInput,
   type Vec,
 } from './lottie';
 
 /** Telegram does not render Lottie text layers, so text is turned into shapes. */
 
-export type TextAnimation = 'none' | 'pulse' | 'swing' | 'pop' | 'wave' | 'shake';
+export type TextAnimation = 'none' | 'pulse' | 'float' | 'swing' | 'pop' | 'wave' | 'shake';
 
 export const TEXT_ANIMATIONS: { id: TextAnimation; label: string }[] = [
   { id: 'none', label: 'Без анимации' },
   { id: 'pulse', label: 'Пульс' },
+  { id: 'float', label: 'Левитация' },
   { id: 'swing', label: 'Качание' },
   { id: 'pop', label: 'Появление' },
   { id: 'wave', label: 'Волна по буквам' },
@@ -41,6 +43,8 @@ export interface TextOptions {
   y: number;
   maxWidth: number;
   animation: TextAnimation;
+  ip?: number;
+  op?: number;
 }
 
 interface GlyphShape {
@@ -51,6 +55,9 @@ interface GlyphShape {
 export function textToLayer(opts: TextOptions): Layer {
   const glyphs = layout(opts);
   if (!glyphs.length) throw new Error('В тексте нет символов, которые есть в шрифте.');
+
+  const ip = opts.ip ?? 0;
+  const op = opts.op ?? FRAMES;
 
   const points = glyphs.flatMap((g) => g.paths.flatMap((p) => pathPoints(p)));
   const minX = Math.min(...points.map((p) => p[0]));
@@ -63,7 +70,11 @@ export function textToLayer(opts: TextOptions): Layer {
   const cy = (minY + maxY) / 2;
 
   // Center the outlines around (0, 0) and fit them to maxWidth.
-  for (const g of glyphs) for (const p of g.paths) transformPath(p, (pt) => [(pt[0] - cx) * scale, (pt[1] - cy) * scale]);
+  for (const g of glyphs) {
+    for (const p of g.paths) {
+      transformPath(p, (pt) => [(pt[0] - cx) * scale, (pt[1] - cy) * scale]);
+    }
+  }
 
   const paint = (): ShapeItem[] => {
     const items = [fill(opts.fillHex)];
@@ -72,14 +83,18 @@ export function textToLayer(opts: TextOptions): Layer {
   };
 
   const letters = glyphs.map((g, idx) => {
-    const tr = opts.animation === 'wave' ? waveOffset(idx, glyphs.length) : {};
+    const tr = opts.animation === 'wave' ? waveOffset(idx, glyphs.length, ip, op) : {};
     return group(g.char === ' ' ? 'Пробел' : g.char, [...g.paths, ...paint()], tr);
   });
 
-  return shapeLayer(`Текст «${opts.text.trim()}»`, letters, {
-    p: fixed([opts.x, opts.y, 0]),
-    ...layerAnimation(opts.animation),
-  });
+  const layer = shapeLayer(
+    `Текст «${opts.text.trim()}»`,
+    letters,
+    buildSlotLayerAnimation(opts.animation, [opts.x, opts.y, 0], ip, op),
+  );
+  layer.ip = ip;
+  layer.op = op;
+  return layer;
 }
 
 function layout(opts: TextOptions): GlyphShape[] {
@@ -112,7 +127,6 @@ export function commandsToPaths(commands: PathCommand[]): ShapeItem[] {
       start = [cmd.x, cmd.y];
       prev = start;
     } else if (cmd.type === 'L') {
-      // A line is a cubic with both controls on its ends (zero tangents).
       segs.push([prev, [cmd.x, cmd.y], [cmd.x, cmd.y]]);
       prev = [cmd.x, cmd.y];
     } else if (cmd.type === 'C') {
@@ -156,54 +170,102 @@ export function transformPath(p: ShapeItem, fn: (pt: Vec) => Vec) {
   d.o = d.o.map(scaleOnly);
 }
 
-function waveOffset(idx: number, count: number) {
-  const step = Math.min(10, Math.floor(100 / Math.max(1, count)));
-  const t0 = 10 + idx * step;
+function waveOffset(idx: number, count: number, ip: number, op: number) {
+  const dur = Math.max(36, op - ip);
+  const usable = Math.max(12, dur - 36);
+  const step = Math.min(10, Math.floor((usable * 0.7) / Math.max(1, count)));
+  const t0 = ip + Math.round(dur * 0.06) + idx * step;
+  const tMid = Math.min(op - 2, t0 + 12);
+  const tEnd = Math.min(op - 1, t0 + 24);
   return {
     p: anim([
-      [0, [0, 0]],
+      [ip, [0, 0]],
       [t0, [0, 0]],
-      [t0 + 12, [0, -28]],
-      [t0 + 24, [0, 0]],
-      [FRAMES, [0, 0]],
+      [tMid, [0, -28]],
+      [tEnd, [0, 0]],
+      [op, [0, 0]],
     ]),
   };
 }
 
-function layerAnimation(kind: TextAnimation) {
+/** Builds layer transform keyframes mapped cleanly onto `[ip .. op]`. */
+export function buildSlotLayerAnimation(
+  kind: TextAnimation,
+  basePos: [number, number, number],
+  ip = 0,
+  op = FRAMES,
+): TransformInput {
+  const dur = Math.max(12, op - ip);
+  const at = (frac: number) => Math.round(ip + dur * frac);
+  const [bx, by, bz] = basePos;
+
   switch (kind) {
     case 'pulse':
       return {
+        p: fixed([bx, by, bz]),
         s: anim([
-          [0, [100, 100, 100]],
-          [30, [112, 112, 100]],
-          [60, [100, 100, 100]],
-          [90, [112, 112, 100]],
-          [120, [100, 100, 100]],
-          [150, [112, 112, 100]],
-          [FRAMES, [100, 100, 100]],
+          [ip, [100, 100, 100]],
+          [at(1 / 6), [110, 110, 100]],
+          [at(2 / 6), [100, 100, 100]],
+          [at(3 / 6), [110, 110, 100]],
+          [at(4 / 6), [100, 100, 100]],
+          [at(5 / 6), [110, 110, 100]],
+          [op, [100, 100, 100]],
+        ]),
+      };
+    case 'float':
+      return {
+        p: anim([
+          [ip, [bx, by, bz]],
+          [at(0.25), [bx, by - 11, bz]],
+          [at(0.5), [bx, by, bz]],
+          [at(0.75), [bx, by - 11, bz]],
+          [op, [bx, by, bz]],
         ]),
       };
     case 'swing':
-      return { r: anim([[0, -7], [90, 7], [FRAMES, -7]]) };
-    case 'pop':
       return {
-        s: anim([
-          [0, [0, 0, 100]],
-          [14, [118, 118, 100]],
-          [22, [94, 94, 100]],
-          [30, [100, 100, 100]],
-          [FRAMES, [100, 100, 100]],
+        p: fixed([bx, by, bz]),
+        r: anim([
+          [ip, -5.5],
+          [at(0.5), 5.5],
+          [op, -5.5],
         ]),
-        o: anim([[0, 0], [8, 100], [FRAMES, 100]]),
       };
+    case 'pop': {
+      const t1 = Math.min(op - 3, ip + Math.min(14, Math.round(dur * 0.12)));
+      const t2 = Math.min(op - 2, ip + Math.min(22, Math.round(dur * 0.2)));
+      const t3 = Math.min(op - 1, ip + Math.min(30, Math.round(dur * 0.28)));
+      const tFade = Math.min(op - 1, ip + Math.min(8, Math.round(dur * 0.08)));
+      return {
+        p: fixed([bx, by, bz]),
+        s: anim([
+          [ip, [0, 0, 100]],
+          [t1, [116, 116, 100]],
+          [t2, [95, 95, 100]],
+          [t3, [100, 100, 100]],
+          [op, [100, 100, 100]],
+        ]),
+        o: anim([
+          [ip, 0],
+          [tFade, 100],
+          [op, 100],
+        ]),
+      };
+    }
     case 'shake': {
       const keys: [number, number][] = [];
-      for (let t = 0; t <= FRAMES; t += 6) keys.push([t, t === 0 || t === FRAMES ? 0 : t % 12 === 0 ? -4 : 4]);
-      return { r: anim(keys, 'linear') };
+      for (let t = ip; t <= op; t += 6) {
+        keys.push([t, t === ip || t >= op - 5 ? 0 : (t - ip) % 12 === 0 ? -4 : 4]);
+      }
+      if (keys[keys.length - 1]?.[0] !== op) keys.push([op, 0]);
+      return {
+        p: fixed([bx, by, bz]),
+        r: anim(keys, 'linear'),
+      };
     }
     default:
-      return {};
+      return { p: fixed([bx, by, bz]) };
   }
 }
 

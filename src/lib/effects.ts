@@ -1,6 +1,16 @@
 import { hexToHsl, hslToHex, mapColors } from './colors';
 import { collectTransitiveAssets } from './layers';
-import { fixed, hexToRgb, layerTransform, rgbToHex, type Asset, type Layer, type LottieDoc, type ShapeItem } from './lottie';
+import {
+  fixed,
+  FRAMES,
+  hexToRgb,
+  layerTransform,
+  rgbToHex,
+  type Asset,
+  type Layer,
+  type LottieDoc,
+  type ShapeItem,
+} from './lottie';
 
 /**
  * Effects are stored on the document (doc.fx) and applied on top of it when
@@ -69,7 +79,7 @@ export function layerFamily(layers: Layer[], target: number | null): Layer[] {
 }
 
 /** Layers and all transitive precomp assets they use, so effects reach nested animations too. */
-function familyNodes(doc: LottieDoc, target: number | null): unknown[] {
+function familyNodes(doc: LottieDoc, target: number | null): { layers: Layer[]; assets: Asset[] } {
   const family = layerFamily(doc.layers, target);
   const seen = new Set<string>();
   const assets: Asset[] = [];
@@ -81,29 +91,37 @@ function familyNodes(doc: LottieDoc, target: number | null): unknown[] {
       }
     }
   }
-  return [...family, ...assets];
+  return { layers: family, assets };
 }
 
 // ---------- Metal ----------
 
 function metal(doc: LottieDoc, target: number | null) {
-  for (const node of familyNodes(doc, target)) {
-    const n = node as Layer & Asset;
-    if (Array.isArray(n.shapes)) metalList(n.shapes);
-    if (Array.isArray(n.layers)) for (const l of n.layers) if (l.shapes) metalList(l.shapes);
+  const { layers, assets } = familyNodes(doc, target);
+  const rootIp = doc.ip ?? 0;
+  const rootOp = doc.op ?? FRAMES;
+  for (const l of layers) {
+    if (Array.isArray(l.shapes)) metalList(l.shapes, rootIp, rootOp);
+  }
+  for (const a of assets) {
+    for (const l of a.layers ?? []) {
+      const aIp = typeof l.ip === 'number' ? Math.min(0, l.ip) : 0;
+      const aOp = typeof l.op === 'number' && l.op > aIp ? l.op : rootOp - rootIp;
+      if (Array.isArray(l.shapes)) metalList(l.shapes, aIp, aOp);
+    }
   }
 }
 
 /** Replaces flat fills in a shape list with a moving metallic gradient. */
-function metalList(items: ShapeItem[]) {
+function metalList(items: ShapeItem[], ip: number, op: number) {
   const box = bounds(items);
   items.forEach((item, idx) => {
-    if (item.ty === 'gr' && item.it) metalList(item.it);
-    if (item.ty === 'fl') items[idx] = metalFill(item, box);
+    if (item.ty === 'gr' && item.it) metalList(item.it, ip, op);
+    if (item.ty === 'fl') items[idx] = metalFill(item, box, ip, op);
   });
 }
 
-function metalFill(fl: ShapeItem, box: Box): ShapeItem {
+function metalFill(fl: ShapeItem, box: Box, ip: number, op: number): ShapeItem {
   const rgb = firstColor(fl.c);
   const [h, s, l] = hexToHsl(rgbToHex(rgb));
   const sat = s * 0.55;
@@ -113,21 +131,20 @@ function metalFill(fl: ShapeItem, box: Box): ShapeItem {
   const dark = shade(l * 0.5);
   const shine = shade(0.97);
 
-  // Five stops: light edge, base, moving highlight, base, dark edge.
-  const stops = (hl: number, glow: number[]) => [
-    0, ...light,
-    hl - 0.12, ...base,
-    hl, ...glow,
-    hl + 0.12, ...base,
-    1, ...dark,
-  ].map((x) => Math.round(x * 1000) / 1000);
-  const pass = (t: number): [number, number[]][] => [
-    [t, stops(0.15, base)],
-    [t + 10, stops(0.22, shine)],
-    [t + 50, stops(0.78, shine)],
-    [t + 60, stops(0.85, base)],
+  const dur = Math.max(24, op - ip);
+  const at = (frac: number) => Math.round(ip + dur * frac);
+
+  const stops = (hl: number, glow: number[]) =>
+    [0, ...light, hl - 0.12, ...base, hl, ...glow, hl + 0.12, ...base, 1, ...dark].map(
+      (x) => Math.round(x * 1000) / 1000,
+    );
+  const pass = (f0: number): [number, number[]][] => [
+    [at(f0), stops(0.15, base)],
+    [at(f0 + 10 / 180), stops(0.22, shine)],
+    [at(f0 + 50 / 180), stops(0.78, shine)],
+    [at(f0 + 60 / 180), stops(0.85, base)],
   ];
-  const keys = [...pass(0), ...pass(90), [180, stops(0.15, base)] as [number, number[]]];
+  const keys = [...pass(0), ...pass(0.5), [op, stops(0.15, base)] as [number, number[]]];
 
   return {
     ty: 'gf',
@@ -137,7 +154,15 @@ function metalFill(fl: ShapeItem, box: Box): ShapeItem {
     t: 1,
     s: fixed([box.x0, box.y0]),
     e: fixed([box.x1, box.y1]),
-    g: { p: 5, k: { a: 1, k: keys.map(([t, s], i) => (i === keys.length - 1 ? { t, s } : { t, s, o: { x: [0.4], y: [0] }, i: { x: [0.6], y: [1] } })) } },
+    g: {
+      p: 5,
+      k: {
+        a: 1,
+        k: keys.map(([t, stp], i) =>
+          i === keys.length - 1 ? { t, s: stp } : { t, s: stp, o: { x: [0.4], y: [0] }, i: { x: [0.6], y: [1] } },
+        ),
+      },
+    },
   };
 }
 
@@ -209,69 +234,84 @@ function firstColor(prop: unknown): number[] {
 const HOLO_STEPS = 6;
 
 function hologram(doc: LottieDoc, target: number | null) {
-  for (const node of familyNodes(doc, target)) holoNode(node);
+  const { layers, assets } = familyNodes(doc, target);
+  const rootIp = doc.ip ?? 0;
+  const rootOp = doc.op ?? FRAMES;
+  for (const l of layers) holoNode(l, rootIp, rootOp);
+  for (const a of assets) {
+    const aDur = Math.max(24, rootOp - rootIp);
+    holoNode(a, 0, aDur);
+  }
 }
 
 /** Turns colors into pastel rainbow that cycles once per loop. Dark outlines stay as they are. */
-function holoNode(node: unknown) {
-  if (Array.isArray(node)) return node.forEach(holoNode);
+function holoNode(node: unknown, ip: number, op: number) {
+  if (Array.isArray(node)) {
+    node.forEach((n) => holoNode(n, ip, op));
+    return;
+  }
   if (!node || typeof node !== 'object') return;
   const obj = node as Record<string, unknown>;
   if (obj.ty === 'fl' || obj.ty === 'st') {
-    obj.c = holoProp(firstColor(obj.c), [0]);
+    obj.c = holoProp(firstColor(obj.c), [0], ip, op);
   } else if (obj.ty === 'gf' || obj.ty === 'gs') {
     const g = obj.g as { p: number; k: { a?: number; k: unknown } };
-    holoGradient(g);
+    holoGradient(g, ip, op);
   }
-  for (const [key, value] of Object.entries(obj)) if (key !== 'c' && key !== 'g') holoNode(value);
+  for (const [key, value] of Object.entries(obj)) {
+    if (key !== 'c' && key !== 'g') holoNode(value, ip, op);
+  }
 }
 
 function holoColor(rgb: number[], shift: number): number[] {
   const [h, s, l] = hexToHsl(rgbToHex(rgb));
   if (l < 0.25) return rgb.slice(0, 3);
-  // Light and mid tones get different hues and keep some contrast, so text stays readable.
   const hue = (h + shift + l * 150) % 360;
   const pastel = hexToRgb(hslToHex(hue, Math.max(s, 0.75), 0.52 + (l - 0.25) * 0.45));
   return pastel.slice(0, 3);
 }
 
-/** Animated value where the colors at the given offsets cycle through the rainbow. */
-function holoProp(value: number[], offsets: number[]) {
+function holoProp(value: number[], offsets: number[], ip: number, op: number) {
+  const dur = Math.max(12, op - ip);
   const keys = [];
   for (let step = 0; step <= HOLO_STEPS; step++) {
     const s = [...value];
-    // Neighbouring parts start at different hues, which reads as a foil shimmer.
     offsets.forEach((off, n) => {
       const rgb = holoColor(value.slice(off, off + 3), step * (360 / HOLO_STEPS) + n * 50);
       s.splice(off, 3, ...rgb.map((x) => Math.round(x * 1000) / 1000));
     });
-    const t = Math.round((step * 180) / HOLO_STEPS);
-    keys.push(step === HOLO_STEPS ? { t, s } : { t, s, o: { x: [0.5], y: [0.5] }, i: { x: [0.5], y: [0.5] } });
+    const t = Math.round(ip + (step * dur) / HOLO_STEPS);
+    keys.push(
+      step === HOLO_STEPS
+        ? { t, s }
+        : { t, s, o: { x: [0.5], y: [0.5] }, i: { x: [0.5], y: [0.5] } },
+    );
   }
   return { a: 1, k: keys };
 }
 
-function holoGradient(g: { p: number; k: { a?: number; k: unknown } }) {
+function holoGradient(g: { p: number; k: { a?: number; k: unknown } }, ip: number, op: number) {
+  const dur = Math.max(12, op - ip);
   if (g.k.a === 1 && Array.isArray(g.k.k)) {
-    // Already animated (metal): shift each keyframe's colors by its time.
     for (const key of g.k.k as { t: number; s: number[] }[]) {
+      const phase = ((key.t - ip) / dur) * 360;
       for (let n = 0; n < g.p; n++) {
         const off = n * 4 + 1;
-        key.s.splice(off, 3, ...holoColor(key.s.slice(off, off + 3), (key.t / 180) * 360 + n * 50));
+        key.s.splice(off, 3, ...holoColor(key.s.slice(off, off + 3), phase + n * 50));
       }
     }
     return;
   }
   const value = g.k.k as number[];
-  g.k = holoProp(value, Array.from({ length: g.p }, (_, n) => n * 4 + 1));
+  g.k = holoProp(value, Array.from({ length: g.p }, (_, n) => n * 4 + 1), ip, op);
 }
 
 // ---------- Glitch ----------
 
-const BURSTS: [number, number][] = [
-  [18, 30],
-  [88, 96],
-  [134, 150],
+const BURST_FRACS: [number, number][] = [
+  [18 / 180, 30 / 180],
+  [88 / 180, 96 / 180],
+  [134 / 180, 150 / 180],
 ];
 
 /** Small seeded random so the same sticker always glitches the same way. */
@@ -286,9 +326,23 @@ function random(seed: number) {
 
 const hold = (keys: [number, number[]][]) => ({ a: 1, k: keys.map(([t, s]) => ({ t, s, h: 1 })) });
 
-function jitterKeys(rand: () => number, dirX: number, strength: number): [number, number[]][] {
-  const keys: [number, number[]][] = [[0, [0, 0, 0]]];
-  for (const [a, b] of BURSTS) {
+function computeBursts(ip: number, op: number): [number, number][] {
+  const dur = Math.max(24, op - ip);
+  return BURST_FRACS.map(([fa, fb]) => [
+    Math.round(ip + dur * fa),
+    Math.max(Math.round(ip + dur * fa) + 2, Math.round(ip + dur * fb)),
+  ]);
+}
+
+function jitterKeys(
+  rand: () => number,
+  dirX: number,
+  strength: number,
+  ip: number,
+  bursts: [number, number][],
+): [number, number[]][] {
+  const keys: [number, number[]][] = [[ip, [0, 0, 0]]];
+  for (const [a, b] of bursts) {
     for (let t = a; t < b; t += 2) {
       const dx = dirX * strength * (0.5 + rand());
       const dy = (rand() - 0.5) * strength * 0.5;
@@ -302,17 +356,29 @@ function jitterKeys(rand: () => number, dirX: number, strength: number): [number
 function glitch(doc: LottieDoc, target: number | null, strength: number) {
   const family = layerFamily(doc.layers, target).filter((l) => !l.hd);
   if (!family.length) return;
+  const ip = doc.ip ?? 0;
+  const op = doc.op ?? FRAMES;
+  const bursts = computeBursts(ip, op);
+
   let nextInd = Math.max(0, ...doc.layers.map((l) => l.ind ?? 0)) + 1;
   const rand = random(1337);
   const lastIdx = Math.max(...family.map((l) => doc.layers.indexOf(l)));
   const nulls: Layer[] = [];
   const copies: Layer[] = [];
 
-  /** A null layer that moves its children by jittering offsets. */
   const jitterNull = (name: string, parent: number | undefined, keys: [number, number[]][]): number => {
     const ind = nextInd++;
     const nl: Layer = {
-      ddd: 0, ind, ty: 3, nm: name, sr: 1, ao: 0, ip: doc.ip, op: doc.op, st: 0, bm: 0,
+      ddd: 0,
+      ind,
+      ty: 3,
+      nm: name,
+      sr: 1,
+      ao: 0,
+      ip,
+      op,
+      st: 0,
+      bm: 0,
       ks: layerTransform({ p: hold(keys), a: fixed([0, 0, 0]) }),
     };
     if (parent !== undefined) nl.parent = parent;
@@ -324,12 +390,11 @@ function glitch(doc: LottieDoc, target: number | null, strength: number) {
   const isRoot = (l: Layer) => l.parent === undefined || !familyInds.has(l.parent);
 
   const memo = new Map<string, string>();
-  // Two tinted copies that jump sideways during short bursts.
   for (const [tint, dir, label] of [
     ['#ff2a6d', -1, 'красный'],
     ['#00e5ff', 1, 'голубой'],
   ] as const) {
-    const keys = jitterKeys(rand, dir, strength);
+    const keys = jitterKeys(rand, dir, strength, ip, bursts);
     const nullFor = new Map<number | undefined, number>();
     const indMap = new Map<number, number>();
     for (const l of family) indMap.set(l.ind!, nextInd++);
@@ -343,15 +408,25 @@ function glitch(doc: LottieDoc, target: number | null, strength: number) {
       } else {
         copy.parent = indMap.get(l.parent!);
       }
-      copy.ks = { ...copy.ks, o: hold([[0, [0]], ...BURSTS.flatMap(([a, b]): [number, number[]][] => [[a, [80]], [b, [0]]])]) };
+      copy.ks = {
+        ...copy.ks,
+        o: hold([
+          [ip, [0]],
+          ...bursts.flatMap(([a, b]): [number, number[]][] => [
+            [a, [80]],
+            [b, [0]],
+          ]),
+        ]),
+      };
       if (copy.ty === 0 && copy.refId) copy.refId = tintedAsset(doc, copy.refId, tint, memo);
       mapColors(copy, () => tint);
       copies.push(copy);
     }
   }
 
-  // The original shakes a little too.
-  const mainKeys = jitterKeys(rand, 1, strength * 0.35).map(([t, [x, y]]): [number, number[]] => [t, [x * (rand() < 0.5 ? -1 : 1), y, 0]]);
+  const mainKeys = jitterKeys(rand, 1, strength * 0.35, ip, bursts).map(
+    ([t, [x, y]]): [number, number[]] => [t, [x * (rand() < 0.5 ? -1 : 1), y, 0]],
+  );
   const mainNull = new Map<number | undefined, number>();
   for (const l of family) {
     if (!isRoot(l)) continue;

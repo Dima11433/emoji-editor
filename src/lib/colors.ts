@@ -1,18 +1,26 @@
+import { isBrandSlotNode } from './brandSlot';
 import { rgbToHex, hexToRgb } from './lottie';
 
 /** Returns a new hex for a color, or null to leave it as is. */
 export type ColorMapper = (hex: string) => string | null;
 
+export interface MapColorOptions {
+  /** When true, skips brand slot nodes so recoloring a template leaves custom logos/nicknames intact. */
+  skipBrandSlot?: boolean;
+}
+
 /**
  * Visits every color in a Lottie subtree: fills, strokes, gradients and solid
  * layers, static or animated. The mapper may replace colors in place.
  */
-export function mapColors(node: unknown, mapper: ColorMapper): void {
+export function mapColors(node: unknown, mapper: ColorMapper, opts?: MapColorOptions): void {
   if (Array.isArray(node)) {
-    node.forEach((child) => mapColors(child, mapper));
+    node.forEach((child) => mapColors(child, mapper, opts));
     return;
   }
   if (!node || typeof node !== 'object') return;
+  if (opts?.skipBrandSlot && isBrandSlotNode(node)) return;
+
   const obj = node as Record<string, unknown>;
 
   if ((obj.ty === 'fl' || obj.ty === 'st') && isProp(obj.c)) {
@@ -33,7 +41,7 @@ export function mapColors(node: unknown, mapper: ColorMapper): void {
   }
 
   for (const [key, value] of Object.entries(obj)) {
-    if (key !== 'c' && value && typeof value === 'object') mapColors(value, mapper);
+    if (key !== 'c' && value && typeof value === 'object') mapColors(value, mapper, opts);
   }
 }
 
@@ -56,23 +64,219 @@ export function replaceColor(node: unknown, from: string, to: string): void {
   mapColors(node, (hex) => (hex === target ? normalize(to) : null));
 }
 
-export function shiftHue(node: unknown, degrees: number): void {
-  mapColors(node, (hex) => {
-    const [h, s, l] = hexToHsl(hex);
-    return hslToHex((h + degrees + 360) % 360, s, l);
-  });
+export function shiftHue(node: unknown, degrees: number, opts?: MapColorOptions): void {
+  mapColors(
+    node,
+    (hex) => {
+      const [h, s, l] = hexToHsl(hex);
+      return hslToHex((h + degrees + 360) % 360, s, l);
+    },
+    opts,
+  );
 }
 
-export function grayscale(node: unknown): void {
-  mapColors(node, (hex) => {
-    const [r, g, b] = hexToRgb(hex);
-    const y = 0.299 * r + 0.587 * g + 0.114 * b;
-    return rgbToHex([y, y, y]);
-  });
+export function adjustLightSat(
+  node: unknown,
+  dSat: number,
+  dLight: number,
+  opts?: MapColorOptions,
+): void {
+  mapColors(
+    node,
+    (hex) => {
+      const [h, s, l] = hexToHsl(hex);
+      if (l > 0.97 || l < 0.03) return null;
+      const nextS = s < 0.04 && dSat <= 0 ? s : Math.max(0, Math.min(1, s + dSat));
+      const nextL = Math.max(0.04, Math.min(0.97, l + dLight));
+      return hslToHex(h, nextS, nextL);
+    },
+    opts,
+  );
 }
 
-export function invert(node: unknown): void {
-  mapColors(node, (hex) => rgbToHex(hexToRgb(hex).slice(0, 3).map((x) => 1 - x)));
+export function grayscale(node: unknown, opts?: MapColorOptions): void {
+  mapColors(
+    node,
+    (hex) => {
+      const [r, g, b] = hexToRgb(hex);
+      const y = 0.299 * r + 0.587 * g + 0.114 * b;
+      return rgbToHex([y, y, y]);
+    },
+    opts,
+  );
+}
+
+export function invert(node: unknown, opts?: MapColorOptions): void {
+  mapColors(
+    node,
+    (hex) => rgbToHex(hexToRgb(hex).slice(0, 3).map((x) => 1 - x)),
+    opts,
+  );
+}
+
+export type ColorThemeId =
+  | 'gold'
+  | 'emerald'
+  | 'ruby'
+  | 'violet'
+  | 'cyber'
+  | 'orange'
+  | 'cyan'
+  | 'blue'
+  | 'silver';
+
+export interface ColorThemeSpec {
+  id: ColorThemeId;
+  label: string;
+  swatch: string;
+  hue: number;
+  hueSpread: number;
+  satScale: number;
+  satBoost: number;
+  lightScale: number;
+  lightLift: number;
+  silver?: boolean;
+}
+
+export const COLOR_THEMES: ColorThemeSpec[] = [
+  {
+    id: 'gold',
+    label: 'Золото',
+    swatch: '#fbbf24',
+    hue: 43,
+    hueSpread: 26,
+    satScale: 0.95,
+    satBoost: 0.12,
+    lightScale: 1.02,
+    lightLift: 0.02,
+  },
+  {
+    id: 'emerald',
+    label: 'Изумруд',
+    swatch: '#10b981',
+    hue: 152,
+    hueSpread: -24,
+    satScale: 0.92,
+    satBoost: 0.08,
+    lightScale: 1.0,
+    lightLift: 0,
+  },
+  {
+    id: 'ruby',
+    label: 'Рубин',
+    swatch: '#f43f5e',
+    hue: 350,
+    hueSpread: 24,
+    satScale: 0.95,
+    satBoost: 0.1,
+    lightScale: 1.0,
+    lightLift: 0.01,
+  },
+  {
+    id: 'violet',
+    label: 'Фиолет',
+    swatch: '#8b5cf6',
+    hue: 270,
+    hueSpread: 28,
+    satScale: 0.95,
+    satBoost: 0.1,
+    lightScale: 1.0,
+    lightLift: 0.01,
+  },
+  {
+    id: 'cyber',
+    label: 'Неон Роза',
+    swatch: '#ec4899',
+    hue: 320,
+    hueSpread: 28,
+    satScale: 0.96,
+    satBoost: 0.12,
+    lightScale: 1.01,
+    lightLift: 0.01,
+  },
+  {
+    id: 'orange',
+    label: 'Пламя',
+    swatch: '#f97316',
+    hue: 22,
+    hueSpread: 34,
+    satScale: 0.98,
+    satBoost: 0.12,
+    lightScale: 1.01,
+    lightLift: 0.01,
+  },
+  {
+    id: 'cyan',
+    label: 'Лёд',
+    swatch: '#06b6d4',
+    hue: 191,
+    hueSpread: -22,
+    satScale: 0.94,
+    satBoost: 0.08,
+    lightScale: 1.02,
+    lightLift: 0.01,
+  },
+  {
+    id: 'blue',
+    label: 'TG Синий',
+    swatch: '#3b82f6',
+    hue: 220,
+    hueSpread: -28,
+    satScale: 0.96,
+    satBoost: 0.08,
+    lightScale: 1.0,
+    lightLift: 0,
+  },
+  {
+    id: 'silver',
+    label: 'Серебро',
+    swatch: '#cbd5e1',
+    hue: 215,
+    hueSpread: 0,
+    satScale: 0.12,
+    satBoost: 0,
+    lightScale: 1.06,
+    lightLift: 0.05,
+    silver: true,
+  },
+];
+
+/**
+ * Remaps all chromatic fills and 3D gradient stops to a cohesive color theme
+ * while preserving specular white highlights and deep dark outlines.
+ */
+export function applyColorTheme(
+  node: unknown,
+  themeId: ColorThemeId,
+  opts?: MapColorOptions,
+): void {
+  const theme = COLOR_THEMES.find((t) => t.id === themeId);
+  if (!theme) return;
+
+  mapColors(
+    node,
+    (hex) => {
+      const [h, s, l] = hexToHsl(hex);
+      // Keep pure white specular highlights & deep dark ink untouched
+      if (l > 0.96 || (s < 0.06 && l > 0.88) || l < 0.05) return null;
+
+      if (theme.silver) {
+        const sl = Math.max(0.08, Math.min(0.95, l * theme.lightScale + theme.lightLift));
+        return hslToHex(theme.hue, Math.min(0.09, s * theme.satScale + 0.03), sl);
+      }
+
+      // Leave neutral dark grays (e.g. shadows/eyes) neutral if saturation is near zero
+      if (s < 0.06 && l < 0.35) return null;
+
+      const midBell = 1 - Math.abs(2 * l - 1);
+      const nextH = (((theme.hue + (l - 0.5) * theme.hueSpread) % 360) + 360) % 360;
+      const nextS = Math.max(0.16, Math.min(1, s * theme.satScale + theme.satBoost * midBell));
+      const nextL = Math.max(0.06, Math.min(0.95, l * theme.lightScale + theme.lightLift));
+      void h;
+      return hslToHex(nextH, nextS, nextL);
+    },
+    opts,
+  );
 }
 
 const isProp = (p: unknown): p is { a?: number; k: unknown } => !!p && typeof p === 'object' && 'k' in p;

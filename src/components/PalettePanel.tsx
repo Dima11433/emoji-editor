@@ -1,11 +1,25 @@
-import type { PaletteEntry } from '../lib/colors';
+import { CheckCheck } from 'lucide-react';
+import { useState } from 'react';
+import { COLOR_THEMES, type ColorThemeId, type PaletteEntry } from '../lib/colors';
+
+export type BulkColorOp =
+  | 'hue-'
+  | 'hue+'
+  | 'sat+'
+  | 'light+'
+  | 'light-'
+  | 'gray'
+  | 'invert';
 
 interface Props {
   entries: PaletteEntry[];
   scopeName: string | null;
+  packCount: number;
   onClearScope: () => void;
   onChange: (from: string, to: string) => void;
-  onBulk: (op: 'hue-' | 'hue+' | 'gray' | 'invert') => void;
+  onTheme: (themeId: ColorThemeId) => void;
+  onThemeToPack: (themeId: ColorThemeId) => void;
+  onBulk: (op: BulkColorOp) => void;
 }
 
 const places = (n: number) => {
@@ -16,26 +30,80 @@ const places = (n: number) => {
   return `${n} мест`;
 };
 
-export function PalettePanel({ entries, scopeName, onClearScope, onChange, onBulk }: Props) {
+export function PalettePanel({
+  entries,
+  scopeName,
+  packCount,
+  onClearScope,
+  onChange,
+  onTheme,
+  onThemeToPack,
+  onBulk,
+}: Props) {
+  const [activeTheme, setActiveTheme] = useState<ColorThemeId | null>(null);
+
   return (
     <section className="panel">
       <header className="panel-head">
-        <h3>Цвета</h3>
+        <h3>Цвета и 3D-темы</h3>
         {scopeName ? (
           <button className="link" onClick={onClearScope} title="Показать цвета всего стикера">
             только «{scopeName}» ✕
           </button>
         ) : (
-          <span className="muted small">весь стикер</span>
+          <span className="muted small">весь стикер ({entries.length})</span>
         )}
       </header>
+
+      {entries.length > 0 && (
+        <div className="theme-box">
+          <span className="muted tiny">Быстрая 3D-перекраска (включая все градиенты):</span>
+          <div className="theme-grid">
+            {COLOR_THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`theme-chip ${activeTheme === t.id ? 'on' : ''}`}
+                onClick={() => {
+                  setActiveTheme(t.id);
+                  onTheme(t.id);
+                }}
+                title={`Перекрасить в стиль «${t.label}»`}
+              >
+                <i style={{ background: t.swatch }} />
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {packCount > 1 && !scopeName && activeTheme && (
+            <button
+              type="button"
+              className="mini-pack-theme-btn"
+              onClick={() => onThemeToPack(activeTheme)}
+            >
+              <CheckCheck size={13} />
+              <span>
+                Перекрасить весь пак ({packCount}) в «
+                {COLOR_THEMES.find((x) => x.id === activeTheme)?.label}»
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+
       {entries.length === 0 && <p className="muted small">Цветов нет.</p>}
       <ul className="palette">
         {/* Keyed by position so an open color picker survives its own color change. */}
         {entries.map((e, idx) => (
           <li key={idx}>
             <label className="swatch" style={{ background: e.hex }}>
-              <input type="color" value={e.hex} onChange={(ev) => onChange(e.hex, ev.target.value)} aria-label={`Заменить ${e.hex}`} />
+              <input
+                type="color"
+                value={e.hex}
+                onChange={(ev) => onChange(e.hex, ev.target.value)}
+                aria-label={`Заменить ${e.hex}`}
+              />
             </label>
             <code>{e.hex}</code>
             <span className="muted small">{places(e.count)}</span>
@@ -43,10 +111,27 @@ export function PalettePanel({ entries, scopeName, onClearScope, onChange, onBul
         ))}
       </ul>
       <div className="chips">
-        <button onClick={() => onBulk('hue-')}>Оттенок −30°</button>
-        <button onClick={() => onBulk('hue+')}>Оттенок +30°</button>
-        <button onClick={() => onBulk('gray')}>Ч/Б</button>
-        <button onClick={() => onBulk('invert')}>Инверсия</button>
+        <button type="button" onClick={() => onBulk('hue-')}>
+          Оттенок −30°
+        </button>
+        <button type="button" onClick={() => onBulk('hue+')}>
+          Оттенок +30°
+        </button>
+        <button type="button" onClick={() => onBulk('sat+')}>
+          Сочнее +
+        </button>
+        <button type="button" onClick={() => onBulk('light+')}>
+          Ярче +
+        </button>
+        <button type="button" onClick={() => onBulk('light-')}>
+          Темнее −
+        </button>
+        <button type="button" onClick={() => onBulk('gray')}>
+          Ч/Б
+        </button>
+        <button type="button" onClick={() => onBulk('invert')}>
+          Инверсия
+        </button>
       </div>
     </section>
   );

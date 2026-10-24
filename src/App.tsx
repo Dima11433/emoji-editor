@@ -20,7 +20,7 @@ import { EffectsPanel } from './components/EffectsPanel';
 import { LayersPanel } from './components/LayersPanel';
 import { LazyThumb } from './components/LazyThumb';
 import { PackTray, type PackItem } from './components/PackTray';
-import { PalettePanel } from './components/PalettePanel';
+import { PalettePanel, type BulkColorOp } from './components/PalettePanel';
 import { Preview } from './components/Preview';
 import { TemplatesModal } from './components/TemplatesModal';
 import { TextPanel, type TextRequest } from './components/TextPanel';
@@ -30,7 +30,17 @@ import {
   resetBrandSlot,
   type BrandSlotOptions,
 } from './lib/brandSlot';
-import { collectColors, grayscale, invert, replaceColor, shiftHue } from './lib/colors';
+import {
+  adjustLightSat,
+  applyColorTheme,
+  COLOR_THEMES,
+  collectColors,
+  grayscale,
+  invert,
+  replaceColor,
+  shiftHue,
+  type ColorThemeId,
+} from './lib/colors';
 import { applyShapeEffects, getEffects, type Effects } from './lib/effects';
 import { loadFont, type FontId } from './lib/fonts';
 import { fileToVectorLogo, type VectorLogo } from './lib/logoVector';
@@ -58,7 +68,7 @@ import {
   type TemplateCategory,
 } from './lib/templates';
 import { DEFAULT_TEXT, textToLayer } from './lib/text';
-import { formatKb, optimize, parseSticker, serialize, tgsSize, toTgs } from './lib/tgs';
+import { formatKb, optimize, parseSticker, serialize, tgsSize, toTgsAutoFit } from './lib/tgs';
 import { checkTelegram, MAX_BYTES, trimToLimit } from './lib/validate';
 
 interface History {
@@ -76,6 +86,17 @@ type Action =
   | { type: 'redo' };
 
 const HISTORY_LIMIT = 60;
+
+function sanitizeFileName(name: string): string {
+  return (
+    name
+      .replace(/#/g, '')
+      .replace(/·/g, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/_+/g, '_') || 'emoji'
+  );
+}
 
 function reducer(state: History, action: Action): History {
   switch (action.type) {
@@ -127,21 +148,25 @@ type Tab = 'templates' | 'brand' | 'layers' | 'text';
 
 export default function App() {
   const [hist, dispatch] = useReducer(reducer, null, () => ({
-    doc: emptyDoc('MAGNAT #001'),
+    doc: emptyDoc(CATALOG[0]?.name ?? 'Шаблон #001'),
     past: [],
     future: [],
     lastKey: null,
     lastAt: 0,
   }));
   const doc = hist.doc;
-  const [fileName, setFileName] = useState('MAGNAT_001');
+  const [fileName, setFileName] = useState(() => sanitizeFileName(CATALOG[0]?.name ?? 'Шаблон_001'));
   const [activeCatalogId, setActiveCatalogId] = useState<string | null>(CATALOG[0]?.id ?? null);
   const [selected, setSelected] = useState<NodePath | null>(null);
-  const [tab, setTab] = useState<Tab>('brand');
-  const [tplCategory, setTplCategory] = useState<'all' | TemplateCategory>('all');
+  const [tab, setTab] = useState<Tab>('templates');
+  const [tplCategory, setTplCategory] = useState<'all' | TemplateCategory>('shablony1');
   const [tplSearch, setTplSearch] = useState('');
   const [pack, setPack] = useState<PackItem[]>(() => [
-    { id: 'init-1', name: 'MAGNAT_001', doc: emptyDoc('MAGNAT #001') },
+    {
+      id: 'init-1',
+      name: sanitizeFileName(CATALOG[0]?.name ?? 'Шаблон_001'),
+      doc: emptyDoc(CATALOG[0]?.name ?? 'Шаблон #001'),
+    },
   ]);
   const [activePackIndex, setActivePackIndex] = useState(0);
   const [showPackTray, setShowPackTray] = useState(false);
@@ -170,7 +195,7 @@ export default function App() {
     return loaded;
   }, []);
 
-  // Preload Montserrat Black + initial MAGNAT #001 sticker on startup
+  // Preload Montserrat Black + initial sticker on startup
   useEffect(() => {
     ensureFont('montserrat').catch(() => {});
     const first = CATALOG[0];
@@ -179,8 +204,10 @@ export default function App() {
     loadCatalogDoc(first)
       .then((firstDoc) => {
         if (cancelled) return;
+        const clean = sanitizeFileName(first.name);
         dispatch({ type: 'reset', doc: firstDoc });
-        setPack([{ id: '1', name: 'MAGNAT_001', doc: structuredClone(firstDoc) }]);
+        setFileName(clean);
+        setPack([{ id: '1', name: clean, doc: structuredClone(firstDoc) }]);
         setActivePackIndex(0);
       })
       .catch(() => {
@@ -216,7 +243,7 @@ export default function App() {
   );
 
   const load = useCallback((next: LottieDoc, name: string, catId: string | null = null) => {
-    const cleanName = name.replace(/\s+/g, '_').replace(/#/g, '');
+    const cleanName = sanitizeFileName(name);
     dispatch({ type: 'apply', next, key: null, at: Date.now() });
     setFileName(cleanName);
     setActiveCatalogId(catId);
@@ -233,7 +260,7 @@ export default function App() {
   };
 
   const addToPack = (newDoc: LottieDoc, name: string, catId: string | null = null) => {
-    const cleanName = name.replace(/\s+/g, '_').replace(/#/g, '');
+    const cleanName = sanitizeFileName(name);
     const newItem: PackItem = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: cleanName,
@@ -257,7 +284,7 @@ export default function App() {
       const docs = await Promise.all(items.map((it) => loadCatalogDoc(it)));
       const newPackItems: PackItem[] = items.map((it, idx) => ({
         id: `${Date.now()}-${idx}-${it.id}`,
-        name: it.name.replace(/\s+/g, '_').replace(/#/g, ''),
+        name: sanitizeFileName(it.name),
         doc: docs[idx],
       }));
       setPack((prev) => [...prev, ...newPackItems]);
@@ -352,25 +379,20 @@ export default function App() {
         const vec = await fileToVectorLogo(imgFile);
         setUploadedLogo(vec);
         const curInfo = readBrandSlotInfo(doc);
-        if (curInfo.count > 0) {
-          const nextOpts: BrandSlotOptions = {
-            ...curInfo.options,
-            mode: curInfo.options.mode === 'logo+text' ? 'logo+text' : 'logo',
-            logo: vec,
-            tintLogo: false,
-            hidden: false,
-            useOriginalGlyphs: false,
-          };
-          const fonts =
-            nextOpts.mode === 'logo+text' ? await ensureFont(nextOpts.fontId) : null;
-          edit((d) => {
-            applyBrandSlot(d, nextOpts, fonts);
-          });
-          setTab('brand');
-          say(`Логотип «${vec.name}» установлен на место MAGNAT!`);
-        } else {
-          say(`Логотип «${vec.name}» загружен — выберите эмодзи MAGNAT, чтобы вставить его.`);
-        }
+        const nextOpts: BrandSlotOptions = {
+          ...curInfo.options,
+          mode: curInfo.options.mode === 'logo+text' ? 'logo+text' : 'logo',
+          logo: vec,
+          tintLogo: false,
+          hidden: false,
+          useOriginalGlyphs: false,
+        };
+        const fonts = nextOpts.mode === 'logo+text' ? await ensureFont(nextOpts.fontId) : null;
+        edit((d) => {
+          applyBrandSlot(d, nextOpts, fonts);
+        });
+        setTab('brand');
+        say(`Логотип «${vec.name}» установлен на стикер!`);
         return;
       }
 
@@ -415,9 +437,10 @@ export default function App() {
 
   const handleBrandChange = useCallback(
     (nextOpts: BrandSlotOptions, mergeKey?: string) => {
+      const hasBuiltIn = brandInfo.count > 0 && !brandInfo.isInjected;
       const needsFont =
         nextOpts.mode === 'logo+text' ||
-        (nextOpts.mode === 'text' && !nextOpts.useOriginalGlyphs);
+        (nextOpts.mode === 'text' && (!nextOpts.useOriginalGlyphs || !hasBuiltIn));
 
       if (!needsFont) {
         edit((d) => {
@@ -455,27 +478,30 @@ export default function App() {
         .catch(() => say('Не удалось загрузить выбранный шрифт', true))
         .finally(() => setFontBusy(false));
     },
-    [doc, edit, ensureFont, say],
+    [brandInfo.count, brandInfo.isInjected, doc, edit, ensureFont, say],
   );
 
   const handleBrandReset = useCallback(() => {
+    const wasInjected = brandInfo.isInjected;
     edit((d) => {
       resetBrandSlot(d);
     });
-    say('Возвращена оригинальная надпись MAGNAT');
-  }, [edit, say]);
+    say(wasInjected ? 'Бренд-слот убран с шаблона' : 'Возвращена оригинальная надпись MAGNAT');
+  }, [brandInfo.isInjected, edit, say]);
 
   const handleApplyBrandToPack = useCallback(
     async (opts: BrandSlotOptions, keepStickerColor: boolean) => {
       setFontBusy(true);
       try {
-        const needsFont =
-          opts.mode === 'logo+text' || (opts.mode === 'text' && !opts.useOriginalGlyphs);
-        const fonts = needsFont ? await ensureFont(opts.fontId) : null;
+        // Load font whenever text might be rendered (including unbranded templates in the pack)
+        const fonts = opts.mode !== 'logo' ? await ensureFont(opts.fontId) : null;
         let updatedCount = 0;
         const nextPack = pack.map((item) => {
           const cloned = structuredClone(item.doc);
-          const count = applyBrandSlot(cloned, opts, fonts, { keepStickerColor });
+          const count = applyBrandSlot(cloned, opts, fonts, {
+            keepStickerColor,
+            autoCreate: true,
+          });
           if (count > 0) updatedCount++;
           return { ...item, doc: cloned };
         });
@@ -493,7 +519,7 @@ export default function App() {
             ? 'Логотип установлен'
             : opts.mode === 'logo+text'
               ? 'Логотип + ник установлены'
-              : 'Надпись обновлена';
+              : 'Бренд установлен';
         say(`${what} в ${updatedCount} из ${pack.length} эмодзи пака!`);
       } catch (e) {
         say(e instanceof Error ? e.message : 'Ошибка пакетной замены', true);
@@ -545,7 +571,8 @@ export default function App() {
         : null;
 
   const download = (kind: 'tgs' | 'json') => {
-    const data = kind === 'tgs' ? toTgs(outDoc) : new TextEncoder().encode(serialize(outDoc));
+    const rawTgs = kind === 'tgs' ? toTgsAutoFit(outDoc) : null;
+    const data = rawTgs ?? new TextEncoder().encode(serialize(outDoc));
     const blob = new Blob([data], {
       type: kind === 'tgs' ? 'application/x-tgsticker' : 'application/json',
     });
@@ -555,6 +582,9 @@ export default function App() {
     a.download = `${fileName.trim() || 'magnat_emoji'}.${kind}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (rawTgs && tgsSize(outDoc) > MAX_BYTES && rawTgs.length <= MAX_BYTES) {
+      say(`Автоматически сжато до ${formatKb(rawTgs.length)} под лимит Telegram!`);
+    }
   };
 
   const setEffect = <K extends keyof Effects>(key: K, patch: Partial<Effects[K]>, merge = false) =>
@@ -595,13 +625,61 @@ export default function App() {
     });
   }, [tplCategory, tplSearch]);
 
-  const inScope = (fn: (node: unknown) => void) => (d: LottieDoc) => fn(colorScope(d, activeSel));
+  const inScope =
+    (fn: (node: unknown, skipBrand: boolean) => void) =>
+    (d: LottieDoc): void => {
+      const skipBrand = activeSel === null && Boolean(d._brandState);
+      fn(colorScope(d, activeSel), skipBrand);
+    };
+
+  const handleApplyThemeToPack = useCallback(
+    (themeId: ColorThemeId) => {
+      const nextPack = pack.map((item) => {
+        const cloned = structuredClone(item.doc);
+        applyColorTheme(cloned, themeId, { skipBrandSlot: Boolean(cloned._brandState) });
+        return { ...item, doc: cloned };
+      });
+      setPack(nextPack);
+      if (nextPack[activePackIndex]) {
+        dispatch({
+          type: 'apply',
+          next: structuredClone(nextPack[activePackIndex].doc),
+          key: null,
+          at: Date.now(),
+        });
+      }
+      const label = COLOR_THEMES.find((t) => t.id === themeId)?.label ?? themeId;
+      say(`Весь пак (${pack.length} эмодзи) перекрашен в «${label}»!`);
+    },
+    [activePackIndex, pack, say],
+  );
+
+  const handleBulkColor = (op: BulkColorOp) => {
+    edit(
+      inScope((n, skipBrand) => {
+        const opts = { skipBrandSlot: skipBrand };
+        if (op === 'hue-') shiftHue(n, -30, opts);
+        else if (op === 'hue+') shiftHue(n, 30, opts);
+        else if (op === 'sat+') adjustLightSat(n, 0.14, 0, opts);
+        else if (op === 'light+') adjustLightSat(n, 0, 0.08, opts);
+        else if (op === 'light-') adjustLightSat(n, 0, -0.08, opts);
+        else if (op === 'gray') grayscale(n, opts);
+        else if (op === 'invert') invert(n, opts);
+      }),
+    );
+  };
 
   const addText = async (req: TextRequest) => {
     setFontBusy(true);
     try {
       const fonts = await ensureFont(req.fontId);
-      const layer = textToLayer({ ...DEFAULT_TEXT, ...req, fonts });
+      const layer = textToLayer({
+        ...DEFAULT_TEXT,
+        ...req,
+        fonts,
+        ip: doc.ip,
+        op: doc.op,
+      });
       edit((d) => {
         d.layers.unshift(layer);
         reindexLayers(d.layers);
@@ -671,7 +749,7 @@ export default function App() {
             setModalAddToPack(false);
             setShowModal(true);
           }}
-          title="Открыть большой каталог всех 263 эмодзи MAGNAT"
+          title={`Открыть большой каталог всех ${CATALOG.length} шаблонов и эмодзи`}
         >
           <LayoutGrid size={15} /> Каталог ({CATALOG.length})
         </button>
@@ -708,7 +786,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            title="Открыть .tgs, Lottie .json или архив пака .zip"
+            title="Открыть .tgs, Lottie .json, логотип .svg/.png или архив пака .zip"
           >
             <FolderOpen size={15} /> Открыть
           </button>
@@ -778,7 +856,7 @@ export default function App() {
             type="button"
             className={tab === 'templates' ? 'on' : ''}
             onClick={() => setTab('templates')}
-            title="Все 263 эмодзи MAGNAT"
+            title="Шаблоны и паки эмодзи"
           >
             <LayoutGrid size={14} /> Паки
           </button>
@@ -786,7 +864,7 @@ export default function App() {
             type="button"
             className={tab === 'brand' ? 'on' : ''}
             onClick={() => setTab('brand')}
-            title="Замена MAGNAT на свой ник или логотип"
+            title="Брендирование: никнейм, логотип или плашка на стикер"
           >
             <Tag size={14} /> Бренд
           </button>
@@ -811,22 +889,24 @@ export default function App() {
         <div className="tab-body">
           {tab === 'templates' && (
             <div className="templates-panel pad">
-              {brandInfo.count > 0 && (
-                <button
-                  type="button"
-                  className="goto-brand-cta"
-                  onClick={() => setTab('brand')}
-                >
-                  <Sparkles size={14} />
-                  <span>Изменить надпись «{brandInfo.options.text || 'MAGNAT'}»</span>
-                </button>
-              )}
+              <button
+                type="button"
+                className="goto-brand-cta"
+                onClick={() => setTab('brand')}
+              >
+                <Sparkles size={14} />
+                <span>
+                  {brandInfo.count > 0
+                    ? `Настроить бренд «${brandInfo.options.text || 'ЛОГО'}»`
+                    : 'Добавить ник / логотип на этот шаблон'}
+                </span>
+              </button>
 
               <div className="tpl-search-wrap">
                 <input
                   type="text"
                   className="tpl-search-input"
-                  placeholder="Номер (#001, 45...) или раздел"
+                  placeholder="Поиск (Корона, Щит, #001...)"
                   value={tplSearch}
                   onChange={(e) => setTplSearch(e.target.value)}
                 />
@@ -856,16 +936,32 @@ export default function App() {
                 ))}
               </div>
 
+              {tplCategory !== 'all' && filteredCatalog.length > 1 && filteredCatalog.length <= 40 && (
+                <button
+                  type="button"
+                  className="sidebar-batch-pack-btn"
+                  onClick={() => handleAddBatchToPack(filteredCatalog)}
+                >
+                  <Plus size={13} />
+                  <span>Закинуть все {filteredCatalog.length} в пак для общей переделки</span>
+                </button>
+              )}
+
               <div className="templates">
                 {filteredCatalog.map((item) => (
                   <div
                     key={item.id}
                     className={`template-card ${activeCatalogId === item.id ? 'active' : ''}`}
                     onClick={() => pickCatalogSidebar(item, false)}
+                    title={item.name}
                   >
                     <LazyThumb item={item} />
                     <div className="template-card-foot">
-                      <span className="template-card-title">#{String(item.num).padStart(3, '0')}</span>
+                      <span className="template-card-title">
+                        {item.category === 'shablony1'
+                          ? item.name.replace(/^Шаблон\s+#\d+\s*·?\s*/, '') || `#${String(item.num).padStart(2, '0')}`
+                          : `#${String(item.num).padStart(3, '0')}`}
+                      </span>
                       <button
                         type="button"
                         className="template-card-plus"
@@ -890,6 +986,7 @@ export default function App() {
           {tab === 'brand' && (
             <BrandPanel
               slotCount={brandInfo.count}
+              isInjected={brandInfo.isInjected}
               options={brandInfo.options}
               packCount={pack.length}
               busy={fontBusy}
@@ -898,7 +995,6 @@ export default function App() {
               onChange={handleBrandChange}
               onReset={handleBrandReset}
               onApplyToPack={handleApplyBrandToPack}
-              onSwitchToAddText={() => setTab('text')}
               onSay={say}
             />
           )}
@@ -955,6 +1051,7 @@ export default function App() {
         <PalettePanel
           entries={palette}
           scopeName={activeSel ? (selectedNode?.nm || 'выбранный слой') : null}
+          packCount={pack.length}
           onClearScope={() => setSelected(null)}
           onChange={(from, to) =>
             edit(
@@ -962,16 +1059,14 @@ export default function App() {
               `color:${activeSel?.join('.')}`,
             )
           }
-          onBulk={(op) =>
+          onTheme={(themeId) =>
             edit(
-              inScope((n) => {
-                if (op === 'hue-') shiftHue(n, -30);
-                if (op === 'hue+') shiftHue(n, 30);
-                if (op === 'gray') grayscale(n);
-                if (op === 'invert') invert(n);
-              }),
+              inScope((n, skipBrand) => applyColorTheme(n, themeId, { skipBrandSlot: skipBrand })),
+              `theme:${activeSel?.join('.') ?? 'all'}`,
             )
           }
+          onThemeToPack={handleApplyThemeToPack}
+          onBulk={handleBulkColor}
         />
 
         <EffectsPanel

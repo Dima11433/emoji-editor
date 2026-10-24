@@ -86,7 +86,7 @@ export function TemplatesModal({
       <div className="modal-window" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <h2>Каталог MAGNAT</h2>
+            <h2>Каталог шаблонов и эмодзи</h2>
             <span className="modal-count">{CATALOG.length} эмодзи</span>
           </div>
 
@@ -95,7 +95,7 @@ export function TemplatesModal({
             <input
               type="text"
               className="modal-search-input"
-              placeholder="Поиск по номеру (#001, 25...) или разделу"
+              placeholder="Поиск по названию (Корона, Щит...) или номеру (#001)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -121,7 +121,7 @@ export function TemplatesModal({
                   onAddBatchToPack(filtered);
                   onClose();
                 }}
-                title="Загрузить все показанные эмодзи в нижнюю панель пака для пакетной замены текста"
+                title="Загрузить все показанные эмодзи в нижнюю панель пака для пакетной переделки"
               >
                 <FolderPlus size={15} />
                 <span>Все в пак ({filtered.length})</span>

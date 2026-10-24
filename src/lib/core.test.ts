@@ -12,7 +12,8 @@ import {
 } from './brandSlot';
 import { CATALOG } from './catalog';
 import { BUILTIN_LOGOS, svgPathToShapes, traceRgbaToVectorLogo } from './logoVector';
-import { collectColors, replaceColor, shiftHue } from './colors';
+import { applyColorTheme, collectColors, replaceColor, shiftHue } from './colors';
+import { applyShapeEffects, getEffects } from './effects';
 import {
   adjustNodeTransform,
   buildTree,
@@ -25,7 +26,7 @@ import {
 } from './layers';
 import { anim, bezierPath, emptyDoc, fill, group, reindexLayers, shapeLayer } from './lottie';
 import { DEFAULT_TEXT, textToLayer } from './text';
-import { optimize, parseSticker, serialize, tgsSize, toTgs } from './tgs';
+import { optimize, parseSticker, serialize, tgsSize, toTgs, toTgsAutoFit } from './tgs';
 import { checkTelegram, MAX_BYTES, trimToLimit } from './validate';
 
 const require = createRequire(import.meta.url);
@@ -43,13 +44,17 @@ const loadPublicTgs = (relFile: string) => {
   return parseSticker(new Uint8Array(readFileSync(full)));
 };
 
-describe('MAGNAT catalog (all 263 emojis)', () => {
-  it('contains exactly 263 MAGNAT emojis and zero legacy procedural templates', () => {
-    expect(CATALOG).toHaveLength(263);
-    expect(CATALOG.every((item) => item.name.startsWith('MAGNAT #'))).toBe(true);
+describe('Full catalog (11 new templates + 263 MAGNAT = 274 emojis)', () => {
+  it('contains 11 shablony1 templates and 263 MAGNAT emojis (274 total)', () => {
+    expect(CATALOG).toHaveLength(274);
+    const shablony = CATALOG.filter((i) => i.category === 'shablony1');
+    const magnat = CATALOG.filter((i) => i.category !== 'shablony1');
+    expect(shablony).toHaveLength(11);
+    expect(magnat).toHaveLength(263);
+    expect(magnat.every((item) => item.name.startsWith('MAGNAT #'))).toBe(true);
   });
 
-  it('parses all 263 .tgs files, finds MAGNAT brand slots in 100%, and meets Telegram size/canvas/duration limits', () => {
+  it('parses all 274 .tgs files, verifies Telegram canvas/size/duration limits, and checks brand slots', () => {
     for (const item of CATALOG) {
       const full = resolve(process.cwd(), 'public', item.file);
       const raw = new Uint8Array(readFileSync(full));
@@ -60,13 +65,130 @@ describe('MAGNAT catalog (all 263 emojis)', () => {
       expect(doc.h).toBe(512);
       expect((doc.op - doc.ip) / doc.fr).toBeLessThanOrEqual(3 + 1e-6);
 
-      const slots = findBrandSlots(doc);
-      expect(slots.length, `${item.id} (${item.file}) should have a brand slot`).toBeGreaterThanOrEqual(1);
+      if (item.category !== 'shablony1') {
+        const slots = findBrandSlots(doc);
+        expect(slots.length, `${item.id} (${item.file}) should have a brand slot`).toBeGreaterThanOrEqual(1);
+      }
     }
   });
 });
 
-describe('brandSlot replacement & reset', () => {
+describe('Custom unbranded templates (shablony1): branding, 3D themes & non-zero ip timelines', () => {
+  it('injects brand badge (text, logo, logo+text, gold plate, custom position/animation) into all 11 shablony1 templates under 64 KB and resets cleanly', () => {
+    const crownLogo = BUILTIN_LOGOS.find((l) => l.id === 'preset_crown')!;
+    const shablonyItems = CATALOG.filter((i) => i.category === 'shablony1');
+    expect(shablonyItems).toHaveLength(11);
+
+    for (const item of shablonyItems) {
+      const doc = loadPublicTgs(item.file);
+      const origLayerCount = doc.layers.length;
+      expect(findBrandSlots(doc)).toHaveLength(0);
+
+      // Inject Logo + Text with Gold VIP capsule plate
+      const added = applyBrandSlot(
+        doc,
+        {
+          ...DEFAULT_BRAND_OPTIONS,
+          mode: 'logo+text',
+          logo: crownLogo,
+          text: 'VIP BOSS',
+          useOriginalGlyphs: false,
+          plateStyle: 'gold',
+          slotPosition: 'bottom',
+          slotAnim: 'float',
+        },
+        montserrat,
+      );
+      expect(added).toBe(1);
+
+      const info = readBrandSlotInfo(doc);
+      expect(info.count).toBe(1);
+      expect(info.isInjected).toBe(true);
+
+      // Verify layer timeline matches doc.ip..doc.op (critical for 001.tgs where ip=60, op=240!)
+      expect(doc.layers[0].ip).toBe(doc.ip);
+      expect(doc.layers[0].op).toBe(doc.op);
+
+      // Auto-fitted .tgs must stay within Telegram's 64 KB limit even on 57 KB templates (#006, #011)
+      const gz = toTgsAutoFit(doc);
+      expect(gz.byteLength, `${item.id} exported .tgs <= 64 KB`).toBeLessThanOrEqual(MAX_BYTES);
+
+      // Re-imported .tgs still detects the injected brand slot
+      const reimported = parseSticker(gz);
+      expect(findBrandSlots(reimported)).toHaveLength(1);
+      expect(readBrandSlotInfo(reimported).isInjected).toBe(true);
+
+      // Reset removes the injected brand layer completely
+      resetBrandSlot(doc);
+      expect(findBrandSlots(doc)).toHaveLength(0);
+      expect(doc.layers).toHaveLength(origLayerCount);
+    }
+  });
+
+  it('recolors 3D gradient templates with applyColorTheme while preserving custom brand slot colors', () => {
+    const doc = loadPublicTgs('templates/shablony1/002.tgs'); // Crown
+    applyBrandSlot(
+      doc,
+      {
+        ...DEFAULT_BRAND_OPTIONS,
+        mode: 'text',
+        text: 'KING',
+        useOriginalGlyphs: false,
+        fillHex: '#00f59b',
+        plateStyle: 'dark',
+      },
+      montserrat,
+    );
+
+    const beforeHexes = collectColors(doc).map((c) => c.hex);
+    expect(beforeHexes).toContain('#00f59b');
+
+    // Recolor the Crown into Gold VIP while keeping brand slot untouched
+    applyColorTheme(doc, 'gold', { skipBrandSlot: true });
+    const afterHexes = collectColors(doc).map((c) => c.hex);
+    expect(afterHexes).toContain('#00f59b');
+    expect(afterHexes).not.toEqual(beforeHexes);
+  });
+
+  it('aligns textToLayer and effects keyframes to non-zero ip..op timelines (ip=60, op=240)', () => {
+    const doc = loadPublicTgs('templates/shablony1/001.tgs');
+    expect(doc.ip).toBe(60);
+    expect(doc.op).toBe(240);
+
+    const txt = textToLayer({
+      ...DEFAULT_TEXT,
+      text: 'ТЕСТ',
+      fonts: montserrat,
+      animation: 'pulse',
+      ip: doc.ip,
+      op: doc.op,
+    });
+    expect(txt.ip).toBe(60);
+    expect(txt.op).toBe(240);
+    const scaleKeys = (txt.ks.s as { k: { t: number }[] }).k;
+    expect(scaleKeys[0].t).toBe(60);
+    expect(scaleKeys[scaleKeys.length - 1].t).toBe(240);
+
+    const withHologram = applyShapeEffects({
+      ...doc,
+      fx: { ...getEffects(doc), hologram: { on: true, target: null } },
+    });
+    expect(checkTelegram(withHologram, toTgsAutoFit(withHologram).byteLength).filter((c) => c.status === 'error')).toEqual([]);
+  });
+
+  it('cleans Bodymovin hash suffixes and precomp asset names in buildTree', () => {
+    const guestDoc = loadPublicTgs('templates/shablony1/008.tgs');
+    const guestTree = buildTree(guestDoc);
+    const groupName = guestTree[0].children[0]?.name ?? '';
+    expect(groupName).toBe('Shape 1');
+
+    const sceneDoc = loadPublicTgs('templates/shablony1/003.tgs');
+    const sceneTree = buildTree(sceneDoc);
+    expect(sceneTree.some((n) => n.name === 'Scene' || n.name === 'Scene_1')).toBe(true);
+  });
+});
+
+describe('brandSlot replacement & reset on MAGNAT stickers', () => {
   it('recolors original MAGNAT vector shapes without changing font or leaking metadata on export', () => {
     const doc = loadPublicTgs('templates/classic/001.tgs');
     const count = applyBrandSlot(
@@ -149,7 +271,7 @@ describe('brandSlot replacement & reset', () => {
       montserrat,
     );
     const slotItems = findBrandSlots(doc)[0].it!;
-    expect(slotItems.filter((x) => x.ty === 'gr').length).toBeGreaterThanOrEqual(3); // text group + 2 logo color groups
+    expect(slotItems.filter((x) => x.ty === 'gr').length).toBeGreaterThanOrEqual(3);
     expect(tgsSize(doc)).toBeLessThanOrEqual(MAX_BYTES);
 
     // 3. Reset back to MAGNAT
@@ -161,7 +283,6 @@ describe('brandSlot replacement & reset', () => {
     const circleShapes = svgPathToShapes('M 10 50 A 40 40 0 1 0 90 50 A 40 40 0 1 0 10 50 Z');
     expect(circleShapes).toHaveLength(1);
 
-    // 32x32 white background (#ffffff) with a red outer ring (#ff0000) and blue center dot (#0088ff)
     const w = 32;
     const h = 32;
     const rgba = new Uint8ClampedArray(w * h * 4);
@@ -171,7 +292,7 @@ describe('brandSlot replacement & reset', () => {
         const d = Math.hypot(x - 15.5, y - 15.5);
         if (d < 5) rgba.set([0, 136, 255, 255], i);
         else if (d < 12) rgba.set([255, 0, 0, 255], i);
-        else rgba.set([255, 255, 255, 255], i); // white corner background -> auto-removed!
+        else rgba.set([255, 255, 255, 255], i);
       }
     }
     const traced = traceRgbaToVectorLogo(rgba, w, h, 'TestBadge', { maxColors: 4, removeBg: 'auto' });

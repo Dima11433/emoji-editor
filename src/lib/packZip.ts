@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { applyShapeEffects } from './effects';
 import type { LottieDoc } from './lottie';
-import { parseSticker, serialize, toTgs } from './tgs';
+import { parseSticker, serialize, toTgsAutoFit } from './tgs';
 
 export interface ExportableSticker {
   name: string;
@@ -27,13 +27,15 @@ export async function createPackZip(
       s.name
         .trim()
         .replace(/#/g, '')
+        .replace(/·/g, '')
         .replace(/\s+/g, '_')
+        .replace(/_+/g, '_')
         .replace(/[^a-zA-Z0-9_\-\u0400-\u04FF]/g, '') || 'emoji';
     const prefix = String(i + 1).padStart(3, '0');
     const baseName = `${prefix}_${safeName}`;
     const rendered = applyShapeEffects(s.doc);
 
-    folder.file(`${baseName}.tgs`, toTgs(rendered));
+    folder.file(`${baseName}.tgs`, toTgsAutoFit(rendered));
     if (jsonFolder) {
       jsonFolder.file(`${baseName}.json`, serialize(rendered));
     }

@@ -1682,3 +1682,138 @@ button.link:hover {
     border-top: 1px solid var(--line);
   }
 }
+
+/* Custom Template Brand Overlay & 3D Color Themes */
+
+.brand-inject-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(56, 189, 248, 0.08));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.brand-inject-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand-inject-head svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.brand-inject-head div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-inject-head strong {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.plate-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.overlay-placement-box {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.overlay-placement-box .seg button {
+  flex: 1;
+}
+
+.sidebar-batch-pack-btn {
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  border-radius: 9px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  color: #7dd3fc;
+}
+
+.sidebar-batch-pack-btn:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+}
+
+.theme-box {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 10px;
+  margin-bottom: 11px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.theme-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  font-size: 11px;
+  border-radius: 7px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-chip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.theme-chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mini-pack-theme-btn {
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mini-pack-theme-btn:hover {
+  background: rgba(245, 158, 11, 0.24);
+}

@@ -1,5 +1,15 @@
-import { isBrandSlotNode } from './brandSlot';
-import { fixed, groupTransform, layerTransform, reindexLayers, round, type Asset, type Layer, type LottieDoc, type ShapeItem } from './lottie';
+import { INJECTED_BRAND_LAYER_NAME, isBrandSlotNode } from './brandSlot';
+import {
+  fixed,
+  groupTransform,
+  layerTransform,
+  reindexLayers,
+  round,
+  type Asset,
+  type Layer,
+  type LottieDoc,
+  type ShapeItem,
+} from './lottie';
 
 /**
  * Address of a node:
@@ -37,13 +47,17 @@ const KIND_FALLBACK: Record<TreeNode['kind'], string> = {
   group: 'Группа',
 };
 
-const UUID_RE = /^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$/i;
+const UUID_RE = /^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?(_\{?[0-9a-f-]{8,}\}?)*$/i;
+const HASH_SUFFIX_RE = /(_[A-Za-z0-9]{10,})+$/;
 
 function cleanName(raw: string | undefined, fallback: string, isBrand: boolean): string {
   if (raw === 'tier_text' || raw === 'mylogo') return 'Надпись MAGNAT';
-  const trimmed = raw?.trim();
+  if (raw === 'tier_logo_slot' || raw === INJECTED_BRAND_LAYER_NAME) return 'Слот бренда';
+  if (raw === 'brand_plate') return 'Плашка бренда';
+  if (raw === 'tier_text_part') return 'Текст бренда';
+  const trimmed = raw?.trim().replace(HASH_SUFFIX_RE, '').trim();
   if (!trimmed || trimmed === 'undefined' || UUID_RE.test(trimmed)) {
-    return isBrand ? 'Надпись MAGNAT' : fallback;
+    return isBrand ? 'Слот бренда' : fallback;
   }
   return trimmed;
 }
@@ -63,9 +77,13 @@ function buildLayerNodes(
     const kind = LAYER_KINDS[layer.ty] ?? 'layer';
     let children: TreeNode[] = [];
     let hasBrandChild = false;
+    let assetLabel: string | undefined;
 
     if (layer.ty === 0 && layer.refId && !visitedAssets.has(layer.refId)) {
       const asset = doc.assets?.find((a) => a.id === layer.refId);
+      if (typeof asset?.nm === 'string' && asset.nm.trim() && !UUID_RE.test(asset.nm.trim())) {
+        assetLabel = asset.nm.trim();
+      }
       if (asset?.layers?.length) {
         const nextVisited = new Set(visitedAssets);
         nextVisited.add(layer.refId);
@@ -78,10 +96,15 @@ function buildLayerNodes(
     }
 
     const isBrand = isBrandSlotNode(layer) || hasBrandChild;
-    const fallback = `${KIND_FALLBACK[kind]} ${idx + 1}`;
+    const fallback = assetLabel || `${KIND_FALLBACK[kind]} ${idx + 1}`;
+    const rawName =
+      layer.ty === 0 && assetLabel && (!layer.nm || /^Precomposition Layer \d+$/i.test(layer.nm))
+        ? assetLabel
+        : layer.nm;
+
     return {
       path,
-      name: cleanName(layer.nm, fallback, isBrand && !hasBrandChild),
+      name: cleanName(rawName, fallback, isBrand && !hasBrandChild),
       kind,
       hidden: !!layer.hd,
       isBrand,
