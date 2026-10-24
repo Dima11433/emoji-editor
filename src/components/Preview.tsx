@@ -35,31 +35,41 @@ export function Preview({ doc }: { doc: LottieDoc }) {
 
   useEffect(() => {
     if (!box.current) return;
-    const clean = cleanForExport(doc) as LottieDoc;
-    const anim = lottie.loadAnimation({
-      container: box.current,
-      renderer: 'svg',
-      loop: true,
-      autoplay: false,
-      animationData: clean,
-    });
-    anim.setSpeed(speedRef.current);
-    animRef.current = anim;
+    // Clone BEFORE lottie.loadAnimation, because lottie-web mutates animationData in-place with bound functions!
+    const cleanMain = cleanForExport(doc) as LottieDoc;
+    const cleanMini = cleanForExport(doc) as LottieDoc;
 
+    let anim: AnimationItem | null = null;
     let miniAnim: AnimationItem | null = null;
-    if (miniBox.current) {
-      miniAnim = lottie.loadAnimation({
-        container: miniBox.current,
+
+    try {
+      anim = lottie.loadAnimation({
+        container: box.current,
         renderer: 'svg',
         loop: true,
         autoplay: false,
-        animationData: structuredClone(clean),
+        animationData: cleanMain,
       });
-      miniAnim.setSpeed(speedRef.current);
-      miniAnimRef.current = miniAnim;
+      anim.setSpeed(speedRef.current);
+      animRef.current = anim;
+
+      if (miniBox.current) {
+        miniAnim = lottie.loadAnimation({
+          container: miniBox.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: false,
+          animationData: cleanMini,
+        });
+        miniAnim.setSpeed(speedRef.current);
+        miniAnimRef.current = miniAnim;
+      }
+    } catch {
+      return;
     }
 
     const start = () => {
+      if (!anim) return;
       const f = Math.min(frameRef.current, total - 1);
       if (playingRef.current) {
         anim.goToAndPlay(f, true);
@@ -71,6 +81,7 @@ export function Preview({ doc }: { doc: LottieDoc }) {
     };
 
     const offFrame = anim.addEventListener('enterFrame', () => {
+      if (!anim) return;
       const f = Math.floor(anim.currentFrame);
       if (f !== frameRef.current) {
         frameRef.current = f;
@@ -83,7 +94,7 @@ export function Preview({ doc }: { doc: LottieDoc }) {
 
     return () => {
       offFrame();
-      anim.destroy();
+      anim?.destroy();
       miniAnim?.destroy();
       animRef.current = null;
       miniAnimRef.current = null;

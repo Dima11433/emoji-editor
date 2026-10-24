@@ -76,16 +76,22 @@ export function LazyThumb({ item, doc: directDoc, autoPlay = false }: LazyThumbP
     const span = Math.max(1, Math.round(rendered.op - rendered.ip));
     const posterFrame = Math.min(span - 1, Math.max(15, Math.floor(span * 0.35)));
 
-    const anim = lottie.loadAnimation({
-      container: canvasRef.current,
-      renderer: 'svg',
-      loop: true,
-      autoplay: false,
-      animationData: rendered,
-    });
-    animRef.current = anim;
+    let anim: AnimationItem | null = null;
+    try {
+      anim = lottie.loadAnimation({
+        container: canvasRef.current,
+        renderer: 'svg',
+        loop: true,
+        autoplay: false,
+        animationData: rendered,
+      });
+      animRef.current = anim;
+    } catch {
+      return;
+    }
 
     const init = () => {
+      if (!anim) return;
       if (autoPlay) anim.play();
       else anim.goToAndStop(posterFrame, true);
     };
@@ -93,7 +99,7 @@ export function LazyThumb({ item, doc: directDoc, autoPlay = false }: LazyThumbP
     else anim.addEventListener('DOMLoaded', init);
 
     return () => {
-      anim.destroy();
+      anim?.destroy();
       animRef.current = null;
     };
   }, [near, activeDoc, autoPlay]);

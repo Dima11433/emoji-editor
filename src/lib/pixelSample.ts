@@ -1,7 +1,7 @@
 import lottie from 'lottie-web/build/player/lottie_light_canvas';
 import type { LottieDoc } from './lottie';
 import { buildPixelDoc, type PixelFrame } from './pixelate';
-import { optimize, tgsSize } from './tgs';
+import { cleanForExport, optimize, tgsSize } from './tgs';
 
 /** Renders every other frame of the animation down to a grid × grid image. */
 async function sampleFrames(doc: LottieDoc, grid: number): Promise<PixelFrame[]> {
@@ -23,7 +23,7 @@ async function sampleFrames(doc: LottieDoc, grid: number): Promise<PixelFrame[]>
     renderer: 'canvas',
     loop: false,
     autoplay: false,
-    animationData: structuredClone(doc),
+    animationData: cleanForExport(doc),
     rendererSettings: { context: ctx, clearCanvas: true },
   });
   if (!anim.isLoaded) await new Promise<void>((resolve) => anim.addEventListener('DOMLoaded', () => resolve()));
