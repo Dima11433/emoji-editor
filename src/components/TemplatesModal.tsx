@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FolderPlus, Layers, Plus, Search, X } from 'lucide-react';
+import {
+  Check,
+  CheckSquare,
+  Columns3,
+  FolderPlus,
+  Layers,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import {
   CATALOG,
   loadCatalogDoc,
@@ -15,6 +25,7 @@ interface TemplatesModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (doc: LottieDoc, item: CatalogItem, addToPack: boolean) => void;
+  onOpenMultiForEdit: (items: CatalogItem[]) => void;
   onAddBatchToPack: (items: CatalogItem[]) => void;
   defaultAddToPack?: boolean;
 }
@@ -23,12 +34,15 @@ export function TemplatesModal({
   isOpen,
   onClose,
   onSelect,
+  onOpenMultiForEdit,
   onAddBatchToPack,
   defaultAddToPack = false,
 }: TemplatesModalProps) {
   const [category, setCategory] = useState<'all' | TemplateCategory>('all');
   const [search, setSearch] = useState('');
   const [addToPack, setAddToPack] = useState(defaultAddToPack);
+  const [multiPickMode, setMultiPickMode] = useState(false);
+  const [pickedIds, setPickedIds] = useState<string[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,6 +84,12 @@ export function TemplatesModal({
 
   if (!isOpen) return null;
 
+  const pickedSet = new Set(pickedIds);
+
+  const togglePicked = (id: string) => {
+    setPickedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
   const pickItem = async (item: CatalogItem, toPack: boolean) => {
     if (loadingId) return;
     setLoadingId(item.id);
@@ -78,6 +98,21 @@ export function TemplatesModal({
       onSelect(doc, item, toPack);
     } finally {
       setLoadingId(null);
+    }
+  };
+
+  const resolvePickedItems = (): CatalogItem[] => {
+    const byId = new Map(CATALOG.map((c) => [c.id, c]));
+    return pickedIds.map((id) => byId.get(id)).filter((x): x is CatalogItem => Boolean(x));
+  };
+
+  const selectBannerTrio = () => {
+    const trio = CATALOG.filter((c) =>
+      ['shablony1_012', 'shablony1_013', 'shablony1_014'].includes(c.id),
+    );
+    if (trio.length > 0) {
+      onOpenMultiForEdit(trio);
+      onClose();
     }
   };
 
@@ -95,7 +130,7 @@ export function TemplatesModal({
             <input
               type="text"
               className="modal-search-input"
-              placeholder="Поиск по названию (Корона, Щит...) или номеру (#001)"
+              placeholder="Поиск по названию (Баннер, Корона, Щит...) или номеру (#001)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -113,23 +148,49 @@ export function TemplatesModal({
           </div>
 
           <div className="modal-header-actions">
-            {filtered.length > 0 && filtered.length <= 150 && (
+            <button
+              type="button"
+              className="modal-mode-btn"
+              onClick={selectBannerTrio}
+              title="Открыть сразу 3 части широкого баннера XXX SHOP для совместной переделки"
+            >
+              <Columns3 size={15} />
+              <span>Баннер 3 шт.</span>
+            </button>
+
+            <button
+              type="button"
+              className={`modal-mode-btn ${multiPickMode || pickedIds.length > 0 ? 'active' : ''}`}
+              onClick={() => setMultiPickMode((v) => !v)}
+              title="Включить выбор сразу нескольких эмодзи кликом по карточкам"
+            >
+              <CheckSquare size={15} />
+              <span>
+                {pickedIds.length > 0
+                  ? `Выбрано (${pickedIds.length})`
+                  : 'Выбрать несколько'}
+              </span>
+            </button>
+
+            {filtered.length > 0 && filtered.length <= 80 && (
               <button
                 type="button"
                 className="modal-mode-btn"
                 onClick={() => {
-                  onAddBatchToPack(filtered);
-                  onClose();
+                  const ids = filtered.slice(0, 60).map((f) => f.id);
+                  setPickedIds(ids);
+                  setMultiPickMode(true);
                 }}
-                title="Загрузить все показанные эмодзи в нижнюю панель пака для пакетной переделки"
+                title="Отметить все показанные эмодзи"
               >
                 <FolderPlus size={15} />
-                <span>Все в пак ({filtered.length})</span>
+                <span>Отметить все ({Math.min(60, filtered.length)})</span>
               </button>
             )}
+
             <button
               type="button"
-              className={`modal-mode-btn ${addToPack ? 'active' : ''}`}
+              className={`modal-mode-btn ${addToPack && !multiPickMode ? 'active' : ''}`}
               onClick={() => setAddToPack((v) => !v)}
               title={addToPack ? 'Клик по карточке добавит эмодзи в пак' : 'Клик откроет эмодзи на холсте'}
             >
@@ -157,42 +218,105 @@ export function TemplatesModal({
         </div>
 
         <div className="modal-grid">
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              className={`modal-card ${loadingId === item.id ? 'busy' : ''}`}
-              onClick={() => {
-                pickItem(item, addToPack);
-              }}
-            >
-              <div className="modal-card-thumb">
-                <LazyThumb item={item} />
-                <span className="card-cat-tag">{item.categoryLabel}</span>
-              </div>
-              <div className="modal-card-info">
-                <div>
-                  <div className="modal-card-name">{item.name}</div>
-                  <div className="muted tiny">{formatKb(item.bytes)}</div>
+          {filtered.map((item) => {
+            const isPicked = pickedSet.has(item.id);
+            const pickOrder = isPicked ? pickedIds.indexOf(item.id) + 1 : 0;
+            return (
+              <div
+                key={item.id}
+                className={`modal-card ${loadingId === item.id ? 'busy' : ''} ${isPicked ? 'picked' : ''}`}
+                onClick={(e) => {
+                  if (multiPickMode || pickedIds.length > 0 || e.ctrlKey || e.metaKey || e.shiftKey) {
+                    togglePicked(item.id);
+                  } else {
+                    pickItem(item, addToPack);
+                  }
+                }}
+              >
+                <div className="modal-card-thumb">
+                  <LazyThumb item={item} />
+                  <span className="card-cat-tag">{item.categoryLabel}</span>
+                  <button
+                    type="button"
+                    className={`card-check-btn modal-check ${isPicked ? 'checked' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePicked(item.id);
+                    }}
+                    title={isPicked ? 'Убрать из выбора' : 'Выбрать для совместного редактирования'}
+                  >
+                    {isPicked ? <span>{pickOrder}</span> : <Check size={11} />}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="modal-card-add"
-                  title="Добавить в пак без закрытия окна"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    pickItem(item, true);
-                  }}
-                >
-                  <Plus size={13} /> В пак
-                </button>
+                <div className="modal-card-info">
+                  <div>
+                    <div className="modal-card-name">{item.name}</div>
+                    <div className="muted tiny">{formatKb(item.bytes)}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="modal-card-add"
+                    title="Добавить в пак без закрытия окна"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      pickItem(item, true);
+                    }}
+                  >
+                    <Plus size={13} /> В пак
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {filtered.length === 0 && (
             <div className="modal-empty">По запросу «{search}» ничего не найдено</div>
           )}
         </div>
+
+        {pickedIds.length > 0 && (
+          <div className="modal-multi-footer">
+            <div className="modal-multi-info">
+              <Sparkles size={16} />
+              <strong>Выбрано {pickedIds.length} эмодзи</strong>
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  setPickedIds([]);
+                  setMultiPickMode(false);
+                }}
+              >
+                Сбросить выбор
+              </button>
+            </div>
+            <div className="modal-multi-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  const items = resolvePickedItems();
+                  onAddBatchToPack(items);
+                  setPickedIds([]);
+                  onClose();
+                }}
+              >
+                <FolderPlus size={15} /> В пак ({pickedIds.length})
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  const items = resolvePickedItems();
+                  onOpenMultiForEdit(items);
+                  setPickedIds([]);
+                  onClose();
+                }}
+              >
+                <Sparkles size={15} /> Редактировать вместе ({pickedIds.length})
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

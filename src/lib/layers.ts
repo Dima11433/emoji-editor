@@ -51,7 +51,8 @@ const UUID_RE = /^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const HASH_SUFFIX_RE = /(_[A-Za-z0-9]{10,})+$/;
 
 function cleanName(raw: string | undefined, fallback: string, isBrand: boolean): string {
-  if (raw === 'tier_text' || raw === 'mylogo') return 'Надпись MAGNAT';
+  if (raw === 'tier_text' || raw === 'mylogo') return 'Надпись бренда';
+  if (raw === 'tier_extrude_shadow') return '3D-тень надписи';
   if (raw === 'tier_logo_slot' || raw === INJECTED_BRAND_LAYER_NAME) return 'Слот бренда';
   if (raw === 'brand_plate') return 'Плашка бренда';
   if (raw === 'tier_text_part') return 'Текст бренда';

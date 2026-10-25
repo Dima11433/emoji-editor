@@ -1,4 +1,4 @@
-// Auto-generated catalog: 11 custom templates + 263 MAGNAT animated Telegram emojis (274 total)
+// Auto-generated catalog: 15 custom templates + 263 MAGNAT animated Telegram emojis (278 total)
 export type TemplateCategory = 'shablony1' | 'classic' | 'characters' | 'gifts' | 'love';
 
 export interface CatalogItem {
@@ -22,9 +22,45 @@ export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string 
 
 export const CATALOG: CatalogItem[] = [
   {
-    "id": "shablony1_001",
+    "id": "shablony1_012",
     "num": 1,
-    "name": "Шаблон #001 · Лампа",
+    "name": "Баннер 1/3 · Лево",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/012.tgs",
+    "bytes": 5237
+  },
+  {
+    "id": "shablony1_013",
+    "num": 2,
+    "name": "Баннер 2/3 · Центр",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/013.tgs",
+    "bytes": 5201
+  },
+  {
+    "id": "shablony1_014",
+    "num": 3,
+    "name": "Баннер 3/3 · Право",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/014.tgs",
+    "bytes": 5204
+  },
+  {
+    "id": "shablony1_015",
+    "num": 4,
+    "name": "Значок 3D · XXX",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/015.tgs",
+    "bytes": 2322
+  },
+  {
+    "id": "shablony1_001",
+    "num": 5,
+    "name": "Шаблон · Ракета",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/001.tgs",
@@ -32,8 +68,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_002",
-    "num": 2,
-    "name": "Шаблон #002 · Корона",
+    "num": 6,
+    "name": "Шаблон · Корона",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/002.tgs",
@@ -41,8 +77,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_003",
-    "num": 3,
-    "name": "Шаблон #003 · Сцена 3D",
+    "num": 7,
+    "name": "Шаблон · Огонь",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/003.tgs",
@@ -50,8 +86,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_004",
-    "num": 4,
-    "name": "Шаблон #004 · Анимация",
+    "num": 8,
+    "name": "Шаблон · Ссылка",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/004.tgs",
@@ -59,8 +95,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_005",
-    "num": 5,
-    "name": "Шаблон #005 · Всплеск",
+    "num": 9,
+    "name": "Шаблон · Карта",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/005.tgs",
@@ -68,8 +104,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_006",
-    "num": 6,
-    "name": "Шаблон #006 · Персонаж",
+    "num": 10,
+    "name": "Шаблон · Танцы",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/006.tgs",
@@ -77,8 +113,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_007",
-    "num": 7,
-    "name": "Шаблон #007 · Купюры",
+    "num": 11,
+    "name": "Шаблон · Купюры",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/007.tgs",
@@ -86,8 +122,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_008",
-    "num": 8,
-    "name": "Шаблон #008 · Силуэт",
+    "num": 12,
+    "name": "Шаблон · Хакер",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/008.tgs",
@@ -95,8 +131,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_009",
-    "num": 9,
-    "name": "Шаблон #009 · Полумесяц",
+    "num": 13,
+    "name": "Шаблон · Полумесяц",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/009.tgs",
@@ -104,8 +140,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_010",
-    "num": 10,
-    "name": "Шаблон #010 · Щит",
+    "num": 14,
+    "name": "Шаблон · Щит",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/010.tgs",
@@ -113,8 +149,8 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_011",
-    "num": 11,
-    "name": "Шаблон #011 · Иконка 3D",
+    "num": 15,
+    "name": "Шаблон · Шестерёнка",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/011.tgs",

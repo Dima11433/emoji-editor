@@ -14,6 +14,7 @@ export type BulkColorOp =
 interface Props {
   entries: PaletteEntry[];
   scopeName: string | null;
+  selectedCount: number;
   packCount: number;
   onClearScope: () => void;
   onChange: (from: string, to: string) => void;
@@ -33,6 +34,7 @@ const places = (n: number) => {
 export function PalettePanel({
   entries,
   scopeName,
+  selectedCount,
   packCount,
   onClearScope,
   onChange,
@@ -50,6 +52,8 @@ export function PalettePanel({
           <button className="link" onClick={onClearScope} title="Показать цвета всего стикера">
             только «{scopeName}» ✕
           </button>
+        ) : selectedCount > 1 ? (
+          <span className="accent-tag small">все {selectedCount} эмодзи ({entries.length})</span>
         ) : (
           <span className="muted small">весь стикер ({entries.length})</span>
         )}
@@ -57,7 +61,11 @@ export function PalettePanel({
 
       {entries.length > 0 && (
         <div className="theme-box">
-          <span className="muted tiny">Быстрая 3D-перекраска (включая все градиенты):</span>
+          <span className="muted tiny">
+            {selectedCount > 1 && !scopeName
+              ? `Быстрая 3D-перекраска сразу всех ${selectedCount} выбранных эмодзи:`
+              : 'Быстрая 3D-перекраска (включая все градиенты):'}
+          </span>
           <div className="theme-grid">
             {COLOR_THEMES.map((t) => (
               <button
@@ -76,7 +84,7 @@ export function PalettePanel({
             ))}
           </div>
 
-          {packCount > 1 && !scopeName && activeTheme && (
+          {packCount > selectedCount && packCount > 1 && !scopeName && activeTheme && (
             <button
               type="button"
               className="mini-pack-theme-btn"

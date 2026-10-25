@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
+  Check,
+  CheckSquare,
+  Columns3,
   Download,
   FilePlus2,
   FolderArchive,
@@ -12,6 +15,7 @@ import {
   Tag,
   Type,
   Undo2,
+  X,
 } from 'lucide-react';
 import type { Font } from 'opentype.js';
 import { BrandPanel } from './components/BrandPanel';
@@ -21,7 +25,7 @@ import { LayersPanel } from './components/LayersPanel';
 import { LazyThumb } from './components/LazyThumb';
 import { PackTray, type PackItem } from './components/PackTray';
 import { PalettePanel, type BulkColorOp } from './components/PalettePanel';
-import { Preview } from './components/Preview';
+import { Preview, type PreviewSticker } from './components/Preview';
 import { TemplatesModal } from './components/TemplatesModal';
 import { TextPanel, type TextRequest } from './components/TextPanel';
 import {
@@ -40,6 +44,7 @@ import {
   replaceColor,
   shiftHue,
   type ColorThemeId,
+  type PaletteEntry,
 } from './lib/colors';
 import { applyShapeEffects, getEffects, type Effects } from './lib/effects';
 import { loadFont, type FontId } from './lib/fonts';
@@ -71,41 +76,77 @@ import { DEFAULT_TEXT, textToLayer } from './lib/text';
 import { formatKb, optimize, parseSticker, serialize, tgsSize, toTgsAutoFit } from './lib/tgs';
 import { checkTelegram, MAX_BYTES, trimToLimit } from './lib/validate';
 
+interface WorkspaceSnap {
+  items: PackItem[];
+  selectedIds: string[];
+  primaryId: string;
+}
+
 interface History {
-  doc: LottieDoc;
-  past: LottieDoc[];
-  future: LottieDoc[];
+  snap: WorkspaceSnap;
+  past: WorkspaceSnap[];
+  future: WorkspaceSnap[];
   lastKey: string | null;
   lastAt: number;
 }
 
 type Action =
-  | { type: 'apply'; next: LottieDoc; key: string | null; at: number }
-  | { type: 'reset'; doc: LottieDoc }
+  | { type: 'apply'; next: WorkspaceSnap; key: string | null; at: number }
+  | { type: 'reset'; snap: WorkspaceSnap }
   | { type: 'undo' }
   | { type: 'redo' };
 
-const HISTORY_LIMIT = 60;
+const HISTORY_LIMIT = 45;
+const MAX_MULTI_SELECT = 60;
+
+const shapedCache = new WeakMap<LottieDoc, LottieDoc>();
+function getShapedCached(doc: LottieDoc): LottieDoc {
+  const hit = shapedCache.get(doc);
+  if (hit) return hit;
+  const computed = applyShapeEffects(doc);
+  shapedCache.set(doc, computed);
+  return computed;
+}
 
 function sanitizeFileName(name: string): string {
   return (
     name
       .replace(/#/g, '')
       .replace(/·/g, '')
+      .replace(/\//g, '-')
       .trim()
       .replace(/\s+/g, '_')
       .replace(/_+/g, '_') || 'emoji'
   );
 }
 
+function makeUid(prefix = 'stk'): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function normalizeSnap(snap: WorkspaceSnap): WorkspaceSnap {
+  const items =
+    snap.items.length > 0
+      ? snap.items
+      : [{ id: 'fallback-1', name: 'emoji', catalogId: null, doc: emptyDoc() }];
+  const validIds = new Set(items.map((i) => i.id));
+  let selectedIds = snap.selectedIds.filter((id) => validIds.has(id));
+  if (!selectedIds.length) {
+    selectedIds = [items[0].id];
+  }
+  const primaryId = selectedIds.includes(snap.primaryId) ? snap.primaryId : selectedIds[0];
+  return { items, selectedIds, primaryId };
+}
+
 function reducer(state: History, action: Action): History {
   switch (action.type) {
     case 'apply': {
+      const next = normalizeSnap(action.next);
       const merge =
         action.key !== null && action.key === state.lastKey && action.at - state.lastAt < 1000;
       return {
-        doc: action.next,
-        past: merge ? state.past : [...state.past, state.doc].slice(-HISTORY_LIMIT),
+        snap: next,
+        past: merge ? state.past : [...state.past, state.snap].slice(-HISTORY_LIMIT),
         future: [],
         lastKey: action.key,
         lastAt: action.at,
@@ -113,7 +154,7 @@ function reducer(state: History, action: Action): History {
     }
     case 'reset':
       return {
-        doc: action.doc,
+        snap: normalizeSnap(action.snap),
         past: [],
         future: [],
         lastKey: null,
@@ -123,9 +164,9 @@ function reducer(state: History, action: Action): History {
       const prev = state.past[state.past.length - 1];
       if (!prev) return state;
       return {
-        doc: prev,
+        snap: prev,
         past: state.past.slice(0, -1),
-        future: [state.doc, ...state.future],
+        future: [state.snap, ...state.future],
         lastKey: null,
         lastAt: 0,
       };
@@ -134,8 +175,8 @@ function reducer(state: History, action: Action): History {
       const [next, ...rest] = state.future;
       if (!next) return state;
       return {
-        doc: next,
-        past: [...state.past, state.doc],
+        snap: next,
+        past: [...state.past, state.snap],
         future: rest,
         lastKey: null,
         lastAt: 0,
@@ -144,31 +185,60 @@ function reducer(state: History, action: Action): History {
   }
 }
 
+function collectMultiPalette(docs: LottieDoc[]): PaletteEntry[] {
+  const counts = new Map<string, number>();
+  for (const d of docs) {
+    for (const entry of collectColors(d)) {
+      counts.set(entry.hex, (counts.get(entry.hex) ?? 0) + entry.count);
+    }
+  }
+  return [...counts.entries()]
+    .map(([hex, count]) => ({ hex, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 type Tab = 'templates' | 'brand' | 'layers' | 'text';
 
 export default function App() {
-  const [hist, dispatch] = useReducer(reducer, null, () => ({
-    doc: emptyDoc(CATALOG[0]?.name ?? 'Шаблон #001'),
-    past: [],
-    future: [],
-    lastKey: null,
-    lastAt: 0,
-  }));
-  const doc = hist.doc;
-  const [fileName, setFileName] = useState(() => sanitizeFileName(CATALOG[0]?.name ?? 'Шаблон_001'));
-  const [activeCatalogId, setActiveCatalogId] = useState<string | null>(CATALOG[0]?.id ?? null);
-  const [selected, setSelected] = useState<NodePath | null>(null);
+  const [hist, dispatch] = useReducer(reducer, null, () => {
+    const first = CATALOG[0];
+    const initItem: PackItem = {
+      id: 'init-1',
+      name: sanitizeFileName(first?.name ?? 'Шаблон_001'),
+      catalogId: first?.id ?? null,
+      doc: emptyDoc(first?.name ?? 'Шаблон #001'),
+    };
+    return {
+      snap: { items: [initItem], selectedIds: [initItem.id], primaryId: initItem.id },
+      past: [],
+      future: [],
+      lastKey: null,
+      lastAt: 0,
+    };
+  });
+
+  const { items: pack, selectedIds, primaryId } = hist.snap;
+
+  const selectedStickers = useMemo(() => {
+    const byId = new Map(pack.map((p) => [p.id, p]));
+    const list = selectedIds.map((id) => byId.get(id)).filter((x): x is PackItem => Boolean(x));
+    return list.length > 0 ? list : [pack[0]];
+  }, [pack, selectedIds]);
+
+  const primarySticker = useMemo(
+    () => selectedStickers.find((s) => s.id === primaryId) ?? selectedStickers[0],
+    [primaryId, selectedStickers],
+  );
+
+  const doc = primarySticker.doc;
+  const fileName = primarySticker.name;
+  const selectedCount = selectedStickers.length;
+
+  const [selectedNodePath, setSelectedNodePath] = useState<NodePath | null>(null);
   const [tab, setTab] = useState<Tab>('templates');
   const [tplCategory, setTplCategory] = useState<'all' | TemplateCategory>('shablony1');
   const [tplSearch, setTplSearch] = useState('');
-  const [pack, setPack] = useState<PackItem[]>(() => [
-    {
-      id: 'init-1',
-      name: sanitizeFileName(CATALOG[0]?.name ?? 'Шаблон_001'),
-      doc: emptyDoc(CATALOG[0]?.name ?? 'Шаблон #001'),
-    },
-  ]);
-  const [activePackIndex, setActivePackIndex] = useState(0);
+  const [multiMode, setMultiMode] = useState(false);
   const [showPackTray, setShowPackTray] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalAddToPack, setModalAddToPack] = useState(false);
@@ -178,12 +248,14 @@ export default function App() {
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const fontsCacheRef = useRef<Map<FontId, Font[]>>(new Map());
+  const snapRef = useRef(hist.snap);
+  snapRef.current = hist.snap;
 
   const say = useCallback((text: string, bad = false) => setToast({ text, bad }), []);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
+    const t = setTimeout(() => setToast(null), 3600);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -195,152 +267,472 @@ export default function App() {
     return loaded;
   }, []);
 
-  // Preload Montserrat Black + initial sticker on startup
+  // Preload Montserrat Black + initial 3-tile banner trio (or first sticker) on startup
   useEffect(() => {
     ensureFont('montserrat').catch(() => {});
-    const first = CATALOG[0];
-    if (!first) return;
+    const bannerTrio = CATALOG.filter((c) =>
+      ['shablony1_012', 'shablony1_013', 'shablony1_014'].includes(c.id),
+    );
+    const startupTargets = bannerTrio.length === 3 ? bannerTrio : CATALOG.slice(0, 1);
+    if (!startupTargets.length) return;
+
     let cancelled = false;
-    loadCatalogDoc(first)
-      .then((firstDoc) => {
+    Promise.all(startupTargets.map((item) => loadCatalogDoc(item)))
+      .then((docs) => {
         if (cancelled) return;
-        const clean = sanitizeFileName(first.name);
-        dispatch({ type: 'reset', doc: firstDoc });
-        setFileName(clean);
-        setPack([{ id: '1', name: clean, doc: structuredClone(firstDoc) }]);
-        setActivePackIndex(0);
+        const entries: PackItem[] = startupTargets.map((item, idx) => ({
+          id: `start-${idx + 1}`,
+          name: sanitizeFileName(item.name),
+          catalogId: item.id,
+          doc: docs[idx],
+        }));
+        dispatch({
+          type: 'reset',
+          snap: {
+            items: entries,
+            selectedIds: entries.map((e) => e.id),
+            primaryId: entries[0].id,
+          },
+        });
       })
       .catch(() => {
-        if (!cancelled) say('Не удалось загрузить стартовый эмодзи', true);
+        if (!cancelled) say('Не удалось загрузить стартовые шаблоны', true);
       });
     return () => {
       cancelled = true;
     };
   }, [ensureFont, say]);
 
-  // Keep active pack item synced with current canvas edits
-  useEffect(() => {
-    setPack((prev) => {
-      if (!prev[activePackIndex]) return prev;
-      if (prev[activePackIndex].doc === doc && prev[activePackIndex].name === fileName) return prev;
-      const next = [...prev];
-      next[activePackIndex] = {
-        ...next[activePackIndex],
-        doc,
-        name: fileName,
-      };
-      return next;
-    });
-  }, [doc, fileName, activePackIndex]);
-
-  const edit = useCallback(
-    (fn: (d: LottieDoc) => void, key: string | null = null) => {
-      const next = structuredClone(doc);
-      fn(next);
-      dispatch({ type: 'apply', next, key, at: Date.now() });
+  /** Mutates ALL currently selected emojis in a single atomic Undo/Redo step. */
+  const editTargets = useCallback(
+    (fn: (d: LottieDoc, item: PackItem) => void, key: string | null = null) => {
+      const cur = snapRef.current;
+      const selSet = new Set(cur.selectedIds);
+      const nextItems = cur.items.map((item) => {
+        if (!selSet.has(item.id)) return item;
+        const cloned = structuredClone(item.doc);
+        fn(cloned, item);
+        return { ...item, doc: cloned };
+      });
+      dispatch({
+        type: 'apply',
+        next: { ...cur, items: nextItems },
+        key,
+        at: Date.now(),
+      });
     },
-    [doc],
+    [],
   );
 
-  const load = useCallback((next: LottieDoc, name: string, catId: string | null = null) => {
-    const cleanName = sanitizeFileName(name);
-    dispatch({ type: 'apply', next, key: null, at: Date.now() });
-    setFileName(cleanName);
-    setActiveCatalogId(catId);
-    setSelected(null);
-  }, []);
+  /** Mutates ONLY the focused primary emoji (e.g. node-specific layer tree edits). */
+  const editPrimary = useCallback(
+    (fn: (d: LottieDoc) => void, key: string | null = null) => {
+      const cur = snapRef.current;
+      const nextItems = cur.items.map((item) => {
+        if (item.id !== cur.primaryId) return item;
+        const cloned = structuredClone(item.doc);
+        fn(cloned);
+        return { ...item, doc: cloned };
+      });
+      dispatch({
+        type: 'apply',
+        next: { ...cur, items: nextItems },
+        key,
+        at: Date.now(),
+      });
+    },
+    [],
+  );
 
-  const selectPackSticker = (idx: number) => {
-    if (idx < 0 || idx >= pack.length) return;
-    setActivePackIndex(idx);
-    const target = pack[idx];
-    dispatch({ type: 'reset', doc: structuredClone(target.doc) });
-    setFileName(target.name);
-    setSelected(null);
+  const renamePrimaryFile = (nextName: string) => {
+    const cur = snapRef.current;
+    const nextItems = cur.items.map((item) =>
+      item.id === cur.primaryId ? { ...item, name: nextName } : item,
+    );
+    dispatch({
+      type: 'apply',
+      next: { ...cur, items: nextItems },
+      key: 'rename:file',
+      at: Date.now(),
+    });
   };
+
+  /** Loads a single sticker on stage (preserving pack items if PackTray is open). */
+  const openSingleSticker = useCallback(
+    (nextDoc: LottieDoc, name: string, catalogId: string | null = null) => {
+      const cleanName = sanitizeFileName(name);
+      const cur = snapRef.current;
+
+      if (showPackTray) {
+        const existing = catalogId ? cur.items.find((i) => i.catalogId === catalogId) : undefined;
+        if (existing) {
+          dispatch({
+            type: 'apply',
+            next: { items: cur.items, selectedIds: [existing.id], primaryId: existing.id },
+            key: null,
+            at: Date.now(),
+          });
+        } else {
+          const entry: PackItem = { id: makeUid(), name: cleanName, catalogId, doc: nextDoc };
+          dispatch({
+            type: 'apply',
+            next: {
+              items: [...cur.items, entry],
+              selectedIds: [entry.id],
+              primaryId: entry.id,
+            },
+            key: null,
+            at: Date.now(),
+          });
+        }
+      } else {
+        const entry: PackItem = { id: makeUid(), name: cleanName, catalogId, doc: nextDoc };
+        dispatch({
+          type: 'apply',
+          next: { items: [entry], selectedIds: [entry.id], primaryId: entry.id },
+          key: null,
+          at: Date.now(),
+        });
+      }
+      setSelectedNodePath(null);
+    },
+    [showPackTray],
+  );
+
+  /** Opens multiple catalog emojis simultaneously for synchronized live editing. */
+  const openCatalogBatchForEdit = useCallback(
+    async (catItems: CatalogItem[]) => {
+      const capped = catItems.slice(0, MAX_MULTI_SELECT);
+      if (!capped.length) return;
+      try {
+        if (capped.length > 4) {
+          say(`Загружаю ${capped.length} эмодзи для одновременного редактирования...`);
+        }
+        const docs = await Promise.all(capped.map((it) => loadCatalogDoc(it)));
+        const cur = snapRef.current;
+        const newEntries: PackItem[] = capped.map((it, idx) => ({
+          id: makeUid(`m${idx}`),
+          name: sanitizeFileName(it.name),
+          catalogId: it.id,
+          doc: docs[idx],
+        }));
+
+        const nextItems = showPackTray ? [...cur.items, ...newEntries] : newEntries;
+        const nextSel = newEntries.map((e) => e.id);
+        dispatch({
+          type: 'apply',
+          next: {
+            items: nextItems,
+            selectedIds: nextSel,
+            primaryId: nextSel[0],
+          },
+          key: null,
+          at: Date.now(),
+        });
+        setSelectedNodePath(null);
+        say(
+          newEntries.length > 1
+            ? `Выбрано ${newEntries.length} эмодзи — все изменения применяются сразу ко всем!`
+            : `Выбран «${capped[0].name}»`,
+        );
+      } catch (e) {
+        say(e instanceof Error ? e.message : 'Не удалось загрузить выбранные эмодзи', true);
+      }
+    },
+    [say, showPackTray],
+  );
+
+  /** Toggles a catalog item in/out of the active multi-selection. */
+  const toggleCatalogMulti = useCallback(
+    async (catItem: CatalogItem) => {
+      const cur = snapRef.current;
+      const existingInSel = cur.items.find(
+        (i) => i.catalogId === catItem.id && cur.selectedIds.includes(i.id),
+      );
+
+      if (existingInSel) {
+        if (cur.selectedIds.length === 1) {
+          setMultiMode(true);
+          say('Режим мультивыбора включён — кликайте по другим эмодзи, чтобы выбрать несколько!');
+          return;
+        }
+        const nextSel = cur.selectedIds.filter((id) => id !== existingInSel.id);
+        const nextItems = showPackTray
+          ? cur.items
+          : cur.items.filter((i) => nextSel.includes(i.id));
+        dispatch({
+          type: 'apply',
+          next: {
+            items: nextItems,
+            selectedIds: nextSel,
+            primaryId: cur.primaryId === existingInSel.id ? nextSel[0] : cur.primaryId,
+          },
+          key: null,
+          at: Date.now(),
+        });
+        return;
+      }
+
+      if (cur.selectedIds.length >= MAX_MULTI_SELECT) {
+        say(`Максимум ${MAX_MULTI_SELECT} эмодзи в одном мультивыборе`, true);
+        return;
+      }
+
+      const existingInPack = cur.items.find((i) => i.catalogId === catItem.id);
+      if (existingInPack) {
+        dispatch({
+          type: 'apply',
+          next: {
+            items: cur.items,
+            selectedIds: [...cur.selectedIds, existingInPack.id],
+            primaryId: cur.primaryId,
+          },
+          key: null,
+          at: Date.now(),
+        });
+        return;
+      }
+
+      try {
+        const loadedDoc = await loadCatalogDoc(catItem);
+        const latest = snapRef.current;
+        const entry: PackItem = {
+          id: makeUid(),
+          name: sanitizeFileName(catItem.name),
+          catalogId: catItem.id,
+          doc: loadedDoc,
+        };
+        dispatch({
+          type: 'apply',
+          next: {
+            items: [...latest.items, entry],
+            selectedIds: [...latest.selectedIds, entry.id],
+            primaryId: latest.primaryId,
+          },
+          key: null,
+          at: Date.now(),
+        });
+      } catch (e) {
+        say(e instanceof Error ? e.message : 'Не удалось загрузить эмодзи', true);
+      }
+    },
+    [say, showPackTray],
+  );
+
+  const collapseToSingle = useCallback(() => {
+    const cur = snapRef.current;
+    if (cur.selectedIds.length <= 1) return;
+    const keepId = cur.primaryId;
+    const nextItems = showPackTray ? cur.items : cur.items.filter((i) => i.id === keepId);
+    dispatch({
+      type: 'apply',
+      next: { items: nextItems, selectedIds: [keepId], primaryId: keepId },
+      key: null,
+      at: Date.now(),
+    });
+    setMultiMode(false);
+  }, [showPackTray]);
+
+  const setPrimaryFocus = useCallback((id: string) => {
+    const cur = snapRef.current;
+    if (!cur.selectedIds.includes(id) || cur.primaryId === id) return;
+    dispatch({
+      type: 'apply',
+      next: { ...cur, primaryId: id },
+      key: 'focus',
+      at: Date.now(),
+    });
+    setSelectedNodePath(null);
+  }, []);
 
   const addToPack = (newDoc: LottieDoc, name: string, catId: string | null = null) => {
     const cleanName = sanitizeFileName(name);
+    const cur = snapRef.current;
     const newItem: PackItem = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: makeUid('pack'),
       name: cleanName,
+      catalogId: catId,
       doc: structuredClone(newDoc),
     };
-    const nextIdx = pack.length;
-    setPack((prev) => [...prev, newItem]);
-    setActivePackIndex(nextIdx);
-    dispatch({ type: 'reset', doc: newDoc });
-    setFileName(cleanName);
-    setActiveCatalogId(catId);
-    setSelected(null);
+    dispatch({
+      type: 'apply',
+      next: {
+        items: [...cur.items, newItem],
+        selectedIds: [newItem.id],
+        primaryId: newItem.id,
+      },
+      key: null,
+      at: Date.now(),
+    });
+    setSelectedNodePath(null);
     setShowPackTray(true);
-    say(`Добавлен «${name}» в пак (#${nextIdx + 1})`);
+    say(`Добавлен «${name}» в пак (#${cur.items.length + 1})`);
   };
 
-  const handleAddBatchToPack = async (items: CatalogItem[]) => {
-    if (!items.length) return;
+  const handleAddBatchToPack = async (catItems: CatalogItem[]) => {
+    if (!catItems.length) return;
     try {
-      say(`Загружаю ${items.length} эмодзи в пак...`);
-      const docs = await Promise.all(items.map((it) => loadCatalogDoc(it)));
-      const newPackItems: PackItem[] = items.map((it, idx) => ({
-        id: `${Date.now()}-${idx}-${it.id}`,
+      say(`Загружаю ${catItems.length} эмодзи в пак...`);
+      const docs = await Promise.all(catItems.map((it) => loadCatalogDoc(it)));
+      const cur = snapRef.current;
+      const newPackItems: PackItem[] = catItems.map((it, idx) => ({
+        id: makeUid(`b${idx}`),
         name: sanitizeFileName(it.name),
+        catalogId: it.id,
         doc: docs[idx],
       }));
-      setPack((prev) => [...prev, ...newPackItems]);
+      const nextItems = [...cur.items, ...newPackItems];
+      const nextSel = newPackItems.slice(0, MAX_MULTI_SELECT).map((p) => p.id);
+      dispatch({
+        type: 'apply',
+        next: {
+          items: nextItems,
+          selectedIds: nextSel,
+          primaryId: nextSel[0],
+        },
+        key: null,
+        at: Date.now(),
+      });
       setShowPackTray(true);
-      say(`Добавлено ${newPackItems.length} эмодзи в пак!`);
+      say(`Добавлено и выбрано ${newPackItems.length} эмодзи в паке!`);
     } catch (e) {
       say(e instanceof Error ? e.message : 'Не удалось загрузить эмодзи в пак', true);
     }
   };
 
-  const duplicatePackSticker = (idx: number) => {
-    const src = pack[idx];
-    if (!src) return;
+  const handlePackSelect = (id: string, toggleMulti: boolean) => {
+    const cur = snapRef.current;
+    if (!toggleMulti) {
+      dispatch({
+        type: 'apply',
+        next: { items: cur.items, selectedIds: [id], primaryId: id },
+        key: null,
+        at: Date.now(),
+      });
+      setSelectedNodePath(null);
+      return;
+    }
+
+    if (cur.selectedIds.includes(id)) {
+      if (cur.selectedIds.length <= 1) return;
+      const nextSel = cur.selectedIds.filter((x) => x !== id);
+      dispatch({
+        type: 'apply',
+        next: {
+          items: cur.items,
+          selectedIds: nextSel,
+          primaryId: cur.primaryId === id ? nextSel[0] : cur.primaryId,
+        },
+        key: null,
+        at: Date.now(),
+      });
+    } else {
+      dispatch({
+        type: 'apply',
+        next: {
+          items: cur.items,
+          selectedIds: [...cur.selectedIds, id].slice(0, MAX_MULTI_SELECT),
+          primaryId: cur.primaryId,
+        },
+        key: null,
+        at: Date.now(),
+      });
+    }
+  };
+
+  const handleSelectAllInPack = () => {
+    const cur = snapRef.current;
+    const allIds = cur.items.slice(0, MAX_MULTI_SELECT).map((i) => i.id);
+    dispatch({
+      type: 'apply',
+      next: { items: cur.items, selectedIds: allIds, primaryId: cur.primaryId },
+      key: null,
+      at: Date.now(),
+    });
+    say(`Выбрано ${allIds.length} эмодзи в паке для одновременного редактирования!`);
+  };
+
+  const duplicatePackSticker = (id: string) => {
+    const cur = snapRef.current;
+    const idx = cur.items.findIndex((i) => i.id === id);
+    if (idx < 0) return;
+    const src = cur.items[idx];
     const clone: PackItem = {
-      id: `${Date.now()}-copy`,
+      id: makeUid('copy'),
       name: `${src.name}_copy`,
+      catalogId: src.catalogId,
       doc: structuredClone(src.doc),
     };
-    const next = [...pack.slice(0, idx + 1), clone, ...pack.slice(idx + 1)];
-    setPack(next);
-    setActivePackIndex(idx + 1);
-    dispatch({ type: 'reset', doc: structuredClone(clone.doc) });
-    setFileName(clone.name);
+    const next = [...cur.items.slice(0, idx + 1), clone, ...cur.items.slice(idx + 1)];
+    dispatch({
+      type: 'apply',
+      next: { items: next, selectedIds: [clone.id], primaryId: clone.id },
+      key: null,
+      at: Date.now(),
+    });
     say(`Эмодзи дублирован: ${clone.name}`);
   };
 
-  const removePackSticker = (idx: number) => {
-    if (pack.length <= 1) return;
-    const next = pack.filter((_, i) => i !== idx);
-    const nextActive = Math.min(activePackIndex, next.length - 1);
-    setPack(next);
-    setActivePackIndex(nextActive);
-    dispatch({ type: 'reset', doc: structuredClone(next[nextActive].doc) });
-    setFileName(next[nextActive].name);
+  const removePackSticker = (id: string) => {
+    const cur = snapRef.current;
+    if (cur.items.length <= 1) return;
+    const next = cur.items.filter((i) => i.id !== id);
+    const nextSel = cur.selectedIds.filter((x) => x !== id);
+    const validSel = nextSel.length > 0 ? nextSel : [next[0].id];
+    dispatch({
+      type: 'apply',
+      next: {
+        items: next,
+        selectedIds: validSel,
+        primaryId: validSel.includes(cur.primaryId) ? cur.primaryId : validSel[0],
+      },
+      key: null,
+      at: Date.now(),
+    });
     say('Эмодзи убран из пака');
   };
 
-  const clearOtherPackStickers = () => {
-    const current = pack[activePackIndex];
-    if (!current) return;
-    setPack([current]);
-    setActivePackIndex(0);
-    say('В паке оставлен только текущий эмодзи');
+  const clearUnselectedPackStickers = () => {
+    const cur = snapRef.current;
+    const selSet = new Set(cur.selectedIds);
+    const kept = cur.items.filter((i) => selSet.has(i.id));
+    if (!kept.length || kept.length === cur.items.length) {
+      const onlyPrimary = cur.items.filter((i) => i.id === cur.primaryId);
+      if (onlyPrimary.length > 0 && onlyPrimary.length < cur.items.length) {
+        dispatch({
+          type: 'apply',
+          next: {
+            items: onlyPrimary,
+            selectedIds: [onlyPrimary[0].id],
+            primaryId: onlyPrimary[0].id,
+          },
+          key: null,
+          at: Date.now(),
+        });
+        say('В паке оставлен только текущий эмодзи');
+      }
+      return;
+    }
+    dispatch({
+      type: 'apply',
+      next: { items: kept, selectedIds: cur.selectedIds, primaryId: cur.primaryId },
+      key: null,
+      at: Date.now(),
+    });
+    say(`В паке оставлено ${kept.length} выбранных эмодзи`);
   };
 
-  const downloadPackZip = async () => {
+  const downloadZipList = async (list: PackItem[], archivePrefix: string) => {
     try {
-      say('Собираю .zip архив пака...');
-      const blob = await createPackZip(pack, 'magnat_emoji_pack');
+      say(`Собираю .zip архив (${list.length} эмодзи)...`);
+      const blob = await createPackZip(list, archivePrefix);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `magnat_pack_${pack.length}_emojis.zip`;
+      a.download = `${archivePrefix}_${list.length}_emojis.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      say(`Скачан архив из ${pack.length} эмодзи (.tgs)!`);
+      say(`Скачан архив из ${list.length} готовых эмодзи (.tgs)!`);
     } catch (err) {
       say(err instanceof Error ? err.message : 'Ошибка сборки архива', true);
     }
@@ -355,18 +747,21 @@ export default function App() {
         say(`Распаковываю архив ${files[0].name}...`);
         const imported = await importPackZip(await files[0].arrayBuffer());
         const packItems: PackItem[] = imported.map((s, idx) => ({
-          id: `${Date.now()}-zip-${idx}`,
+          id: makeUid(`zip${idx}`),
           name: s.name,
+          catalogId: null,
           doc: s.doc,
         }));
-        setPack(packItems);
-        setActivePackIndex(0);
-        dispatch({ type: 'reset', doc: structuredClone(packItems[0].doc) });
-        setFileName(packItems[0].name);
-        setActiveCatalogId(null);
+        const selIds = packItems.slice(0, MAX_MULTI_SELECT).map((p) => p.id);
+        dispatch({
+          type: 'apply',
+          next: { items: packItems, selectedIds: selIds, primaryId: selIds[0] },
+          key: null,
+          at: Date.now(),
+        });
         setShowPackTray(true);
         setTab('brand');
-        say(`Импортировано ${packItems.length} эмодзи из ${files[0].name}!`);
+        say(`Импортировано и выбрано ${packItems.length} эмодзи из ${files[0].name}!`);
         return;
       }
 
@@ -388,11 +783,15 @@ export default function App() {
           useOriginalGlyphs: false,
         };
         const fonts = nextOpts.mode === 'logo+text' ? await ensureFont(nextOpts.fontId) : null;
-        edit((d) => {
+        editTargets((d) => {
           applyBrandSlot(d, nextOpts, fonts);
         });
         setTab('brand');
-        say(`Логотип «${vec.name}» установлен на стикер!`);
+        say(
+          selectedCount > 1
+            ? `Логотип «${vec.name}» установлен сразу на ${selectedCount} эмодзи!`
+            : `Логотип «${vec.name}» установлен на стикер!`,
+        );
         return;
       }
 
@@ -400,7 +799,7 @@ export default function App() {
         const file = files[0];
         const parsed = parseSticker(new Uint8Array(await file.arrayBuffer()));
         const clean = file.name.replace(/\.(tgs|json)$/i, '');
-        load(parsed, clean, null);
+        openSingleSticker(parsed, clean, null);
         say(`Открыт файл ${file.name}`);
         return;
       }
@@ -411,22 +810,36 @@ export default function App() {
         if (/\.zip$/i.test(f.name)) {
           const fromZip = await importPackZip(await f.arrayBuffer());
           for (const z of fromZip) {
-            imported.push({ id: `${Date.now()}-${imported.length}`, name: z.name, doc: z.doc });
+            imported.push({
+              id: makeUid(`f${imported.length}`),
+              name: z.name,
+              catalogId: null,
+              doc: z.doc,
+            });
           }
         } else {
           const parsed = parseSticker(new Uint8Array(await f.arrayBuffer()));
           imported.push({
-            id: `${Date.now()}-${imported.length}`,
+            id: makeUid(`f${imported.length}`),
             name: f.name.replace(/\.(tgs|json)$/i, ''),
+            catalogId: null,
             doc: parsed,
           });
         }
       }
 
       if (imported.length > 0) {
-        setPack((prev) => [...prev, ...imported]);
+        const cur = snapRef.current;
+        const nextItems = showPackTray ? [...cur.items, ...imported] : imported;
+        const selIds = imported.slice(0, MAX_MULTI_SELECT).map((i) => i.id);
+        dispatch({
+          type: 'apply',
+          next: { items: nextItems, selectedIds: selIds, primaryId: selIds[0] },
+          key: null,
+          at: Date.now(),
+        });
         setShowPackTray(true);
-        say(`Добавлено ${imported.length} файлов в пак!`);
+        say(`Загружено и выбрано ${imported.length} эмодзи!`);
       }
     } catch (e) {
       say(e instanceof Error ? e.message : 'Не удалось открыть файл', true);
@@ -435,68 +848,74 @@ export default function App() {
 
   const brandInfo = useMemo(() => readBrandSlotInfo(doc), [doc]);
 
+  const anySelectedNeedsOverlay = useMemo(
+    () =>
+      selectedStickers.some((s) => {
+        const info = readBrandSlotInfo(s.doc);
+        return info.count === 0 || info.isInjected;
+      }),
+    [selectedStickers],
+  );
+
   const handleBrandChange = useCallback(
-    (nextOpts: BrandSlotOptions, mergeKey?: string) => {
-      const hasBuiltIn = brandInfo.count > 0 && !brandInfo.isInjected;
+    (nextOpts: BrandSlotOptions, mergeKey?: string, keepStickerColor = false) => {
       const needsFont =
         nextOpts.mode === 'logo+text' ||
-        (nextOpts.mode === 'text' && (!nextOpts.useOriginalGlyphs || !hasBuiltIn));
+        (nextOpts.mode === 'text' && (!nextOpts.useOriginalGlyphs || anySelectedNeedsOverlay));
 
       if (!needsFont) {
-        edit((d) => {
-          applyBrandSlot(d, nextOpts, null);
+        editTargets((d) => {
+          applyBrandSlot(d, nextOpts, null, { keepStickerColor, autoCreate: true });
         }, mergeKey ?? null);
         return;
       }
 
       const cachedFonts = fontsCacheRef.current.get(nextOpts.fontId);
       if (cachedFonts) {
-        edit((d) => {
-          applyBrandSlot(d, nextOpts, cachedFonts);
+        editTargets((d) => {
+          applyBrandSlot(d, nextOpts, cachedFonts, { keepStickerColor, autoCreate: true });
         }, mergeKey ?? null);
         return;
       }
 
-      // Optimistic state update while font downloads
-      edit((d) => {
+      editTargets((d) => {
         d._brandState = { ...nextOpts };
       }, mergeKey ?? null);
       setFontBusy(true);
       ensureFont(nextOpts.fontId)
         .then((loadedFonts) => {
-          dispatch({
-            type: 'apply',
-            next: (() => {
-              const cloned = structuredClone(doc);
-              applyBrandSlot(cloned, nextOpts, loadedFonts);
-              return cloned;
-            })(),
-            key: mergeKey ?? 'brand:font',
-            at: Date.now(),
-          });
+          editTargets((d) => {
+            applyBrandSlot(d, nextOpts, loadedFonts, { keepStickerColor, autoCreate: true });
+          }, mergeKey ?? 'brand:font');
         })
         .catch(() => say('Не удалось загрузить выбранный шрифт', true))
         .finally(() => setFontBusy(false));
     },
-    [brandInfo.count, brandInfo.isInjected, doc, edit, ensureFont, say],
+    [anySelectedNeedsOverlay, editTargets, ensureFont, say],
   );
 
   const handleBrandReset = useCallback(() => {
     const wasInjected = brandInfo.isInjected;
-    edit((d) => {
+    editTargets((d) => {
       resetBrandSlot(d);
     });
-    say(wasInjected ? 'Бренд-слот убран с шаблона' : 'Возвращена оригинальная надпись MAGNAT');
-  }, [brandInfo.isInjected, edit, say]);
+    say(
+      selectedCount > 1
+        ? `Бренд сброшен на всех ${selectedCount} выбранных эмодзи`
+        : wasInjected
+          ? 'Бренд-слот убран с шаблона'
+          : `Возвращена оригинальная надпись (${brandInfo.origText})`,
+    );
+  }, [brandInfo.isInjected, brandInfo.origText, editTargets, say, selectedCount]);
 
   const handleApplyBrandToPack = useCallback(
     async (opts: BrandSlotOptions, keepStickerColor: boolean) => {
       setFontBusy(true);
       try {
-        // Load font whenever text might be rendered (including unbranded templates in the pack)
         const fonts = opts.mode !== 'logo' ? await ensureFont(opts.fontId) : null;
+        const cur = snapRef.current;
         let updatedCount = 0;
-        const nextPack = pack.map((item) => {
+        const nextItems = cur.items.map((item) => {
           const cloned = structuredClone(item.doc);
           const count = applyBrandSlot(cloned, opts, fonts, {
             keepStickerColor,
@@ -505,40 +924,31 @@ export default function App() {
           if (count > 0) updatedCount++;
           return { ...item, doc: cloned };
         });
-        setPack(nextPack);
-        if (nextPack[activePackIndex]) {
-          dispatch({
-            type: 'apply',
-            next: structuredClone(nextPack[activePackIndex].doc),
-            key: null,
-            at: Date.now(),
-          });
-        }
-        const what =
-          opts.mode === 'logo'
-            ? 'Логотип установлен'
-            : opts.mode === 'logo+text'
-              ? 'Логотип + ник установлены'
-              : 'Бренд установлен';
-        say(`${what} в ${updatedCount} из ${pack.length} эмодзи пака!`);
+        dispatch({
+          type: 'apply',
+          next: { ...cur, items: nextItems },
+          key: null,
+          at: Date.now(),
+        });
+        say(`Бренд установлен во все ${updatedCount} эмодзи пака!`);
       } catch (e) {
         say(e instanceof Error ? e.message : 'Ошибка пакетной замены', true);
       } finally {
         setFontBusy(false);
       }
     },
-    [activePackIndex, ensureFont, pack, say],
+    [ensureFont, say],
   );
 
-  const selectedNode = selected ? getNode(doc, selected) : undefined;
-  const activeSel = selectedNode ? selected : null;
+  const selectedNode = selectedNodePath ? getNode(doc, selectedNodePath) : undefined;
+  const activeSel = selectedNode ? selectedNodePath : null;
   const selectedOpacity = useMemo(
     () => (activeSel ? readNodeOpacity(doc, activeSel) : 100),
     [doc, activeSel],
   );
 
   const fx = useMemo(() => getEffects(doc), [doc]);
-  const shaped = useMemo(() => applyShapeEffects(doc), [doc]);
+  const shaped = useMemo(() => getShapedCached(doc), [doc]);
   const [pixelOut, setPixelOut] = useState<{ doc: LottieDoc; fps: number } | null>(null);
   const [pixelBusy, setPixelBusy] = useState(false);
 
@@ -570,7 +980,18 @@ export default function App() {
         ? `${pixelOut.fps} к/с, чтобы влезть в 64 кБ`
         : null;
 
-  const download = (kind: 'tgs' | 'json') => {
+  const previewStickers = useMemo<PreviewSticker[]>(
+    () =>
+      selectedStickers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        catalogId: s.catalogId,
+        doc: s.id === primarySticker.id ? outDoc : getShapedCached(s.doc),
+      })),
+    [outDoc, primarySticker.id, selectedStickers],
+  );
+
+  const downloadSingle = (kind: 'tgs' | 'json') => {
     const rawTgs = kind === 'tgs' ? toTgsAutoFit(outDoc) : null;
     const data = rawTgs ?? new TextEncoder().encode(serialize(outDoc));
     const blob = new Blob([data], {
@@ -588,7 +1009,7 @@ export default function App() {
   };
 
   const setEffect = <K extends keyof Effects>(key: K, patch: Partial<Effects[K]>, merge = false) =>
-    edit(
+    editTargets(
       (d) => {
         const cur = getEffects(d);
         d.fx = { ...cur, [key]: { ...cur[key], ...patch } };
@@ -597,7 +1018,16 @@ export default function App() {
     );
 
   const tree = useMemo(() => buildTree(doc), [doc]);
-  const palette = useMemo(() => collectColors(colorScope(doc, activeSel)), [doc, activeSel]);
+  const palette = useMemo(
+    () =>
+      activeSel
+        ? collectColors(colorScope(doc, activeSel))
+        : selectedCount > 1
+          ? collectMultiPalette(selectedStickers.map((s) => s.doc))
+          : collectColors(doc),
+    [activeSel, doc, selectedCount, selectedStickers],
+  );
+
   const size = useMemo(() => tgsSize(outDoc), [outDoc]);
   const checks = useMemo(() => checkTelegram(outDoc, size), [outDoc, size]);
 
@@ -625,67 +1055,82 @@ export default function App() {
     });
   }, [tplCategory, tplSearch]);
 
-  const inScope =
-    (fn: (node: unknown, skipBrand: boolean) => void) =>
-    (d: LottieDoc): void => {
-      const skipBrand = activeSel === null && Boolean(d._brandState);
-      fn(colorScope(d, activeSel), skipBrand);
-    };
+  /** Maps catalogId -> 1-based selection index for checked badges in sidebar. */
+  const selectedCatalogOrder = useMemo(() => {
+    const map = new Map<string, number>();
+    selectedStickers.forEach((s, idx) => {
+      if (s.catalogId && !map.has(s.catalogId)) {
+        map.set(s.catalogId, idx + 1);
+      }
+    });
+    return map;
+  }, [selectedStickers]);
+
+  const runColorMutation = (
+    fn: (node: unknown, skipBrand: boolean) => void,
+    mergeKey: string | null = null,
+  ) => {
+    if (activeSel) {
+      editPrimary((d) => fn(colorScope(d, activeSel), false), mergeKey);
+    } else {
+      editTargets((d) => fn(d, Boolean(d._brandState)), mergeKey);
+    }
+  };
 
   const handleApplyThemeToPack = useCallback(
     (themeId: ColorThemeId) => {
-      const nextPack = pack.map((item) => {
+      const cur = snapRef.current;
+      const nextItems = cur.items.map((item) => {
         const cloned = structuredClone(item.doc);
         applyColorTheme(cloned, themeId, { skipBrandSlot: Boolean(cloned._brandState) });
         return { ...item, doc: cloned };
       });
-      setPack(nextPack);
-      if (nextPack[activePackIndex]) {
-        dispatch({
-          type: 'apply',
-          next: structuredClone(nextPack[activePackIndex].doc),
-          key: null,
-          at: Date.now(),
-        });
-      }
+      dispatch({
+        type: 'apply',
+        next: { ...cur, items: nextItems },
+        key: null,
+        at: Date.now(),
+      });
       const label = COLOR_THEMES.find((t) => t.id === themeId)?.label ?? themeId;
-      say(`Весь пак (${pack.length} эмодзи) перекрашен в «${label}»!`);
+      say(`Весь пак (${cur.items.length} эмодзи) перекрашен в «${label}»!`);
     },
-    [activePackIndex, pack, say],
+    [say],
   );
 
   const handleBulkColor = (op: BulkColorOp) => {
-    edit(
-      inScope((n, skipBrand) => {
-        const opts = { skipBrandSlot: skipBrand };
-        if (op === 'hue-') shiftHue(n, -30, opts);
-        else if (op === 'hue+') shiftHue(n, 30, opts);
-        else if (op === 'sat+') adjustLightSat(n, 0.14, 0, opts);
-        else if (op === 'light+') adjustLightSat(n, 0, 0.08, opts);
-        else if (op === 'light-') adjustLightSat(n, 0, -0.08, opts);
-        else if (op === 'gray') grayscale(n, opts);
-        else if (op === 'invert') invert(n, opts);
-      }),
-    );
+    runColorMutation((n, skipBrand) => {
+      const opts = { skipBrandSlot: skipBrand };
+      if (op === 'hue-') shiftHue(n, -30, opts);
+      else if (op === 'hue+') shiftHue(n, 30, opts);
+      else if (op === 'sat+') adjustLightSat(n, 0.14, 0, opts);
+      else if (op === 'light+') adjustLightSat(n, 0, 0.08, opts);
+      else if (op === 'light-') adjustLightSat(n, 0, -0.08, opts);
+      else if (op === 'gray') grayscale(n, opts);
+      else if (op === 'invert') invert(n, opts);
+    });
   };
 
   const addText = async (req: TextRequest) => {
     setFontBusy(true);
     try {
       const fonts = await ensureFont(req.fontId);
-      const layer = textToLayer({
-        ...DEFAULT_TEXT,
-        ...req,
-        fonts,
-        ip: doc.ip,
-        op: doc.op,
-      });
-      edit((d) => {
+      editTargets((d) => {
+        const layer = textToLayer({
+          ...DEFAULT_TEXT,
+          ...req,
+          fonts,
+          ip: d.ip,
+          op: d.op,
+        });
         d.layers.unshift(layer);
         reindexLayers(d.layers);
       });
-      setSelected([0]);
-      say('Текстовый слой добавлен поверх эмодзи');
+      setSelectedNodePath([0]);
+      say(
+        selectedCount > 1
+          ? `Текстовый слой добавлен сразу на ${selectedCount} эмодзи`
+          : 'Текстовый слой добавлен поверх эмодзи',
+      );
     } catch (e) {
       say(e instanceof Error ? e.message : 'Не получилось добавить текст', true);
     } finally {
@@ -695,9 +1140,9 @@ export default function App() {
 
   const removeSelected = useCallback(() => {
     if (!activeSel) return;
-    edit((d) => removeNode(d, activeSel));
-    setSelected(null);
-  }, [activeSel, edit]);
+    editPrimary((d) => removeNode(d, activeSel));
+    setSelectedNodePath(null);
+  }, [activeSel, editPrimary]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -724,12 +1169,18 @@ export default function App() {
       if (toPack) {
         addToPack(loaded, item.name, item.id);
       } else {
-        load(loaded, item.name, item.id);
+        openSingleSticker(loaded, item.name, item.id);
         say(`Выбран «${item.name}»`);
       }
     } catch (e) {
       say(e instanceof Error ? e.message : 'Не удалось загрузить эмодзи', true);
     }
+  };
+
+  const selectPresetByIds = (ids: string[]) => {
+    const byId = new Map(CATALOG.map((c) => [c.id, c]));
+    const items = ids.map((id) => byId.get(id)).filter((x): x is CatalogItem => Boolean(x));
+    openCatalogBatchForEdit(items);
   };
 
   const tooBig = size > MAX_BYTES;
@@ -767,7 +1218,7 @@ export default function App() {
           type="button"
           className="topbar-btn"
           onClick={() => {
-            load(emptyDoc(), 'новый_эмодзи', null);
+            openSingleSticker(emptyDoc(), 'новый_эмодзи', null);
             say('Создан чистый холст 512×512');
           }}
           title="Создать пустой холст 512×512"
@@ -778,7 +1229,7 @@ export default function App() {
         <input
           className="file-name"
           value={fileName}
-          onChange={(e) => setFileName(e.target.value)}
+          onChange={(e) => renamePrimaryFile(e.target.value)}
           aria-label="Имя файла"
         />
 
@@ -811,30 +1262,55 @@ export default function App() {
           <span className={`size-badge ${tooBig ? 'bad' : ''}`} title="Размер сжатого .tgs файла">
             {formatKb(size)} / 64 кБ
           </span>
-          <button
-            type="button"
-            className="zip-btn"
-            onClick={downloadPackZip}
-            title="Скачать весь пак готовых .tgs эмодзи в .zip"
-          >
-            <Download size={15} /> Пак .zip ({pack.length})
-          </button>
-          <button
-            type="button"
-            disabled={pixelBusy}
-            onClick={() => download('json')}
-            title="Скачать исходник Lottie JSON"
-          >
-            JSON
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={pixelBusy}
-            onClick={() => download('tgs')}
-          >
-            <Download size={15} /> Скачать .tgs
-          </button>
+
+          {selectedCount > 1 ? (
+            <>
+              <button
+                type="button"
+                disabled={pixelBusy}
+                onClick={() => downloadSingle('tgs')}
+                title="Скачать только активный .tgs файл"
+              >
+                <Download size={14} /> 1 .tgs
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={pixelBusy}
+                onClick={() => downloadZipList(selectedStickers, 'magnat_selected')}
+                title={`Скачать все ${selectedCount} выбранных эмодзи готовым архивом .zip`}
+              >
+                <Download size={15} /> Скачать выбранные ({selectedCount}) .zip
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="zip-btn"
+                onClick={() => downloadZipList(pack, 'magnat_emoji_pack')}
+                title="Скачать весь пак готовых .tgs эмодзи в .zip"
+              >
+                <Download size={15} /> Пак .zip ({pack.length})
+              </button>
+              <button
+                type="button"
+                disabled={pixelBusy}
+                onClick={() => downloadSingle('json')}
+                title="Скачать исходник Lottie JSON"
+              >
+                JSON
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={pixelBusy}
+                onClick={() => downloadSingle('tgs')}
+              >
+                <Download size={15} /> Скачать .tgs
+              </button>
+            </>
+          )}
         </div>
 
         <input
@@ -856,7 +1332,7 @@ export default function App() {
             type="button"
             className={tab === 'templates' ? 'on' : ''}
             onClick={() => setTab('templates')}
-            title="Шаблоны и паки эмодзи"
+            title="Шаблоны и мультивыбор эмодзи"
           >
             <LayoutGrid size={14} /> Паки
           </button>
@@ -864,9 +1340,9 @@ export default function App() {
             type="button"
             className={tab === 'brand' ? 'on' : ''}
             onClick={() => setTab('brand')}
-            title="Брендирование: никнейм, логотип или плашка на стикер"
+            title="Брендирование: никнейм, логотип или плашка сразу на все выбранные эмодзи"
           >
-            <Tag size={14} /> Бренд
+            <Tag size={14} /> Бренд{selectedCount > 1 ? ` (${selectedCount})` : ''}
           </button>
           <button
             type="button"
@@ -896,17 +1372,89 @@ export default function App() {
               >
                 <Sparkles size={14} />
                 <span>
-                  {brandInfo.count > 0
-                    ? `Настроить бренд «${brandInfo.options.text || 'ЛОГО'}»`
-                    : 'Добавить ник / логотип на этот шаблон'}
+                  {selectedCount > 1
+                    ? `Изменить бренд сразу на ${selectedCount} эмодзи`
+                    : brandInfo.count > 0
+                      ? `Настроить бренд «${brandInfo.options.text || 'ЛОГО'}»`
+                      : 'Добавить ник / логотип на этот шаблон'}
                 </span>
               </button>
+
+              {/* Multi-Select Toolbar */}
+              <div className="multi-select-box">
+                <div className="multi-select-top">
+                  <button
+                    type="button"
+                    className={`multi-toggle-btn ${multiMode || selectedCount > 1 ? 'on' : ''}`}
+                    onClick={() => setMultiMode((v) => !v)}
+                    title="Когда включено, клик по карточкам выбирает сразу много эмодзи для одновременной переделки"
+                  >
+                    <CheckSquare size={14} />
+                    <span>
+                      {selectedCount > 1
+                        ? `Мультивыбор: ${selectedCount} шт.`
+                        : multiMode
+                          ? 'Кликайте по эмодзи…'
+                          : 'Выбрать несколько'}
+                    </span>
+                  </button>
+
+                  {selectedCount > 1 && (
+                    <button
+                      type="button"
+                      className="mini-btn"
+                      onClick={collapseToSingle}
+                      title="Оставить только 1 эмодзи"
+                    >
+                      <X size={12} /> Сброс
+                    </button>
+                  )}
+                </div>
+
+                <div className="multi-quick-row">
+                  <button
+                    type="button"
+                    className="mini-btn"
+                    onClick={() =>
+                      selectPresetByIds(['shablony1_012', 'shablony1_013', 'shablony1_014'])
+                    }
+                    title="Выбрать 3 части широкого баннера XXX SHOP вместе"
+                  >
+                    <Columns3 size={12} /> Баннер 3 шт.
+                  </button>
+                  <button
+                    type="button"
+                    className="mini-btn"
+                    onClick={() =>
+                      selectPresetByIds([
+                        'shablony1_012',
+                        'shablony1_013',
+                        'shablony1_014',
+                        'shablony1_015',
+                      ])
+                    }
+                    title="Выбрать весь набор XXX (баннер 3 шт. + 3D-значок XXX)"
+                  >
+                    Набор XXX (4)
+                  </button>
+                  {filteredCatalog.length > 1 && (
+                    <button
+                      type="button"
+                      className="mini-btn"
+                      onClick={() => openCatalogBatchForEdit(filteredCatalog)}
+                      title="Выбрать все показанные ниже эмодзи (до 60 шт.) для одновременного редактирования"
+                    >
+                      Все ({Math.min(MAX_MULTI_SELECT, filteredCatalog.length)})
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <div className="tpl-search-wrap">
                 <input
                   type="text"
                   className="tpl-search-input"
-                  placeholder="Поиск (Корона, Щит, #001...)"
+                  placeholder="Поиск (Баннер, Корона, Щит, #001...)"
                   value={tplSearch}
                   onChange={(e) => setTplSearch(e.target.value)}
                 />
@@ -936,46 +1484,72 @@ export default function App() {
                 ))}
               </div>
 
-              {tplCategory !== 'all' && filteredCatalog.length > 1 && filteredCatalog.length <= 40 && (
-                <button
-                  type="button"
-                  className="sidebar-batch-pack-btn"
-                  onClick={() => handleAddBatchToPack(filteredCatalog)}
-                >
-                  <Plus size={13} />
-                  <span>Закинуть все {filteredCatalog.length} в пак для общей переделки</span>
-                </button>
-              )}
-
               <div className="templates">
-                {filteredCatalog.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`template-card ${activeCatalogId === item.id ? 'active' : ''}`}
-                    onClick={() => pickCatalogSidebar(item, false)}
-                    title={item.name}
-                  >
-                    <LazyThumb item={item} />
-                    <div className="template-card-foot">
-                      <span className="template-card-title">
-                        {item.category === 'shablony1'
-                          ? item.name.replace(/^Шаблон\s+#\d+\s*·?\s*/, '') || `#${String(item.num).padStart(2, '0')}`
-                          : `#${String(item.num).padStart(3, '0')}`}
-                      </span>
-                      <button
-                        type="button"
-                        className="template-card-plus"
-                        title="Добавить в пак"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          pickCatalogSidebar(item, true);
-                        }}
-                      >
-                        <Plus size={12} />
-                      </button>
+                {filteredCatalog.map((item) => {
+                  const selOrder = selectedCatalogOrder.get(item.id) ?? 0;
+                  const isSel = selOrder > 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`template-card ${isSel ? 'active' : ''}`}
+                      onClick={(e) => {
+                        if (multiMode || e.ctrlKey || e.metaKey || e.shiftKey) {
+                          toggleCatalogMulti(item);
+                        } else {
+                          setMultiMode(false);
+                          pickCatalogSidebar(item, false);
+                        }
+                      }}
+                      title={`${item.name} (галочка в углу — выбрать сразу несколько)`}
+                    >
+                      <div className="template-card-thumb-wrap">
+                        <LazyThumb item={item} />
+                        <button
+                          type="button"
+                          className={`card-check-btn ${isSel ? 'checked' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCatalogMulti(item);
+                          }}
+                          title={
+                            isSel
+                              ? 'Убрать из мультивыбора'
+                              : 'Добавить этот эмодзи к мультивыбору'
+                          }
+                        >
+                          {isSel ? (
+                            selectedCount > 1 ? (
+                              <span>{selOrder}</span>
+                            ) : (
+                              <Check size={11} strokeWidth={3} />
+                            )
+                          ) : null}
+                        </button>
+                      </div>
+                      <div className="template-card-foot">
+                        <span className="template-card-title">
+                          {item.category === 'shablony1'
+                            ? item.name
+                                .replace(/^Баннер\s+(\d\/3)\s*·\s*/, '$1 ')
+                                .replace(/^Значок\s+3D\s*·\s*/, '3D ')
+                                .replace(/^Шаблон\s*(?:#\d+\s*)?·?\s*/, '')
+                            : `#${String(item.num).padStart(3, '0')}`}
+                        </span>
+                        <button
+                          type="button"
+                          className="template-card-plus"
+                          title="Добавить в пак"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pickCatalogSidebar(item, true);
+                          }}
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {filteredCatalog.length === 0 && (
                   <div className="tpl-empty">Ничего не найдено</div>
                 )}
@@ -987,7 +1561,10 @@ export default function App() {
             <BrandPanel
               slotCount={brandInfo.count}
               isInjected={brandInfo.isInjected}
+              origText={brandInfo.origText}
               options={brandInfo.options}
+              selectedCount={selectedCount}
+              anyNeedsOverlay={anySelectedNeedsOverlay}
               packCount={pack.length}
               busy={fontBusy}
               uploadedLogo={uploadedLogo}
@@ -1000,28 +1577,35 @@ export default function App() {
           )}
 
           {tab === 'layers' && (
-            <LayersPanel
-              tree={tree}
-              selected={activeSel}
-              selectedOpacity={selectedOpacity}
-              onSelect={setSelected}
-              onToggle={(p) => edit((d) => toggleHidden(d, p))}
-              onRename={(p, name) => edit((d) => rename(d, p, name))}
-              onMove={(dir) => {
-                if (!activeSel) return;
-                let moved = activeSel;
-                edit((d) => {
-                  moved = moveNode(d, activeSel, dir);
-                });
-                setSelected(moved);
-              }}
-              onDuplicate={() => activeSel && edit((d) => duplicateNode(d, activeSel))}
-              onDelete={removeSelected}
-              onTransform={(delta, mergeKey) => {
-                if (!activeSel) return;
-                edit((d) => adjustNodeTransform(d, activeSel, delta), mergeKey ?? null);
-              }}
-            />
+            <>
+              {selectedCount > 1 && (
+                <div className="layers-focus-note">
+                  Слои открыты для <strong>«{primarySticker.name}»</strong> (кликните по другому эмодзи на холсте для смены)
+                </div>
+              )}
+              <LayersPanel
+                tree={tree}
+                selected={activeSel}
+                selectedOpacity={selectedOpacity}
+                onSelect={setSelectedNodePath}
+                onToggle={(p) => editPrimary((d) => toggleHidden(d, p))}
+                onRename={(p, name) => editPrimary((d) => rename(d, p, name))}
+                onMove={(dir) => {
+                  if (!activeSel) return;
+                  let moved = activeSel;
+                  editPrimary((d) => {
+                    moved = moveNode(d, activeSel, dir);
+                  });
+                  setSelectedNodePath(moved);
+                }}
+                onDuplicate={() => activeSel && editPrimary((d) => duplicateNode(d, activeSel))}
+                onDelete={removeSelected}
+                onTransform={(delta, mergeKey) => {
+                  if (!activeSel) return;
+                  editPrimary((d) => adjustNodeTransform(d, activeSel, delta), mergeKey ?? null);
+                }}
+              />
+            </>
           )}
 
           {tab === 'text' && <TextPanel onAdd={addText} busy={fontBusy} />}
@@ -1041,9 +1625,15 @@ export default function App() {
           if (e.dataTransfer.files?.length) openFiles(e.dataTransfer.files);
         }}
       >
-        <Preview doc={outDoc} />
+        <Preview
+          doc={outDoc}
+          selectedStickers={previewStickers}
+          primaryId={primarySticker.id}
+          onSelectPrimary={setPrimaryFocus}
+          onCollapseToSingle={collapseToSingle}
+        />
         <p className="muted small hint">
-          Перетащите сюда <code>.svg</code> / <code>.png</code> логотип, <code>.tgs</code> или архив <code>.zip</code>
+          Перетащите сюда <code>.svg</code> / <code>.png</code> логотип, несколько <code>.tgs</code> или архив <code>.zip</code>
         </p>
       </main>
 
@@ -1051,18 +1641,19 @@ export default function App() {
         <PalettePanel
           entries={palette}
           scopeName={activeSel ? (selectedNode?.nm || 'выбранный слой') : null}
+          selectedCount={selectedCount}
           packCount={pack.length}
-          onClearScope={() => setSelected(null)}
+          onClearScope={() => setSelectedNodePath(null)}
           onChange={(from, to) =>
-            edit(
-              inScope((n) => replaceColor(n, from, to)),
-              `color:${activeSel?.join('.')}`,
+            runColorMutation(
+              (n) => replaceColor(n, from, to),
+              `color:${activeSel?.join('.') ?? 'multi'}`,
             )
           }
           onTheme={(themeId) =>
-            edit(
-              inScope((n, skipBrand) => applyColorTheme(n, themeId, { skipBrandSlot: skipBrand })),
-              `theme:${activeSel?.join('.') ?? 'all'}`,
+            runColorMutation(
+              (n, skipBrand) => applyColorTheme(n, themeId, { skipBrandSlot: skipBrand }),
+              `theme:${activeSel?.join('.') ?? 'multi'}`,
             )
           }
           onThemeToPack={handleApplyThemeToPack}
@@ -1080,20 +1671,27 @@ export default function App() {
 
         <ChecksPanel
           checks={checks}
-          onTrim={() => edit(trimToLimit)}
+          onTrim={() => editTargets(trimToLimit)}
           onOptimize={() => {
-            const next = { ...optimize(doc), fx: doc.fx };
-            const saved = tgsSize(applyShapeEffects(doc)) - tgsSize(applyShapeEffects(next));
-            dispatch({ type: 'apply', next, key: null, at: Date.now() });
-            say(saved > 0 ? `Файл сжат на ${formatKb(saved)}` : 'Файл уже оптимален');
+            let saved = 0;
+            editTargets((d) => {
+              const before = tgsSize(applyShapeEffects(d));
+              const opt = { ...optimize(d), fx: d.fx };
+              saved += Math.max(0, before - tgsSize(applyShapeEffects(opt)));
+              Object.assign(d, opt);
+            });
+            say(saved > 0 ? `Сжато суммарно на ${formatKb(saved)}` : 'Файлы уже оптимальны');
           }}
         />
       </aside>
 
       <PackTray
         pack={pack}
-        activeIndex={activePackIndex}
-        onSelect={selectPackSticker}
+        selectedIds={selectedIds}
+        primaryId={primarySticker.id}
+        onSelect={handlePackSelect}
+        onSelectAll={handleSelectAllInPack}
+        onCollapseSelection={collapseToSingle}
         onAdd={() => {
           setModalAddToPack(true);
           setShowModal(true);
@@ -1101,8 +1699,8 @@ export default function App() {
         onImportFiles={() => fileInput.current?.click()}
         onDuplicate={duplicatePackSticker}
         onRemove={removePackSticker}
-        onClearOther={clearOtherPackStickers}
-        onDownloadZip={downloadPackZip}
+        onClearOther={clearUnselectedPackStickers}
+        onDownloadZip={() => downloadZipList(pack, 'magnat_emoji_pack')}
         isOpen={showPackTray}
         onToggle={() => setShowPackTray((v) => !v)}
       />
@@ -1114,11 +1712,12 @@ export default function App() {
           if (isAdd) {
             addToPack(newDoc, item.name, item.id);
           } else {
-            load(newDoc, item.name, item.id);
+            openSingleSticker(newDoc, item.name, item.id);
             say(`Открыт «${item.name}». Отменить — Ctrl+Z.`);
             setShowModal(false);
           }
         }}
+        onOpenMultiForEdit={openCatalogBatchForEdit}
         onAddBatchToPack={handleAddBatchToPack}
         defaultAddToPack={modalAddToPack}
       />

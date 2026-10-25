@@ -29,12 +29,15 @@ import {
 interface BrandPanelProps {
   slotCount: number;
   isInjected: boolean;
+  origText: string;
   options: BrandSlotOptions;
+  selectedCount: number;
+  anyNeedsOverlay: boolean;
   packCount: number;
   busy: boolean;
   uploadedLogo: VectorLogo | null;
   onUploadedLogoChange: (logo: VectorLogo) => void;
-  onChange: (next: BrandSlotOptions, mergeKey?: string) => void;
+  onChange: (next: BrandSlotOptions, mergeKey?: string, keepStickerColor?: boolean) => void;
   onReset: () => void;
   onApplyToPack: (opts: BrandSlotOptions, keepStickerColor: boolean) => void;
   onSay: (msg: string, bad?: boolean) => void;
@@ -82,7 +85,10 @@ function slotWord(n: number): string {
 export function BrandPanel({
   slotCount,
   isInjected,
+  origText,
   options,
+  selectedCount,
+  anyNeedsOverlay,
   packCount,
   busy,
   uploadedLogo,
@@ -92,6 +98,7 @@ export function BrandPanel({
   onApplyToPack,
   onSay,
 }: BrandPanelProps) {
+  const [keepMultiColor, setKeepMultiColor] = useState(false);
   const [keepPackColor, setKeepPackColor] = useState(false);
   const [traceBusy, setTraceBusy] = useState(false);
   const [lastRasterFile, setLastRasterFile] = useState<File | null>(null);
@@ -101,24 +108,30 @@ export function BrandPanel({
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const hasBuiltInSlot = slotCount > 0 && !isInjected;
-  const showOverlayPlacement = slotCount === 0 || isInjected;
+  const showOverlayPlacement = slotCount === 0 || isInjected || anyNeedsOverlay;
 
   const update = (patch: Partial<BrandSlotOptions>, mergeKey?: string) => {
     const next: BrandSlotOptions = { ...options, ...patch };
-    if (!hasBuiltInSlot && next.mode === 'text') {
+    if ((!hasBuiltInSlot || anyNeedsOverlay) && next.mode === 'text') {
       next.useOriginalGlyphs = false;
     }
-    onChange(next, mergeKey);
+    onChange(next, mergeKey, selectedCount > 1 ? keepMultiColor : false);
   };
 
   const switchMode = (nextMode: BrandMode) => {
     if (nextMode === 'text') {
-      update({ mode: 'text', hidden: false, useOriginalGlyphs: hasBuiltInSlot ? options.useOriginalGlyphs : false });
+      update({
+        mode: 'text',
+        hidden: false,
+        useOriginalGlyphs: hasBuiltInSlot && !anyNeedsOverlay ? options.useOriginalGlyphs : false,
+      });
       return;
     }
     const fallbackLogo = options.logo ?? uploadedLogo ?? BUILTIN_LOGOS[0];
     const nextText =
-      nextMode === 'logo+text' && options.useOriginalGlyphs ? 'MAGNAT' : options.text || 'VIP';
+      nextMode === 'logo+text' && options.useOriginalGlyphs
+        ? origText
+        : options.text || 'VIP';
     update({
       mode: nextMode,
       logo: fallbackLogo,
@@ -153,7 +166,7 @@ export function BrandPanel({
       });
       onSay(
         isSvg
-          ? `Векторный SVG-логотип «${vec.name}» установлен на стикер!`
+          ? `Векторный SVG-логотип «${vec.name}» установлен${selectedCount > 1 ? ` на ${selectedCount} эмодзи` : ''}!`
           : `Картинка «${vec.name}» переведена в чистый вектор Telegram (${vec.layers.length} цв.)!`,
       );
     } catch (e) {
@@ -169,12 +182,38 @@ export function BrandPanel({
 
   return (
     <div className="brand-panel pad">
+      {selectedCount > 1 && (
+        <div className="multi-edit-callout">
+          <div className="multi-edit-callout-top">
+            <Sparkles size={14} />
+            <strong>Мульти-режим: выбрано {selectedCount} эмодзи</strong>
+          </div>
+          <span className="muted tiny">
+            Любой текст, логотип, плашка и размер ниже применяются сразу ко всем {selectedCount} выбранным эмодзи.
+          </span>
+          {(isTextVisible || options.tintLogo) && (
+            <label className="inline-check tiny" style={{ marginTop: 2 }}>
+              <input
+                type="checkbox"
+                checked={keepMultiColor}
+                onChange={(e) => setKeepMultiColor(e.target.checked)}
+              />
+              <span>Сохранять свой родной цвет надписи у каждого эмодзи</span>
+            </label>
+          )}
+        </div>
+      )}
+
       {slotCount === 0 ? (
         <div className="brand-inject-cta">
           <div className="brand-inject-head">
             <Sparkles size={15} />
             <div>
-              <strong>Чистый шаблон без надписи</strong>
+              <strong>
+                {selectedCount > 1
+                  ? `Шаблоны без надписи (${selectedCount} шт.)`
+                  : 'Чистый шаблон без надписи'}
+              </strong>
               <span className="muted tiny">
                 Добавьте свой ник, логотип или VIP-плашку в 1 клик
               </span>
@@ -187,7 +226,11 @@ export function BrandPanel({
             onClick={() => update({ hidden: false })}
           >
             <PlusCircle size={15} />
-            <span>Добавить бренд-слот на стикер</span>
+            <span>
+              {selectedCount > 1
+                ? `Добавить бренд-слот на все ${selectedCount} эмодзи`
+                : 'Добавить бренд-слот на стикер'}
+            </span>
           </button>
         </div>
       ) : (
@@ -195,7 +238,11 @@ export function BrandPanel({
           <div className="brand-slot-badge">
             <Sparkles size={14} />
             <span>
-              {isInjected ? 'Бренд-плашка на шаблоне' : `Слот бренда · ${slotWord(slotCount)}`}
+              {selectedCount > 1
+                ? `Слоты на ${selectedCount} эмодзи`
+                : isInjected
+                  ? 'Бренд-плашка на шаблоне'
+                  : `Слот бренда · ${slotWord(slotCount)}`}
             </span>
           </div>
           <div className="brand-slot-top-btns">
@@ -214,8 +261,8 @@ export function BrandPanel({
               onClick={onReset}
               title={
                 isInjected
-                  ? 'Убрать добавленный бренд-слот с шаблона'
-                  : 'Вернуть оригинальную векторную надпись MAGNAT'
+                  ? 'Убрать добавленный бренд-слот'
+                  : `Вернуть оригинальную векторную надпись (${origText})`
               }
             >
               {isInjected ? <Trash2 size={13} /> : <RotateCcw size={13} />}
@@ -400,16 +447,18 @@ export function BrandPanel({
             <span>
               {options.mode === 'logo+text'
                 ? 'Текст рядом с логотипом'
-                : hasBuiltInSlot
-                  ? 'Текст вместо MAGNAT (с сохранением анимации)'
-                  : 'Текст бренда / никнейм на шаблоне'}
+                : selectedCount > 1
+                  ? `Единая надпись сразу для ${selectedCount} эмодзи`
+                  : hasBuiltInSlot
+                    ? `Текст вместо «${origText}» (с сохранением анимации)`
+                    : 'Текст бренда / никнейм на шаблоне'}
             </span>
             <input
               type="text"
               className="brand-text-input"
               value={options.text}
-              maxLength={22}
-              placeholder="Введите ваш ник или бренд..."
+              maxLength={24}
+              placeholder="Введите ваш ник, магазин или бренд..."
               style={{
                 fontFamily:
                   hasBuiltInSlot && options.useOriginalGlyphs
@@ -435,21 +484,21 @@ export function BrandPanel({
             <span>Шрифт надписи</span>
             <select
               value={
-                hasBuiltInSlot && options.mode === 'text' && options.useOriginalGlyphs
+                hasBuiltInSlot && !anyNeedsOverlay && options.mode === 'text' && options.useOriginalGlyphs
                   ? '__orig__'
                   : options.fontId
               }
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === '__orig__') {
-                  update({ mode: 'text', text: 'MAGNAT', useOriginalGlyphs: true });
+                  update({ mode: 'text', text: origText, useOriginalGlyphs: true });
                 } else {
                   update({ fontId: v as FontId, useOriginalGlyphs: false });
                 }
               }}
             >
-              {hasBuiltInSlot && options.mode === 'text' && (
-                <option value="__orig__">Оригинальный вектор MAGNAT</option>
+              {hasBuiltInSlot && !anyNeedsOverlay && options.mode === 'text' && (
+                <option value="__orig__">Оригинальный вектор ({origText})</option>
               )}
               {FONTS.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -667,7 +716,7 @@ export function BrandPanel({
           </label>
         )}
 
-        {isTextVisible && !(hasBuiltInSlot && options.useOriginalGlyphs) && (
+        {isTextVisible && !(hasBuiltInSlot && !anyNeedsOverlay && options.useOriginalGlyphs) && (
           <label className="field">
             <div className="slider-head">
               <span>Межбуквенный интервал · {options.letterSpacing}</span>
@@ -688,7 +737,7 @@ export function BrandPanel({
         )}
       </div>
 
-      {packCount > 1 && (
+      {packCount > selectedCount && packCount > 1 && (
         <div className="brand-batch-box">
           {(isTextVisible || options.tintLogo) && (
             <label className="inline-check small muted">
@@ -697,7 +746,7 @@ export function BrandPanel({
                 checked={keepPackColor}
                 onChange={(e) => setKeepPackColor(e.target.checked)}
               />
-              <span>Сохранить родной цвет слота у эмодзи MAGNAT в паке</span>
+              <span>Сохранить родной цвет слота у остальных эмодзи в паке</span>
             </label>
           )}
           <button
@@ -709,7 +758,7 @@ export function BrandPanel({
             <CheckCheck size={16} />
             <span>
               {options.mode === 'logo'
-                ? `Поставить логотип во весь пак (${packCount})`
+                ? `Поставить логотип вообще во весь пак (${packCount})`
                 : options.mode === 'logo+text'
                   ? `Поставить лого + ник во весь пак (${packCount})`
                   : `Применить бренд ко всему паку (${packCount})`}

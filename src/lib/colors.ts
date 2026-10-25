@@ -261,8 +261,9 @@ export function applyColorTheme(
       if (l > 0.96 || (s < 0.06 && l > 0.88) || l < 0.05) return null;
 
       if (theme.silver) {
+        if (s < 0.06 && l < 0.35) return null;
         const sl = Math.max(0.08, Math.min(0.95, l * theme.lightScale + theme.lightLift));
-        return hslToHex(theme.hue, Math.min(0.09, s * theme.satScale + 0.03), sl);
+        return hslToHex(theme.hue, Math.max(0.065, Math.min(0.11, s * theme.satScale + 0.065)), sl);
       }
 
       // Leave neutral dark grays (e.g. shadows/eyes) neutral if saturation is near zero

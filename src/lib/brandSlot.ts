@@ -54,6 +54,9 @@ export interface BrandSlotSnapshot {
   w: number;
   h: number;
   origHex: string;
+  origStrokeHex: string | null;
+  origStrokeWidth: number;
+  origUiStrokeWidth: number;
   origFillRule: number;
   origOpacity?: unknown;
   origShapes: ShapeItem[];
@@ -82,6 +85,7 @@ export const DEFAULT_BRAND_OPTIONS: BrandSlotOptions = {
 };
 
 export const INJECTED_BRAND_LAYER_NAME = 'Бренд-слот';
+const EXTRUDE_SHADOW_NAME = 'tier_extrude_shadow';
 
 export function isInjectedBrandLayer(layer: Layer | undefined): boolean {
   if (!layer || typeof layer !== 'object') return false;
@@ -144,6 +148,156 @@ export function findBrandSlots(doc: LottieDoc): ShapeItem[] {
   return slots;
 }
 
+/**
+ * Computes effective horizontal-to-vertical scale ratio (`sx / sy`) inherited from
+ * ancestor layers (e.g. `0.7879` on wide 3-tile banner templates) so replacement
+ * fonts and circular logos render without horizontal distortion.
+ */
+function detectSlotAspectX(doc: LottieDoc, targetGr: ShapeItem): number {
+  const containsGroup = (items: ShapeItem[] | undefined): boolean => {
+    if (!items) return false;
+    for (const it of items) {
+      if (it === targetGr) return true;
+      if (it.ty === 'gr' && containsGroup(it.it)) return true;
+    }
+    return false;
+  };
+
+  const checkLayerSet = (layers: Layer[] | undefined): number | null => {
+    if (!layers) return null;
+    const owner = layers.find((l) => containsGroup(l.shapes));
+    if (!owner) return null;
+
+    let ratio = 1;
+    const visited = new Set<number>();
+    let cur: Layer | undefined = owner;
+    while (cur) {
+      const sProp = cur.ks?.s as { a?: number; k?: unknown } | undefined;
+      if (sProp && !sProp.a && Array.isArray(sProp.k)) {
+        const sx = Number(sProp.k[0]);
+        const sy = Number(sProp.k[1]);
+        if (Number.isFinite(sx) && Number.isFinite(sy) && Math.abs(sx) > 1 && Math.abs(sy) > 1) {
+          ratio *= Math.abs(sx / sy);
+        }
+      }
+      if (cur.parent === undefined || visited.has(cur.parent)) break;
+      visited.add(cur.parent);
+      cur = layers.find((l) => l.ind === cur!.parent);
+    }
+    return ratio;
+  };
+
+  const fromRoot = checkLayerSet(doc.layers);
+  if (fromRoot !== null) return fromRoot;
+  for (const asset of doc.assets ?? []) {
+    const fromAsset = checkLayerSet(asset.layers);
+    if (fromAsset !== null) return fromAsset;
+  }
+  return 1;
+}
+
+/** Finds the sibling `tier_extrude_shadow` group next to `targetGr` if present (e.g. 3D badge templates). */
+function findSiblingExtrudeShadow(doc: LottieDoc, targetGr: ShapeItem): ShapeItem | null {
+  const searchItems = (items: ShapeItem[] | undefined): ShapeItem | null => {
+    if (!items) return null;
+    if (items.includes(targetGr)) {
+      return items.find((x) => x.ty === 'gr' && x.nm === EXTRUDE_SHADOW_NAME) ?? null;
+    }
+    for (const it of items) {
+      if (it.ty === 'gr') {
+        const found = searchItems(it.it);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  for (const l of doc.layers) {
+    const found = searchItems(l.shapes);
+    if (found) return found;
+  }
+  for (const a of doc.assets ?? []) {
+    for (const l of a.layers ?? []) {
+      const found = searchItems(l.shapes);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+interface ExtrudeShadowSnap {
+  dx: number;
+  dy: number;
+  fillHex: string;
+  strokeHex: string | null;
+  strokeWidth: number;
+  origItems: ShapeItem[];
+}
+
+function ensureExtrudeShadowSnap(shadowGr: ShapeItem, mainSnap: BrandSlotSnapshot): ExtrudeShadowSnap {
+  if (shadowGr._extrudeSnap) return shadowGr._extrudeSnap as ExtrudeShadowSnap;
+  const items = shadowGr.it ?? [];
+  const shs = collectAllShapes(items);
+  const pts = shs.flatMap((p) => {
+    try {
+      return pathPoints(p);
+    } catch {
+      return [];
+    }
+  });
+  let cx = mainSnap.cx + 28;
+  let cy = mainSnap.cy;
+  if (pts.length > 0) {
+    cx = (Math.min(...pts.map((p) => p[0])) + Math.max(...pts.map((p) => p[0]))) / 2;
+    cy = (Math.min(...pts.map((p) => p[1])) + Math.max(...pts.map((p) => p[1]))) / 2;
+  }
+  const fl = items.find((x) => x.ty === 'fl');
+  const st = items.find((x) => x.ty === 'st');
+  const snap: ExtrudeShadowSnap = {
+    dx: round(cx - mainSnap.cx, 2),
+    dy: round(cy - mainSnap.cy, 2),
+    fillHex: fl ? readFillColorHex(fl) : '#12141a',
+    strokeHex: st ? readFillColorHex(st) : '#4e5769',
+    strokeWidth: st ? readStrokeWidth(st) : 30,
+    origItems: structuredClone(items),
+  };
+  shadowGr._extrudeSnap = snap;
+  return snap;
+}
+
+function syncExtrudeShadow(
+  doc: LottieDoc,
+  slotGr: ShapeItem,
+  mainSnap: BrandSlotSnapshot,
+  opts: BrandSlotOptions,
+  isExactOrig: boolean,
+): void {
+  const shadowGr = findSiblingExtrudeShadow(doc, slotGr);
+  if (!shadowGr) return;
+  const shSnap = ensureExtrudeShadowSnap(shadowGr, mainSnap);
+  shadowGr.hd = opts.hidden;
+  if (opts.hidden) return;
+
+  if (isExactOrig) {
+    shadowGr.it = structuredClone(shSnap.origItems);
+    return;
+  }
+
+  const fgShapes = collectAllShapes(slotGr.it).map((s) => {
+    const c = structuredClone(s);
+    c.nm = 'shadow_glyph';
+    transformPath(c, (pt) => [pt[0] + shSnap.dx, pt[1] + shSnap.dy]);
+    return c;
+  });
+
+  const trItem = shadowGr.it?.find((x) => x.ty === 'tr') ?? groupTransform();
+  const paints: ShapeItem[] = [fill(shSnap.fillHex, 100)];
+  if (shSnap.strokeHex && shSnap.strokeWidth > 0) {
+    const scaledStroke = round(shSnap.strokeWidth * Math.max(0.4, opts.scale / 100), 2);
+    paints.push(stroke(shSnap.strokeHex, scaledStroke, 100));
+  }
+  shadowGr.it = [...fgShapes, ...paints, trItem];
+}
+
 function slotPositionY(pos: BrandSlotPosition): number {
   if (pos === 'top') return 90;
   if (pos === 'center') return CANVAS / 2;
@@ -171,6 +325,9 @@ function createInjectedBrandLayer(doc: LottieDoc, opts: BrandSlotOptions): Shape
       w: 310,
       h: 64,
       origHex: '#ffffff',
+      origStrokeHex: null,
+      origStrokeWidth: 0,
+      origUiStrokeWidth: 4,
       origFillRule: 1,
       origShapes: [],
       injected: true,
@@ -197,11 +354,21 @@ function readFillColorHex(fl: ShapeItem | undefined): string {
   return '#ffffff';
 }
 
+function readStrokeWidth(st: ShapeItem | undefined): number {
+  if (!st || !st.w || typeof st.w !== 'object') return 0;
+  const w = (st.w as { k?: unknown }).k;
+  if (typeof w === 'number') return w;
+  if (Array.isArray(w) && typeof w[0] === 'number') return w[0];
+  return 0;
+}
+
 function collectAllShapes(items: ShapeItem[] | undefined, out: ShapeItem[] = []): ShapeItem[] {
   if (!items) return out;
   for (const it of items) {
     if (it.ty === 'sh') out.push(it);
-    else if (it.ty === 'gr' && it.nm !== 'brand_plate') collectAllShapes(it.it, out);
+    else if (it.ty === 'gr' && it.nm !== 'brand_plate' && it.nm !== EXTRUDE_SHADOW_NAME) {
+      collectAllShapes(it.it, out);
+    }
   }
   return out;
 }
@@ -228,14 +395,26 @@ function ensureSnapshot(gr: ShapeItem, parentInjected = false): BrandSlotSnapsho
     minY = Math.min(...pts.map((p) => p[1]));
     maxY = Math.max(...pts.map((p) => p[1]));
   }
+  const h = parentInjected ? 64 : Math.max(6, round(maxY - minY, 2));
   const fl = items.find((x) => x.ty === 'fl');
+  const st = items.find((x) => x.ty === 'st');
+  const origStrokeWidth = st ? readStrokeWidth(st) : 0;
+  const strokeUnit = Math.max(0.25, h / 46) * 2;
+  const origUiStrokeWidth =
+    origStrokeWidth > 0
+      ? Math.max(1, Math.min(16, round(origStrokeWidth / strokeUnit, 1)))
+      : 4;
+
   const snap: BrandSlotSnapshot = {
     origName: gr.nm,
     cx: parentInjected ? 0 : round((minX + maxX) / 2, 2),
     cy: parentInjected ? 0 : round((minY + maxY) / 2, 2),
     w: parentInjected ? 310 : Math.max(8, round(maxX - minX, 2)),
-    h: parentInjected ? 64 : Math.max(6, round(maxY - minY, 2)),
+    h,
     origHex: readFillColorHex(fl),
+    origStrokeHex: st && origStrokeWidth > 0 ? readFillColorHex(st) : null,
+    origStrokeWidth,
+    origUiStrokeWidth,
     origFillRule: typeof fl?.r === 'number' ? fl.r : 1,
     origOpacity: fl?.o ? structuredClone(fl.o) : undefined,
     origShapes: parentInjected ? [] : structuredClone(directShapes),
@@ -245,19 +424,29 @@ function ensureSnapshot(gr: ShapeItem, parentInjected = false): BrandSlotSnapsho
   return snap;
 }
 
+function detectOrigText(doc: LottieDoc): string {
+  const nm = typeof doc.nm === 'string' ? doc.nm : '';
+  if (/баннер/i.test(nm)) return 'XXX SHOP';
+  if (/xxx/i.test(nm)) return 'XXX';
+  return 'MAGNAT';
+}
+
 /** Reads the current brand slot info and options from a Lottie document. */
 export function readBrandSlotInfo(doc: LottieDoc): {
   count: number;
   isInjected: boolean;
+  origText: string;
   options: BrandSlotOptions;
 } {
   const slots = findBrandSlots(doc);
   const hasInjected = doc.layers.some((l) => isInjectedBrandLayer(l));
+  const origText = detectOrigText(doc);
 
   if (!slots.length) {
     return {
       count: 0,
       isInjected: false,
+      origText,
       options: {
         ...DEFAULT_BRAND_OPTIONS,
         plateStyle: 'dark',
@@ -270,19 +459,21 @@ export function readBrandSlotInfo(doc: LottieDoc): {
     return {
       count: slots.length,
       isInjected: hasInjected,
+      origText,
       options: { ...DEFAULT_BRAND_OPTIONS, ...(doc._brandState as Partial<BrandSlotOptions>) },
     };
   }
-  const firstFl = (slots[0].it ?? []).find((x) => x.ty === 'fl');
-  const origHex = slots[0]._brandSlot
-    ? (slots[0]._brandSlot as BrandSlotSnapshot).origHex
-    : readFillColorHex(firstFl);
+  const snap = ensureSnapshot(slots[0], hasInjected);
   return {
     count: slots.length,
     isInjected: hasInjected,
+    origText,
     options: {
       ...DEFAULT_BRAND_OPTIONS,
-      fillHex: origHex,
+      text: hasInjected ? DEFAULT_BRAND_OPTIONS.text : origText,
+      fillHex: snap.origHex,
+      strokeHex: snap.origStrokeHex,
+      strokeWidth: snap.origUiStrokeWidth,
       useOriginalGlyphs: !hasInjected,
       hidden: Boolean(slots[0].hd),
     },
@@ -314,9 +505,10 @@ function buildPlateGroup(
   cy: number,
   contentW: number,
   contentH: number,
+  aspectX = 1,
 ): ShapeItem | null {
   if (style === 'none' || contentW <= 0 || contentH <= 0) return null;
-  const padX = Math.max(12, contentH * 0.54);
+  const padX = Math.max(12, contentH * 0.54) / Math.max(0.3, aspectX);
   const padY = Math.max(7, contentH * 0.34);
   const w = round(contentW + padX * 2, 1);
   const h = round(contentH + padY * 2, 1);
@@ -401,14 +593,13 @@ function buildLogoGroups(
     }
   }
 
-  // Lottie renders group items from end (bottom) to start (top), so reverse DOM painter's order!
   return groups.reverse();
 }
 
 /**
- * Replaces, recolors, outlines, scales, or shifts all MAGNAT brand slots in `doc`
+ * Replaces, recolors, outlines, scales, or shifts all brand slots in `doc`
  * with custom text, a custom vector/traced logo, or `[Logo + Text]` side-by-side.
- * If `doc` has no built-in MAGNAT slot and `autoCreate !== false`, injects a clean
+ * If `doc` has no built-in brand slot and `autoCreate !== false`, injects a clean
  * top-level `Бренд-слот` overlay layer so any template can be branded!
  */
 export function applyBrandSlot(
@@ -442,6 +633,9 @@ export function applyBrandSlot(
 
   for (const gr of slots) {
     const snap = ensureSnapshot(gr, injectedSlots.has(gr));
+    const aspectX = snap.injected ? 1 : detectSlotAspectX(doc, gr);
+    const visW = snap.w * aspectX;
+
     const existingItems = gr.it ?? [];
     const trItem = existingItems.find((x) => x.ty === 'tr') ?? groupTransform();
     const otherMods = existingItems.filter(
@@ -462,15 +656,16 @@ export function applyBrandSlot(
       const logo = opts.logo;
       const lCx = logo.minX + logo.width / 2;
       const lCy = logo.minY + logo.height / 2;
-      const fitScale = Math.min(snap.w / logo.width, (snap.h * 1.55) / logo.height) * userScale;
+      const fitY = Math.min(visW / logo.width, (snap.h * 1.55) / logo.height) * userScale;
+      const fitX = fitY / aspectX;
 
       const logoGroups = buildLogoGroups(
         logo,
         (pt): Vec => [
-          (pt[0] - lCx) * fitScale + snap.cx + dx,
-          (pt[1] - lCy) * fitScale + snap.cy + dy,
+          (pt[0] - lCx) * fitX + snap.cx + dx,
+          (pt[1] - lCy) * fitY + snap.cy + dy,
         ],
-        fitScale,
+        fitY,
         opts,
         effectiveHex,
         localStrokeWidth,
@@ -480,12 +675,14 @@ export function applyBrandSlot(
         opts.plateStyle,
         snap.cx + dx,
         snap.cy + dy,
-        logo.width * fitScale,
-        logo.height * fitScale,
+        logo.width * fitX,
+        logo.height * fitY,
+        aspectX,
       );
 
       gr.nm = 'tier_logo_slot';
       gr.it = [...logoGroups, ...(plate ? [plate] : []), ...otherMods, trItem];
+      syncExtrudeShadow(doc, gr, snap, opts, false);
       continue;
     }
 
@@ -513,7 +710,8 @@ export function applyBrandSlot(
         const combH = Math.max(tH, logoRawH);
         const combCx = (combMinX + combMaxX) / 2;
 
-        const fitScale = Math.min(snap.w / combW, (snap.h * 1.28) / combH) * userScale;
+        const fitY = Math.min(visW / combW, (snap.h * 1.28) / combH) * userScale;
+        const fitX = fitY / aspectX;
 
         const logoRawCx = combMinX + logoRawW / 2;
         const lOrigCx = logo.minX + logo.width / 2;
@@ -525,11 +723,11 @@ export function applyBrandSlot(
             const rx = (pt[0] - lOrigCx) * logoRawScale + logoRawCx;
             const ry = (pt[1] - lOrigCy) * logoRawScale + tCy;
             return [
-              (rx - combCx) * fitScale + snap.cx + dx,
-              (ry - tCy) * fitScale + snap.cy + dy,
+              (rx - combCx) * fitX + snap.cx + dx,
+              (ry - tCy) * fitY + snap.cy + dy,
             ];
           },
-          logoRawScale * fitScale,
+          logoRawScale * fitY,
           opts,
           effectiveHex,
           localStrokeWidth,
@@ -537,8 +735,8 @@ export function applyBrandSlot(
 
         for (const p of rawTextPaths) {
           transformPath(p, (pt): Vec => [
-            (pt[0] - combCx) * fitScale + snap.cx + dx,
-            (pt[1] - tCy) * fitScale + snap.cy + dy,
+            (pt[0] - combCx) * fitX + snap.cx + dx,
+            (pt[1] - tCy) * fitY + snap.cy + dy,
           ]);
         }
 
@@ -554,12 +752,14 @@ export function applyBrandSlot(
           opts.plateStyle,
           snap.cx + dx,
           snap.cy + dy,
-          combW * fitScale,
-          combH * fitScale,
+          combW * fitX,
+          combH * fitY,
+          aspectX,
         );
 
         gr.nm = 'tier_logo_slot';
         gr.it = [textGroup, ...logoGroups, ...(plate ? [plate] : []), ...otherMods, trItem];
+        syncExtrudeShadow(doc, gr, snap, opts, false);
         continue;
       }
     }
@@ -594,12 +794,13 @@ export function applyBrandSlot(
           const rH = Math.max(1, maxY - minY);
           const rCx = (minX + maxX) / 2;
           const rCy = (minY + maxY) / 2;
-          const fitScale = Math.min(snap.w / rW, (snap.h * 1.14) / rH) * userScale;
+          const fitY = Math.min(visW / rW, (snap.h * 1.14) / rH) * userScale;
+          const fitX = fitY / aspectX;
 
           for (const p of rawPaths) {
             transformPath(p, (pt): Vec => [
-              (pt[0] - rCx) * fitScale + snap.cx + dx,
-              (pt[1] - rCy) * fitScale + snap.cy + dy,
+              (pt[0] - rCx) * fitX + snap.cx + dx,
+              (pt[1] - rCy) * fitY + snap.cy + dy,
             ]);
           }
           paths = rawPaths;
@@ -632,6 +833,7 @@ export function applyBrandSlot(
         (bMinY + bMaxY) / 2,
         Math.max(8, bMaxX - bMinX),
         Math.max(6, bMaxY - bMinY),
+        aspectX,
       );
       const textGroup = group('tier_text_part', [...paths, ...paintItems]);
       gr.nm = 'tier_logo_slot';
@@ -640,6 +842,9 @@ export function applyBrandSlot(
       gr.nm = snap.injected ? 'tier_logo_slot' : snap.origName ?? 'tier_text';
       gr.it = [...paths, ...otherMods, ...paintItems, trItem];
     }
+
+    const isExactOrig = useOrig && userScale === 1 && dx === 0 && dy === 0;
+    syncExtrudeShadow(doc, gr, snap, opts, isExactOrig);
   }
 
   doc._brandState = {
@@ -653,7 +858,7 @@ export function applyBrandSlot(
 }
 
 /**
- * Restores built-in MAGNAT brand slots back to their exact original vector shapes,
+ * Restores built-in brand slots back to their exact original vector shapes,
  * or removes dynamically injected brand overlay layers from unbranded templates.
  */
 export function resetBrandSlot(doc: LottieDoc): number {
@@ -679,10 +884,22 @@ export function resetBrandSlot(doc: LottieDoc): number {
       r: snap.origFillRule,
     };
     if (snap.origOpacity !== undefined) fillItem.o = structuredClone(snap.origOpacity);
+    const paints: ShapeItem[] = [fillItem];
+    if (snap.origStrokeHex && snap.origStrokeWidth > 0) {
+      paints.push(stroke(snap.origStrokeHex, snap.origStrokeWidth));
+    }
     const origPaths = structuredClone(snap.origShapes);
     if (snap.origName !== undefined) gr.nm = snap.origName;
     gr.hd = false;
-    gr.it = [...origPaths, ...otherMods, fillItem, trItem];
+    gr.it = [...origPaths, ...otherMods, ...paints, trItem];
+
+    const shadowGr = findSiblingExtrudeShadow(doc, gr);
+    if (shadowGr) {
+      shadowGr.hd = false;
+      if (shadowGr._extrudeSnap) {
+        shadowGr.it = structuredClone((shadowGr._extrudeSnap as ExtrudeShadowSnap).origItems);
+      }
+    }
   }
   delete doc._brandState;
   return slots.length;
