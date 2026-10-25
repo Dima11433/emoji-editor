@@ -74,6 +74,85 @@ describe('effects on MAGNAT stickers', () => {
     expect(layerFamily(doc.layers, 0)).toHaveLength(3);
     expect(layerFamily(doc.layers, 3)).toHaveLength(1);
   });
+
+  it('shimmer inserts collapsable specular gradient fills and synchronizes across 3-tile banners', () => {
+    const t1 = loadMagnat('templates/shablony1/012.tgs');
+    const t2 = loadMagnat('templates/shablony1/013.tgs');
+    const out1 = applyShapeEffects(withFx(t1, { shimmer: { on: true, tint: 'gold' } }));
+    const out2 = applyShapeEffects(withFx(t2, { shimmer: { on: true, tint: 'gold' } }));
+
+    const gleams1 = ofType(out1, 'gf').filter((g) => g.nm === 'Блик');
+    const gleams2 = ofType(out2, 'gf').filter((g) => g.nm === 'Блик');
+    expect(gleams1.length).toBeGreaterThan(0);
+    expect(gleams1.length).toBe(gleams2.length);
+
+    // Verify collapsable stop table (5 RGB stops = 20 floats + 5 matching opacity stops = 10 floats)
+    const gSpec = gleams1[0].g as { p: number; k: { a: number; k: number[] } };
+    expect(gSpec.p).toBe(5);
+    expect(gSpec.k.k).toHaveLength(30);
+    for (let i = 0; i < 5; i++) {
+      expect(gSpec.k.k[20 + i * 2]).toBe(gSpec.k.k[i * 4]);
+    }
+
+    // Banner tiles share exact sweep coordinates in L2 space for zero-seam stitch
+    expect(gleams1[0].s).toEqual(gleams2[0].s);
+    expect(gleams1[0].e).toEqual(gleams2[0].e);
+
+    const gz = tgsSize(out1);
+    expect(gz).toBeLessThanOrEqual(64 * 1024);
+    expect(checkTelegram(out1, gz).filter((c) => c.status === 'error')).toEqual([]);
+
+    // Classic MAGNAT sticker has zero errors AND zero feature warnings with shimmer
+    const classicOut = applyShapeEffects(
+      withFx(loadMagnat('templates/classic/001.tgs'), { shimmer: { on: true, tint: 'neon' } }),
+    );
+    expect(checkTelegram(classicOut, tgsSize(classicOut)).filter((c) => c.status !== 'ok')).toEqual([]);
+  });
+
+  it('particles generates seamless periodic vector loops for all 4 styles and passes Telegram checks', () => {
+    for (const style of ['sparks', 'stars', 'fire', 'neon'] as const) {
+      const base = loadMagnat(style === 'sparks' ? 'templates/classic/001.tgs' : 'templates/shablony1/015.tgs');
+      const out = applyShapeEffects(
+        withFx(base, {
+          particles: {
+            on: true,
+            style,
+            placement: style === 'fire' ? 'back' : 'front',
+            count: 14,
+          },
+        }),
+      );
+      const pLayer = out.layers.find((l) => l.nm === 'Частицы');
+      expect(pLayer).toBeDefined();
+      expect(pLayer!.shapes).toHaveLength(14);
+
+      if (style === 'fire') {
+        expect(out.layers[out.layers.length - 1].nm).toBe('Частицы');
+      } else {
+        expect(out.layers[0].nm).toBe('Частицы');
+      }
+
+      // Every animated property on every particle must loop cleanly: val(ip) === val(op)
+      for (const gr of pLayer!.shapes!) {
+        const tr = gr.it!.find((x) => x.ty === 'tr')!;
+        for (const key of ['p', 's', 'o', 'r'] as const) {
+          const prop = tr[key] as { a?: number; k?: { t: number; s: number[] }[] };
+          if (prop?.a === 1 && Array.isArray(prop.k)) {
+            expect(prop.k[0].t).toBe(out.ip);
+            expect(prop.k[prop.k.length - 1].t).toBe(out.op);
+            expect(prop.k[0].s).toEqual(prop.k[prop.k.length - 1].s);
+          }
+        }
+      }
+
+      const gz = tgsSize(out);
+      expect(gz).toBeLessThanOrEqual(64 * 1024);
+      expect(checkTelegram(out, gz).filter((c) => c.status === 'error')).toEqual([]);
+      if (style === 'sparks') {
+        expect(checkTelegram(out, gz).filter((c) => c.status !== 'ok')).toEqual([]);
+      }
+    }
+  });
 });
 
 describe('pixelate', () => {

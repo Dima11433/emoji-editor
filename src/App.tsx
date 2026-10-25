@@ -885,7 +885,10 @@ export default function App() {
       ensureFont(nextOpts.fontId)
         .then((loadedFonts) => {
           editTargets((d) => {
-            applyBrandSlot(d, nextOpts, loadedFonts, { keepStickerColor, autoCreate: true });
+            const latest = d._brandState
+              ? { ...nextOpts, ...(d._brandState as Partial<BrandSlotOptions>) }
+              : nextOpts;
+            applyBrandSlot(d, latest, loadedFonts, { keepStickerColor, autoCreate: true });
           }, mergeKey ?? 'brand:font');
         })
         .catch(() => say('Не удалось загрузить выбранный шрифт', true))
@@ -1665,6 +1668,7 @@ export default function App() {
           layers={doc.layers
             .filter((l) => l.ind !== undefined)
             .map((l, i) => ({ ind: l.ind!, name: l.nm || `Слой ${i + 1}` }))}
+          selectedCount={selectedCount}
           pixelStatus={pixelStatus}
           onChange={setEffect}
         />

@@ -2220,3 +2220,89 @@ button.link:hover {
   flex-wrap: wrap;
   gap: 5px;
 }
+
+/* 3D Brand Gradients & Live Effects */
+
+.brand-paint-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 11px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.brand-grad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.brand-grad-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 10.5px;
+  line-height: 1.2;
+  text-align: left;
+  min-width: 0;
+  transition: border-color 0.14s, background 0.14s;
+}
+
+.brand-grad-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-grad-chip:hover {
+  border-color: rgba(245, 158, 11, 0.55);
+}
+
+.brand-grad-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.brand-grad-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.brand-grad-anim-check {
+  margin-top: 4px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.fx-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.fx-chip-grid .logo-preset-chip {
+  text-align: center;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.accent-pill {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  font-weight: 600;
+}

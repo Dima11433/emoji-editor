@@ -371,6 +371,53 @@ describe('brandSlot replacement & reset on MAGNAT stickers', () => {
     expect(findBrandSlots(doc)[0].it!.some((x) => x.ty === 'sh')).toBe(true);
   });
 
+  it('applies 3D linear gradients (static and animated) to brand text & logos and resets cleanly', () => {
+    const badge = loadPublicTgs('templates/shablony1/015.tgs');
+    applyBrandSlot(
+      badge,
+      {
+        ...DEFAULT_BRAND_OPTIONS,
+        text: 'VIP',
+        useOriginalGlyphs: false,
+        gradientId: 'gold_3d',
+        gradientAnim: true,
+      },
+      montserrat,
+    );
+    const slot = findBrandSlots(badge)[0];
+    const gf = slot.it!.find((x) => x.ty === 'gf');
+    expect(gf).toBeDefined();
+    expect((gf!.s as { a: number }).a).toBe(1);
+    expect(readBrandSlotInfo(badge).options.gradientId).toBe('gold_3d');
+    expect(readBrandSlotInfo(badge).options.gradientAnim).toBe(true);
+    expect(tgsSize(badge)).toBeLessThanOrEqual(MAX_BYTES);
+    expect(checkTelegram(badge, tgsSize(badge)).filter((c) => c.status === 'error')).toEqual([]);
+
+    // Also works on vector logos when tintLogo is enabled
+    const crown = BUILTIN_LOGOS[0];
+    applyBrandSlot(
+      badge,
+      {
+        ...DEFAULT_BRAND_OPTIONS,
+        mode: 'logo',
+        logo: crown,
+        tintLogo: true,
+        gradientId: 'cyber_neon',
+        gradientAnim: false,
+      },
+      null,
+    );
+    const logoSlot = findBrandSlots(badge)[0];
+    const logoSubGr = logoSlot.it!.find((x) => x.ty === 'gr')!;
+    expect(logoSubGr.it!.some((x) => x.ty === 'gf')).toBe(true);
+
+    // Reset restores original flat fill
+    resetBrandSlot(badge);
+    const restored = findBrandSlots(badge)[0];
+    expect(restored.it!.some((x) => x.ty === 'fl')).toBe(true);
+    expect(restored.it!.some((x) => x.ty === 'gf')).toBe(false);
+  });
+
   it('parses SVG arcs/curves and vectorizes raster RGBA logos with auto background removal', () => {
     const circleShapes = svgPathToShapes('M 10 50 A 40 40 0 1 0 90 50 A 40 40 0 1 0 10 50 Z');
     expect(circleShapes).toHaveLength(1);

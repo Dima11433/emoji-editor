@@ -11,12 +11,13 @@ import {
   Trash2,
   Type,
 } from 'lucide-react';
-import type {
-  BrandMode,
-  BrandPlateStyle,
-  BrandSlotAnim,
-  BrandSlotOptions,
-  BrandSlotPosition,
+import {
+  BRAND_GRADIENTS,
+  type BrandMode,
+  type BrandPlateStyle,
+  type BrandSlotAnim,
+  type BrandSlotOptions,
+  type BrandSlotPosition,
 } from '../lib/brandSlot';
 import { FONTS, type FontId } from '../lib/fonts';
 import {
@@ -572,40 +573,99 @@ export function BrandPanel({
         </div>
       )}
 
-      {/* COLOR & OUTLINE */}
-      {(isTextVisible || options.tintLogo) && (
+      {/* 3D GRADIENT & SOLID COLOR */}
+      <div className="brand-paint-box">
         <div className="field">
           <span>
             {options.mode === 'logo'
-              ? 'Цвет заливки логотипа'
+              ? '3D-градиент логотипа'
               : options.tintLogo
-                ? 'Цвет логотипа и текста'
-                : 'Цвет текста'}
+                ? '3D-градиент текста и лого'
+                : '3D-градиент текста'}
           </span>
-          <div className="brand-color-row">
-            <label className="brand-color-picker" style={{ background: options.fillHex }}>
-              <input
-                type="color"
-                value={options.fillHex}
-                onChange={(e) => update({ fillHex: e.target.value }, 'brand:fill')}
-                aria-label="Цвет бренда"
-              />
-            </label>
-            <div className="brand-swatches">
-              {BRAND_SWATCHES.map((sw) => (
+          <div className="brand-grad-grid">
+            {BRAND_GRADIENTS.map((g) => {
+              const active =
+                g.id === 'none'
+                  ? options.gradientId === 'none' && (isTextVisible || options.tintLogo)
+                  : options.gradientId === g.id && (isTextVisible || options.tintLogo);
+              return (
                 <button
-                  key={sw.hex}
+                  key={g.id}
                   type="button"
-                  className={`brand-swatch-dot ${options.fillHex.toLowerCase() === sw.hex ? 'on' : ''}`}
-                  style={{ background: sw.hex }}
-                  title={sw.title}
-                  onClick={() => update({ fillHex: sw.hex, hidden: false })}
+                  className={`brand-grad-chip ${active ? 'on' : ''}`}
+                  onClick={() =>
+                    update({
+                      gradientId: g.id,
+                      hidden: false,
+                      ...(options.mode === 'logo' && g.id !== 'none' ? { tintLogo: true } : {}),
+                    })
+                  }
+                >
+                  <i
+                    className="brand-grad-swatch"
+                    style={{
+                      background: g.id === 'none' ? options.fillHex : g.css,
+                    }}
+                    aria-hidden
+                  />
+                  <span>{g.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {options.gradientId !== 'none' && (isTextVisible || options.tintLogo) && (
+            <label className="inline-check small brand-grad-anim-check">
+              <input
+                type="checkbox"
+                checked={options.gradientAnim}
+                onChange={(e) => update({ gradientAnim: e.target.checked, hidden: false })}
+              />
+              <span>✨ Живой перелив градиента в анимации</span>
+            </label>
+          )}
+        </div>
+
+        {(isTextVisible || options.tintLogo) && (
+          <div className="field">
+            <span>
+              {options.mode === 'logo'
+                ? 'Сплошной цвет логотипа'
+                : options.tintLogo
+                  ? 'Сплошной цвет лого и текста'
+                  : 'Сплошной цвет текста'}
+            </span>
+            <div className="brand-color-row">
+              <label className="brand-color-picker" style={{ background: options.fillHex }}>
+                <input
+                  type="color"
+                  value={options.fillHex}
+                  onChange={(e) =>
+                    update({ fillHex: e.target.value, gradientId: 'none' }, 'brand:fill')
+                  }
+                  aria-label="Цвет бренда"
                 />
-              ))}
+              </label>
+              <div className="brand-swatches">
+                {BRAND_SWATCHES.map((sw) => (
+                  <button
+                    key={sw.hex}
+                    type="button"
+                    className={`brand-swatch-dot ${
+                      options.gradientId === 'none' && options.fillHex.toLowerCase() === sw.hex
+                        ? 'on'
+                        : ''
+                    }`}
+                    style={{ background: sw.hex }}
+                    title={sw.title}
+                    onClick={() => update({ fillHex: sw.hex, gradientId: 'none', hidden: false })}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="field-row">
         <label className="field">

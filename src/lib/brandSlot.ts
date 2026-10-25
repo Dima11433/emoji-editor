@@ -2,11 +2,14 @@ import type { Font } from 'opentype.js';
 import type { FontId } from './fonts';
 import type { VectorLogo } from './logoVector';
 import {
+  anim,
   CANVAS,
   fill,
+  fixed,
   FRAMES,
   group,
   groupTransform,
+  hexToRgb,
   layerTransform,
   rect,
   reindexLayers,
@@ -25,6 +28,128 @@ export type BrandMode = 'text' | 'logo' | 'logo+text';
 export type BrandPlateStyle = 'none' | 'dark' | 'gold' | 'neon' | 'light';
 export type BrandSlotPosition = 'bottom' | 'center' | 'top';
 export type BrandSlotAnim = 'none' | 'pulse' | 'float' | 'swing' | 'pop';
+export type BrandGradientId =
+  | 'none'
+  | 'gold_3d'
+  | 'chrome'
+  | 'fire'
+  | 'cyber_neon'
+  | 'emerald_vip'
+  | 'royal_violet'
+  | 'ice_blue'
+  | 'sunset_rose';
+
+export interface BrandGradientSpec {
+  id: BrandGradientId;
+  label: string;
+  css: string;
+  angle: 'vertical' | 'diagonal';
+  stops: [number, string][];
+}
+
+export const BRAND_GRADIENTS: BrandGradientSpec[] = [
+  {
+    id: 'none',
+    label: 'Обычный',
+    css: 'linear-gradient(135deg, #ffffff, #cbd5e1)',
+    angle: 'vertical',
+    stops: [],
+  },
+  {
+    id: 'gold_3d',
+    label: 'Золото',
+    css: 'linear-gradient(180deg, #fffbeb 0%, #fbbf24 44%, #b45309 78%, #fde047 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#fffbeb'],
+      [0.44, '#fbbf24'],
+      [0.78, '#b45309'],
+      [1, '#fde047'],
+    ],
+  },
+  {
+    id: 'chrome',
+    label: 'Хром 3D',
+    css: 'linear-gradient(180deg, #ffffff 0%, #cbd5e1 46%, #475569 72%, #f1f5f9 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#ffffff'],
+      [0.46, '#cbd5e1'],
+      [0.72, '#475569'],
+      [1, '#f1f5f9'],
+    ],
+  },
+  {
+    id: 'fire',
+    label: 'Огонь',
+    css: 'linear-gradient(180deg, #fef08a 0%, #f97316 52%, #dc2626 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#fef08a'],
+      [0.52, '#f97316'],
+      [1, '#dc2626'],
+    ],
+  },
+  {
+    id: 'cyber_neon',
+    label: 'Кибер',
+    css: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 52%, #f43f5e 100%)',
+    angle: 'diagonal',
+    stops: [
+      [0, '#22d3ee'],
+      [0.52, '#a855f7'],
+      [1, '#f43f5e'],
+    ],
+  },
+  {
+    id: 'emerald_vip',
+    label: 'Изумруд',
+    css: 'linear-gradient(180deg, #d1fae5 0%, #10b981 50%, #065f46 82%, #34d399 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#d1fae5'],
+      [0.5, '#10b981'],
+      [0.82, '#065f46'],
+      [1, '#34d399'],
+    ],
+  },
+  {
+    id: 'royal_violet',
+    label: 'Фиолет',
+    css: 'linear-gradient(180deg, #fae8ff 0%, #a855f7 50%, #4c1d95 82%, #d8b4fe 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#fae8ff'],
+      [0.5, '#a855f7'],
+      [0.82, '#4c1d95'],
+      [1, '#d8b4fe'],
+    ],
+  },
+  {
+    id: 'ice_blue',
+    label: 'Алмаз',
+    css: 'linear-gradient(180deg, #ffffff 0%, #38bdf8 52%, #0369a1 84%, #bae6fd 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#ffffff'],
+      [0.52, '#38bdf8'],
+      [0.84, '#0369a1'],
+      [1, '#bae6fd'],
+    ],
+  },
+  {
+    id: 'sunset_rose',
+    label: 'Рубин',
+    css: 'linear-gradient(180deg, #ffe4e6 0%, #f43f5e 50%, #881337 84%, #fb7185 100%)',
+    angle: 'vertical',
+    stops: [
+      [0, '#ffe4e6'],
+      [0.5, '#f43f5e'],
+      [0.84, '#881337'],
+      [1, '#fb7185'],
+    ],
+  },
+];
 
 export interface BrandSlotOptions {
   mode: BrandMode;
@@ -32,6 +157,8 @@ export interface BrandSlotOptions {
   useOriginalGlyphs: boolean;
   fontId: FontId;
   fillHex: string;
+  gradientId: BrandGradientId;
+  gradientAnim: boolean;
   strokeHex: string | null;
   strokeWidth: number;
   plateStyle: BrandPlateStyle;
@@ -69,6 +196,8 @@ export const DEFAULT_BRAND_OPTIONS: BrandSlotOptions = {
   useOriginalGlyphs: true,
   fontId: 'montserrat',
   fillHex: '#ffffff',
+  gradientId: 'none',
+  gradientAnim: false,
   strokeHex: null,
   strokeWidth: 4,
   plateStyle: 'none',
@@ -544,6 +673,147 @@ function buildPlateGroup(
   ]);
 }
 
+interface PaintBox {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+function measurePathsBox(paths: ShapeItem[], fallback: PaintBox): PaintBox {
+  const pts = paths.flatMap((p) => {
+    try {
+      return pathPoints(p);
+    } catch {
+      return [];
+    }
+  });
+  if (!pts.length) return fallback;
+  return {
+    minX: Math.min(...pts.map((p) => p[0])),
+    maxX: Math.max(...pts.map((p) => p[0])),
+    minY: Math.min(...pts.map((p) => p[1])),
+    maxY: Math.max(...pts.map((p) => p[1])),
+  };
+}
+
+function detectSlotTimeline(doc: LottieDoc, targetGr: ShapeItem): [number, number] {
+  const containsGroup = (items: ShapeItem[] | undefined): boolean => {
+    if (!items) return false;
+    for (const it of items) {
+      if (it === targetGr) return true;
+      if (it.ty === 'gr' && containsGroup(it.it)) return true;
+    }
+    return false;
+  };
+  const rootDur = Math.max(24, (doc.op ?? FRAMES) - (doc.ip ?? 0));
+  for (const asset of doc.assets ?? []) {
+    if (asset.layers?.some((l) => containsGroup(l.shapes))) {
+      return [0, rootDur];
+    }
+  }
+  return [doc.ip ?? 0, doc.op ?? FRAMES];
+}
+
+function buildBrandPaint(
+  opts: BrandSlotOptions,
+  effectiveHex: string,
+  box: PaintBox,
+  fillRule: number,
+  opacity: number | unknown,
+  timeline: [number, number],
+  skipGradient = false,
+): ShapeItem {
+  const spec = skipGradient
+    ? undefined
+    : BRAND_GRADIENTS.find((g) => g.id === opts.gradientId && g.stops.length >= 2);
+
+  if (!spec) {
+    const fl: ShapeItem = {
+      ...fill(effectiveHex, typeof opacity === 'number' ? opacity : 100),
+      r: fillRule,
+    };
+    if (opacity !== undefined && typeof opacity === 'object') {
+      fl.o = structuredClone(opacity);
+    }
+    return fl;
+  }
+
+  const cx = (box.minX + box.maxX) / 2;
+  const w = Math.max(12, box.maxX - box.minX);
+  const h = Math.max(8, box.maxY - box.minY);
+
+  const flatStops: number[] = [];
+  for (const [offset, hex] of spec.stops) {
+    const [r, g, b] = hexToRgb(hex);
+    flatStops.push(round(offset, 3), round(r, 4), round(g, 4), round(b, 4));
+  }
+
+  let sProp: unknown;
+  let eProp: unknown;
+  const [ip, op] = timeline;
+  const mid = Math.round((ip + op) / 2);
+
+  if (spec.angle === 'diagonal') {
+    const p0: [number, number] = [round(box.minX, 1), round(box.minY, 1)];
+    const p1: [number, number] = [round(box.maxX, 1), round(box.maxY, 1)];
+    if (opts.gradientAnim) {
+      const shiftX = round(w * 0.45, 1);
+      const shiftY = round(h * 0.35, 1);
+      sProp = anim([
+        [ip, [round(p0[0] - shiftX, 1), round(p0[1] - shiftY, 1)]],
+        [mid, [round(p0[0] + shiftX, 1), round(p0[1] + shiftY, 1)]],
+        [op, [round(p0[0] - shiftX, 1), round(p0[1] - shiftY, 1)]],
+      ]);
+      eProp = anim([
+        [ip, [round(p1[0] - shiftX, 1), round(p1[1] - shiftY, 1)]],
+        [mid, [round(p1[0] + shiftX, 1), round(p1[1] + shiftY, 1)]],
+        [op, [round(p1[0] - shiftX, 1), round(p1[1] - shiftY, 1)]],
+      ]);
+    } else {
+      sProp = fixed(p0);
+      eProp = fixed(p1);
+    }
+  } else {
+    const p0: [number, number] = [round(cx, 1), round(box.minY, 1)];
+    const p1: [number, number] = [round(cx, 1), round(box.maxY, 1)];
+    if (opts.gradientAnim) {
+      const tilt = round(Math.min(w * 0.22, h * 0.65), 1);
+      const bounceY = round(h * 0.22, 1);
+      sProp = anim([
+        [ip, [round(cx - tilt, 1), round(box.minY - bounceY, 1)]],
+        [mid, [round(cx + tilt, 1), round(box.minY + bounceY, 1)]],
+        [op, [round(cx - tilt, 1), round(box.minY - bounceY, 1)]],
+      ]);
+      eProp = anim([
+        [ip, [round(cx + tilt, 1), round(box.maxY + bounceY, 1)]],
+        [mid, [round(cx - tilt, 1), round(box.maxY - bounceY, 1)]],
+        [op, [round(cx + tilt, 1), round(box.maxY + bounceY, 1)]],
+      ]);
+    } else {
+      sProp = fixed(p0);
+      eProp = fixed(p1);
+    }
+  }
+
+  return {
+    ty: 'gf',
+    nm: 'Градиент бренда',
+    o:
+      opacity !== undefined && typeof opacity === 'object'
+        ? structuredClone(opacity)
+        : fixed(typeof opacity === 'number' ? opacity : 100),
+    r: fillRule,
+    t: 1,
+    s: sProp,
+    e: eProp,
+    g: {
+      p: spec.stops.length,
+      k: fixed(flatStops),
+    },
+  };
+}
+
 function buildLogoGroups(
   logo: VectorLogo,
   mapPt: (pt: Vec) => Vec,
@@ -551,8 +821,20 @@ function buildLogoGroups(
   opts: BrandSlotOptions,
   effectiveHex: string,
   localOutlineWidth: number,
+  timeline: [number, number],
+  skipGradient = false,
 ): ShapeItem[] {
   const groups: ShapeItem[] = [];
+  const allMappedBox: PaintBox = (() => {
+    const p0 = mapPt([logo.minX, logo.minY]);
+    const p1 = mapPt([logo.minX + logo.width, logo.minY + logo.height]);
+    return {
+      minX: Math.min(p0[0], p1[0]),
+      maxX: Math.max(p0[0], p1[0]),
+      minY: Math.min(p0[1], p1[1]),
+      maxY: Math.max(p0[1], p1[1]),
+    };
+  })();
 
   for (let i = 0; i < logo.layers.length; i++) {
     const layer = logo.layers[i];
@@ -566,7 +848,17 @@ function buildLogoGroups(
     const op = layer.opacity ?? 100;
 
     if (opts.tintLogo) {
-      paints.push({ ...fill(effectiveHex, op), r: layer.fillRule ?? 1 });
+      paints.push(
+        buildBrandPaint(
+          opts,
+          effectiveHex,
+          allMappedBox,
+          layer.fillRule ?? 1,
+          op,
+          timeline,
+          skipGradient,
+        ),
+      );
       if (opts.strokeHex && opts.strokeWidth > 0) {
         paints.push(stroke(opts.strokeHex, localOutlineWidth, op));
       }
@@ -629,12 +921,15 @@ export function applyBrandSlot(
     }
   }
 
+  const prevBrand = readBrandSlotInfo(doc).options;
   const hasLogo = (opts.mode === 'logo' || opts.mode === 'logo+text') && Boolean(opts.logo);
 
   for (const gr of slots) {
     const snap = ensureSnapshot(gr, injectedSlots.has(gr));
     const aspectX = snap.injected ? 1 : detectSlotAspectX(doc, gr);
     const visW = snap.w * aspectX;
+    const timeline = detectSlotTimeline(doc, gr);
+    const skipGrad = Boolean(options?.keepStickerColor && !snap.injected);
 
     const existingItems = gr.it ?? [];
     const trItem = existingItems.find((x) => x.ty === 'tr') ?? groupTransform();
@@ -669,6 +964,8 @@ export function applyBrandSlot(
         opts,
         effectiveHex,
         localStrokeWidth,
+        timeline,
+        skipGrad,
       );
 
       const plate = buildPlateGroup(
@@ -731,6 +1028,8 @@ export function applyBrandSlot(
           opts,
           effectiveHex,
           localStrokeWidth,
+          timeline,
+          skipGrad,
         );
 
         for (const p of rawTextPaths) {
@@ -740,8 +1039,21 @@ export function applyBrandSlot(
           ]);
         }
 
-        const textFill: ShapeItem = { ...fill(effectiveHex), r: 1 };
-        if (snap.origOpacity !== undefined) textFill.o = structuredClone(snap.origOpacity);
+        const textBox = measurePathsBox(rawTextPaths, {
+          minX: snap.cx - 80,
+          maxX: snap.cx + 80,
+          minY: snap.cy - 20,
+          maxY: snap.cy + 20,
+        });
+        const textFill = buildBrandPaint(
+          opts,
+          effectiveHex,
+          textBox,
+          1,
+          snap.origOpacity ?? 100,
+          timeline,
+          skipGrad,
+        );
         const textPaints: ShapeItem[] = [textFill];
         if (opts.strokeHex && opts.strokeWidth > 0) {
           textPaints.push(stroke(opts.strokeHex, localStrokeWidth));
@@ -808,13 +1120,21 @@ export function applyBrandSlot(
       }
     }
 
-    const fillItem: ShapeItem = {
-      ...fill(effectiveHex),
-      r: useOrig ? snap.origFillRule : 1,
-    };
-    if (snap.origOpacity !== undefined) {
-      fillItem.o = structuredClone(snap.origOpacity);
-    }
+    const textBox = measurePathsBox(paths, {
+      minX: snap.cx - snap.w / 2,
+      maxX: snap.cx + snap.w / 2,
+      minY: snap.cy - snap.h / 2,
+      maxY: snap.cy + snap.h / 2,
+    });
+    const fillItem = buildBrandPaint(
+      opts,
+      effectiveHex,
+      textBox,
+      useOrig ? snap.origFillRule : 1,
+      snap.origOpacity ?? 100,
+      timeline,
+      skipGrad,
+    );
 
     const paintItems: ShapeItem[] = [fillItem];
     if (opts.strokeHex && opts.strokeWidth > 0) {
@@ -843,16 +1163,17 @@ export function applyBrandSlot(
       gr.it = [...paths, ...otherMods, ...paintItems, trItem];
     }
 
-    const isExactOrig = useOrig && userScale === 1 && dx === 0 && dy === 0;
+    const isExactOrig =
+      useOrig && opts.gradientId === 'none' && userScale === 1 && dx === 0 && dy === 0;
     syncExtrudeShadow(doc, gr, snap, opts, isExactOrig);
   }
 
+  const preserveOrigColor =
+    Boolean(options?.keepStickerColor) && !doc.layers.some((l) => isInjectedBrandLayer(l));
   doc._brandState = {
     ...opts,
-    fillHex:
-      options?.keepStickerColor && !doc.layers.some((l) => isInjectedBrandLayer(l))
-        ? readBrandSlotInfo(doc).options.fillHex
-        : opts.fillHex,
+    fillHex: preserveOrigColor ? prevBrand.fillHex : opts.fillHex,
+    gradientId: preserveOrigColor ? prevBrand.gradientId : opts.gradientId,
   };
   return slots.length;
 }
