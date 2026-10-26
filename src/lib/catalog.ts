@@ -1,4 +1,4 @@
-// Auto-generated catalog: 15 custom templates + 263 MAGNAT animated Telegram emojis (278 total)
+// Auto-generated catalog: 21 custom templates + 263 MAGNAT animated Telegram emojis (284 total)
 export type TemplateCategory = 'shablony1' | 'classic' | 'characters' | 'gifts' | 'love';
 
 export interface CatalogItem {
@@ -13,7 +13,7 @@ export interface CatalogItem {
 
 export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string }[] = [
   { id: 'all', label: 'Все' },
-  { id: 'shablony1', label: 'Шаблоны' },
+  { id: 'shablony1', label: 'Шаблоны tier' },
   { id: 'classic', label: 'Классика' },
   { id: 'characters', label: 'Персонажи' },
   { id: 'gifts', label: 'Подарки' },
@@ -155,6 +155,60 @@ export const CATALOG: CatalogItem[] = [
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/011.tgs",
     "bytes": 57335
+  },
+  {
+    "id": "shablony1_016",
+    "num": 16,
+    "name": "Капсула · Неон Роза",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/016.tgs",
+    "bytes": 53046
+  },
+  {
+    "id": "shablony1_017",
+    "num": 17,
+    "name": "Капсула · Космос",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/017.tgs",
+    "bytes": 20003
+  },
+  {
+    "id": "shablony1_018",
+    "num": 18,
+    "name": "Капсула · Тёмная",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/018.tgs",
+    "bytes": 50376
+  },
+  {
+    "id": "shablony1_019",
+    "num": 19,
+    "name": "Капсула · Корона VIP",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/019.tgs",
+    "bytes": 30366
+  },
+  {
+    "id": "shablony1_020",
+    "num": 20,
+    "name": "Капсула · Пламя",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/020.tgs",
+    "bytes": 50525
+  },
+  {
+    "id": "shablony1_021",
+    "num": 21,
+    "name": "Капсула · Кибер Маджента",
+    "category": "shablony1",
+    "categoryLabel": "Шаблоны",
+    "file": "templates/shablony1/021.tgs",
+    "bytes": 51939
   },
   {
     "id": "classic_001",

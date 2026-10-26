@@ -1565,6 +1565,8 @@ export default function App() {
               slotCount={brandInfo.count}
               isInjected={brandInfo.isInjected}
               origText={brandInfo.origText}
+              hasPlateSlot={brandInfo.hasPlateSlot}
+              origPlateText={brandInfo.origPlateText}
               options={brandInfo.options}
               selectedCount={selectedCount}
               anyNeedsOverlay={anySelectedNeedsOverlay}

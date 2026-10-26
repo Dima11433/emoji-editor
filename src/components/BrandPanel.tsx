@@ -31,6 +31,8 @@ interface BrandPanelProps {
   slotCount: number;
   isInjected: boolean;
   origText: string;
+  hasPlateSlot?: boolean;
+  origPlateText?: string;
   options: BrandSlotOptions;
   selectedCount: number;
   anyNeedsOverlay: boolean;
@@ -87,6 +89,8 @@ export function BrandPanel({
   slotCount,
   isInjected,
   origText,
+  hasPlateSlot,
+  origPlateText,
   options,
   selectedCount,
   anyNeedsOverlay,
@@ -446,20 +450,22 @@ export function BrandPanel({
         <>
           <label className="field">
             <span>
-              {options.mode === 'logo+text'
-                ? 'Текст рядом с логотипом'
-                : selectedCount > 1
-                  ? `Единая надпись сразу для ${selectedCount} эмодзи`
-                  : hasBuiltInSlot
-                    ? `Текст вместо «${origText}» (с сохранением анимации)`
-                    : 'Текст бренда / никнейм на шаблоне'}
+              {hasPlateSlot
+                ? 'Никнейм по середине'
+                : options.mode === 'logo+text'
+                  ? 'Текст рядом с логотипом'
+                  : selectedCount > 1
+                    ? `Единая надпись сразу для ${selectedCount} эмодзи`
+                    : hasBuiltInSlot
+                      ? `Текст вместо «${origText}» (с сохранением анимации)`
+                      : 'Текст бренда / никнейм на шаблоне'}
             </span>
             <input
               type="text"
               className="brand-text-input"
               value={options.text}
               maxLength={24}
-              placeholder="Введите ваш ник, магазин или бренд..."
+              placeholder={hasPlateSlot ? 'Ник в центре (например: MAGNAT, VIP)...' : 'Введите ваш ник, магазин или бренд...'}
               style={{
                 fontFamily:
                   hasBuiltInSlot && options.useOriginalGlyphs
@@ -469,9 +475,11 @@ export function BrandPanel({
                   hasBuiltInSlot && options.useOriginalGlyphs ? 900 : activeFont.weight,
               }}
               onChange={(e) => {
+                const val = e.target.value;
                 update(
                   {
-                    text: e.target.value,
+                    text: val,
+                    plateText: options.syncPlateText ? val : options.plateText,
                     useOriginalGlyphs: false,
                     hidden: false,
                   },
@@ -480,6 +488,84 @@ export function BrandPanel({
               }}
             />
           </label>
+
+          {/* DUAL SLOT: LOWER PLATE & USERNAME */}
+          {hasPlateSlot && (
+            <div className="brand-dual-plate-box">
+              <div className="dual-plate-header">
+                <label className="inline-check">
+                  <input
+                    type="checkbox"
+                    checked={!options.hideBuiltInPlate}
+                    onChange={(e) => update({ hideBuiltInPlate: !e.target.checked })}
+                  />
+                  <span>Показывать нижнюю плашку</span>
+                </label>
+              </div>
+
+              {!options.hideBuiltInPlate && (
+                <>
+                  <div className="dual-plate-sync-row">
+                    <label className="inline-check small">
+                      <input
+                        type="checkbox"
+                        checked={options.syncPlateText}
+                        onChange={(e) => {
+                          const sync = e.target.checked;
+                          update({
+                            syncPlateText: sync,
+                            plateText: sync ? options.text : options.plateText,
+                            useOriginalGlyphs: false,
+                          });
+                        }}
+                      />
+                      <span>🔗 Одинаковый ник в центре и на плашке</span>
+                    </label>
+
+                    <label className="inline-check small">
+                      <input
+                        type="checkbox"
+                        checked={options.plateTextEnabled}
+                        onChange={(e) => update({ plateTextEnabled: e.target.checked })}
+                      />
+                      <span>Текст на плашке</span>
+                    </label>
+                  </div>
+
+                  {!options.syncPlateText && options.plateTextEnabled && (
+                    <label className="field" style={{ marginTop: '6px' }}>
+                      <span>Текст на нижней плашке</span>
+                      <input
+                        type="text"
+                        className="brand-text-input brand-plate-input"
+                        value={options.plateText}
+                        maxLength={24}
+                        placeholder={
+                          origPlateText
+                            ? `Текст на плашке (по умолчанию: ${origPlateText})...`
+                            : 'Текст на плашке (например: @username)...'
+                        }
+                        style={{
+                          fontFamily: activeFont.css,
+                          fontWeight: activeFont.weight,
+                        }}
+                        onChange={(e) => {
+                          update(
+                            {
+                              plateText: e.target.value,
+                              useOriginalGlyphs: false,
+                              hidden: false,
+                            },
+                            'brand:plateText',
+                          );
+                        }}
+                      />
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           <label className="field">
             <span>Шрифт надписи</span>

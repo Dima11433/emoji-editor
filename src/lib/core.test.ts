@@ -7,6 +7,7 @@ import {
   applyBrandSlot,
   DEFAULT_BRAND_OPTIONS,
   findBrandSlots,
+  findBuiltInPlateLayers,
   readBrandSlotInfo,
   resetBrandSlot,
 } from './brandSlot';
@@ -44,22 +45,28 @@ const loadPublicTgs = (relFile: string) => {
   return parseSticker(new Uint8Array(readFileSync(full)));
 };
 
-describe('Full catalog (15 shablony1 templates + 263 MAGNAT = 278 emojis)', () => {
-  it('contains 15 shablony1 templates and 263 MAGNAT emojis (278 total)', () => {
-    expect(CATALOG).toHaveLength(278);
+describe('Full catalog (21 shablony1 templates + 263 MAGNAT = 284 emojis)', () => {
+  it('contains 21 shablony1 templates and 263 MAGNAT emojis (284 total)', () => {
+    expect(CATALOG).toHaveLength(284);
     const shablony = CATALOG.filter((i) => i.category === 'shablony1');
     const magnat = CATALOG.filter((i) => i.category !== 'shablony1');
-    expect(shablony).toHaveLength(15);
+    expect(shablony).toHaveLength(21);
     expect(magnat).toHaveLength(263);
     expect(magnat.every((item) => item.name.startsWith('MAGNAT #'))).toBe(true);
   });
 
-  it('parses all 278 .tgs files, verifies Telegram canvas/size/duration limits, and checks brand slots', () => {
+  it('parses all 284 .tgs files, verifies Telegram canvas/size/duration limits, and checks brand slots', () => {
     const builtInShablonyIds = new Set([
       'shablony1_012',
       'shablony1_013',
       'shablony1_014',
       'shablony1_015',
+      'shablony1_016',
+      'shablony1_017',
+      'shablony1_018',
+      'shablony1_019',
+      'shablony1_020',
+      'shablony1_021',
     ]);
     for (const item of CATALOG) {
       const full = resolve(process.cwd(), 'public', item.file);
@@ -164,10 +171,20 @@ describe('Custom templates (shablony1): 3-tile banner, 3D XXX badge, overlay bra
 
   it('injects brand badge (text, logo, logo+text, gold plate, custom position/animation) into all 11 unbranded shablony1 templates under 64 KB and resets cleanly', () => {
     const crownLogo = BUILTIN_LOGOS.find((l) => l.id === 'preset_crown')!;
+    const builtInShablony = [
+      'shablony1_012',
+      'shablony1_013',
+      'shablony1_014',
+      'shablony1_015',
+      'shablony1_016',
+      'shablony1_017',
+      'shablony1_018',
+      'shablony1_019',
+      'shablony1_020',
+      'shablony1_021',
+    ];
     const unbrandedItems = CATALOG.filter(
-      (i) =>
-        i.category === 'shablony1' &&
-        !['shablony1_012', 'shablony1_013', 'shablony1_014', 'shablony1_015'].includes(i.id),
+      (i) => i.category === 'shablony1' && !builtInShablony.includes(i.id),
     );
     expect(unbrandedItems).toHaveLength(11);
 
@@ -215,6 +232,59 @@ describe('Custom templates (shablony1): 3-tile banner, 3D XXX badge, overlay bra
       expect(findBrandSlots(doc)).toHaveLength(0);
       expect(doc.layers).toHaveLength(origLayerCount);
     }
+  });
+
+  it('supports dual-slot editing on capsule templates (016..021) for center nickname and lower plate text', () => {
+    const doc = loadPublicTgs('templates/shablony1/016.tgs');
+    const info = readBrandSlotInfo(doc);
+    expect(info.hasCenterSlot).toBe(true);
+    expect(info.hasPlateSlot).toBe(true);
+    expect(info.count).toBe(2);
+
+    // Apply center nickname and plate username with Gold 3D gradient
+    applyBrandSlot(
+      doc,
+      {
+        ...DEFAULT_BRAND_OPTIONS,
+        text: 'VIP SHOP',
+        plateText: '@mybot',
+        syncPlateText: false,
+        useOriginalGlyphs: false,
+        gradientId: 'gold_3d',
+        hideBuiltInPlate: false,
+      },
+      montserrat,
+    );
+
+    const slots = findBrandSlots(doc);
+    expect(slots).toHaveLength(2);
+    const centerSlot = slots.find((s) => s.nm === 'TextGroup')!;
+    const plateSlot = slots.find((s) => s.nm === 'USERNAME')!;
+    expect(centerSlot).toBeDefined();
+    expect(plateSlot).toBeDefined();
+    expect(centerSlot.hd).toBeFalsy();
+    expect(plateSlot.hd).toBeFalsy();
+
+    // Verify plate hiding toggle
+    applyBrandSlot(
+      doc,
+      {
+        ...DEFAULT_BRAND_OPTIONS,
+        text: 'VIP SHOP',
+        hideBuiltInPlate: true,
+      },
+      montserrat,
+    );
+    expect(plateSlot.hd).toBe(true);
+    const plateLayers = findBuiltInPlateLayers(doc);
+    expect(plateLayers.length).toBeGreaterThanOrEqual(1);
+    expect(plateLayers.every((l) => l.hd)).toBe(true);
+
+    // Reset restores both slots and unhides plate
+    resetBrandSlot(doc);
+    expect(plateLayers.every((l) => !l.hd)).toBe(true);
+    expect(plateSlot.hd).toBe(false);
+    expect(centerSlot.hd).toBe(false);
   });
 
   it('recolors 3D gradient templates with applyColorTheme while preserving custom brand slot colors', () => {

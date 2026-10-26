@@ -151,9 +151,15 @@ export const BRAND_GRADIENTS: BrandGradientSpec[] = [
   },
 ];
 
+export type BrandSlotRole = 'main' | 'center' | 'plate';
+
 export interface BrandSlotOptions {
   mode: BrandMode;
   text: string;
+  plateText: string;
+  plateTextEnabled: boolean;
+  syncPlateText: boolean;
+  hideBuiltInPlate: boolean;
   useOriginalGlyphs: boolean;
   fontId: FontId;
   fillHex: string;
@@ -175,6 +181,7 @@ export interface BrandSlotOptions {
 }
 
 export interface BrandSlotSnapshot {
+  role?: BrandSlotRole;
   origName?: string;
   cx: number;
   cy: number;
@@ -193,6 +200,10 @@ export interface BrandSlotSnapshot {
 export const DEFAULT_BRAND_OPTIONS: BrandSlotOptions = {
   mode: 'text',
   text: 'MAGNAT',
+  plateText: 'platega',
+  plateTextEnabled: true,
+  syncPlateText: false,
+  hideBuiltInPlate: false,
   useOriginalGlyphs: true,
   fontId: 'montserrat',
   fillHex: '#ffffff',
@@ -247,10 +258,35 @@ export function isBrandSlotNode(node: unknown): boolean {
 function isSlotGroup(gr: ShapeItem): boolean {
   if (gr.ty !== 'gr') return false;
   if (gr._brandSlot || gr.nm === 'tier_logo_slot') return true;
+  if (gr.nm === 'TextGroup' || gr.nm === 'USERNAME' || gr.nm === 'tier_text') return true;
   const items = gr.it ?? [];
   const hasShapes = items.some((x) => x.ty === 'sh');
   if (!hasShapes) return false;
-  return gr.nm === 'tier_text' || items.some((x) => x.ty === 'sh' && x.nm === 'tier_glyph');
+  return items.some((x) => x.ty === 'sh' && x.nm === 'tier_glyph');
+}
+
+/** Finds built-in background/glow plate layers (e.g. capsule templates 016..021). */
+export function findBuiltInPlateLayers(doc: LottieDoc): Layer[] {
+  const plateLayers: Layer[] = [];
+  const checkLayers = (layers: Layer[] | undefined) => {
+    if (!layers) return;
+    for (const l of layers) {
+      if (l.nm === 'USERNAME' || isInjectedBrandLayer(l)) continue;
+      const hasRc = JSON.stringify(l.shapes ?? []).includes('"ty":"rc"');
+      if (hasRc) {
+        plateLayers.push(l);
+      }
+    }
+  };
+  checkLayers(doc.layers);
+  for (const a of doc.assets ?? []) checkLayers(a.layers);
+  return plateLayers;
+}
+
+function detectSlotRole(gr: ShapeItem): BrandSlotRole {
+  if (gr.nm === 'USERNAME') return 'plate';
+  if (gr.nm === 'TextGroup') return 'center';
+  return 'main';
 }
 
 /** Finds all brand slots across root layers and nested precomp assets. */
@@ -535,6 +571,7 @@ function ensureSnapshot(gr: ShapeItem, parentInjected = false): BrandSlotSnapsho
       : 4;
 
   const snap: BrandSlotSnapshot = {
+    role: (gr._brandSlot as BrandSlotSnapshot | undefined)?.role ?? detectSlotRole(gr),
     origName: gr.nm,
     cx: parentInjected ? 0 : round((minX + maxX) / 2, 2),
     cy: parentInjected ? 0 : round((minY + maxY) / 2, 2),
@@ -557,6 +594,10 @@ function detectOrigText(doc: LottieDoc): string {
   const nm = typeof doc.nm === 'string' ? doc.nm : '';
   if (/баннер/i.test(nm)) return 'XXX SHOP';
   if (/xxx/i.test(nm)) return 'XXX';
+  const slots = findBrandSlots(doc);
+  if (slots.some((s) => s.nm === 'TextGroup' || (s._brandSlot as BrandSlotSnapshot)?.role === 'center')) {
+    return 'platega';
+  }
   return 'MAGNAT';
 }
 
@@ -565,17 +606,26 @@ export function readBrandSlotInfo(doc: LottieDoc): {
   count: number;
   isInjected: boolean;
   origText: string;
+  hasCenterSlot: boolean;
+  hasPlateSlot: boolean;
+  origPlateText: string;
   options: BrandSlotOptions;
 } {
   const slots = findBrandSlots(doc);
   const hasInjected = doc.layers.some((l) => isInjectedBrandLayer(l));
   const origText = detectOrigText(doc);
+  const hasCenterSlot = slots.some((s) => s.nm === 'TextGroup' || (s._brandSlot as BrandSlotSnapshot)?.role === 'center');
+  const hasPlateSlot = slots.some((s) => s.nm === 'USERNAME' || (s._brandSlot as BrandSlotSnapshot)?.role === 'plate');
+  const origPlateText = 'platega';
 
   if (!slots.length) {
     return {
       count: 0,
       isInjected: false,
       origText,
+      hasCenterSlot: false,
+      hasPlateSlot: false,
+      origPlateText,
       options: {
         ...DEFAULT_BRAND_OPTIONS,
         plateStyle: 'dark',
@@ -589,22 +639,33 @@ export function readBrandSlotInfo(doc: LottieDoc): {
       count: slots.length,
       isInjected: hasInjected,
       origText,
+      hasCenterSlot,
+      hasPlateSlot,
+      origPlateText,
       options: { ...DEFAULT_BRAND_OPTIONS, ...(doc._brandState as Partial<BrandSlotOptions>) },
     };
   }
-  const snap = ensureSnapshot(slots[0], hasInjected);
+  const primarySlot = slots.find((s) => s.nm !== 'USERNAME') ?? slots[0];
+  const snap = ensureSnapshot(primarySlot, hasInjected);
   return {
     count: slots.length,
     isInjected: hasInjected,
     origText,
+    hasCenterSlot,
+    hasPlateSlot,
+    origPlateText,
     options: {
       ...DEFAULT_BRAND_OPTIONS,
       text: hasInjected ? DEFAULT_BRAND_OPTIONS.text : origText,
+      plateText: 'platega',
+      plateTextEnabled: true,
+      syncPlateText: false,
+      hideBuiltInPlate: false,
       fillHex: snap.origHex,
       strokeHex: snap.origStrokeHex,
       strokeWidth: snap.origUiStrokeWidth,
       useOriginalGlyphs: !hasInjected,
-      hidden: Boolean(slots[0].hd),
+      hidden: Boolean(primarySlot.hd),
     },
   };
 }
@@ -922,10 +983,12 @@ export function applyBrandSlot(
   }
 
   const prevBrand = readBrandSlotInfo(doc).options;
+  const origText = detectOrigText(doc);
   const hasLogo = (opts.mode === 'logo' || opts.mode === 'logo+text') && Boolean(opts.logo);
 
   for (const gr of slots) {
     const snap = ensureSnapshot(gr, injectedSlots.has(gr));
+    const role: BrandSlotRole = snap.role ?? detectSlotRole(gr);
     const aspectX = snap.injected ? 1 : detectSlotAspectX(doc, gr);
     const visW = snap.w * aspectX;
     const timeline = detectSlotTimeline(doc, gr);
@@ -937,7 +1000,15 @@ export function applyBrandSlot(
       (x) => !['sh', 'fl', 'st', 'gf', 'gs', 'tr', 'gr'].includes(x.ty),
     );
 
-    gr.hd = opts.hidden;
+    if (role === 'plate') {
+      if (opts.hideBuiltInPlate || !opts.plateTextEnabled || opts.hidden) {
+        gr.hd = true;
+        continue;
+      }
+      gr.hd = false;
+    } else {
+      gr.hd = opts.hidden;
+    }
 
     const userScale = Math.max(0.1, opts.scale / 100);
     const dx = (opts.offsetX / 100) * snap.w;
@@ -1079,7 +1150,13 @@ export function applyBrandSlot(
     // MODE 3: TEXT ONLY (or fallback when no logo chosen yet)
     let paths: ShapeItem[] = [];
     const canUseOrig = snap.origShapes.length > 0 && !snap.injected;
-    const useOrig = opts.mode === 'text' && canUseOrig && (opts.useOriginalGlyphs || !fonts);
+    const targetText = role === 'plate'
+      ? (opts.syncPlateText ? opts.text : (opts.plateText || 'platega'))
+      : (opts.text || (snap.injected ? 'MAGNAT' : ''));
+    const isExactOrigName = role === 'plate'
+      ? (targetText === 'platega' || targetText === 'USERNAME')
+      : (targetText === (snap.injected ? 'MAGNAT' : origText));
+    const useOrig = opts.mode === 'text' && canUseOrig && (opts.useOriginalGlyphs || !fonts) && isExactOrigName;
 
     if (useOrig) {
       paths = structuredClone(snap.origShapes);
@@ -1093,7 +1170,7 @@ export function applyBrandSlot(
         }
       }
     } else if (fonts) {
-      const trimmed = (opts.text || (snap.injected ? 'MAGNAT' : '')).trim();
+      const trimmed = targetText.trim();
       if (trimmed.length > 0) {
         const rawPaths = layoutBrandGlyphs(trimmed, fonts, opts.letterSpacing);
         const pts = rawPaths.flatMap((p) => pathPoints(p));
@@ -1106,7 +1183,7 @@ export function applyBrandSlot(
           const rH = Math.max(1, maxY - minY);
           const rCx = (minX + maxX) / 2;
           const rCy = (minY + maxY) / 2;
-          const fitY = Math.min(visW / rW, (snap.h * 1.14) / rH) * userScale;
+          const fitY = Math.min(visW / rW, (snap.h * (role === 'plate' ? 1.05 : 1.14)) / rH) * userScale;
           const fitX = fitY / aspectX;
 
           for (const p of rawPaths) {
@@ -1168,6 +1245,11 @@ export function applyBrandSlot(
     syncExtrudeShadow(doc, gr, snap, opts, isExactOrig);
   }
 
+  const plateLayers = findBuiltInPlateLayers(doc);
+  for (const pl of plateLayers) {
+    pl.hd = Boolean(opts.hideBuiltInPlate);
+  }
+
   const preserveOrigColor =
     Boolean(options?.keepStickerColor) && !doc.layers.some((l) => isInjectedBrandLayer(l));
   doc._brandState = {
@@ -1222,6 +1304,12 @@ export function resetBrandSlot(doc: LottieDoc): number {
       }
     }
   }
+
+  const plateLayers = findBuiltInPlateLayers(doc);
+  for (const pl of plateLayers) {
+    pl.hd = false;
+  }
+
   delete doc._brandState;
   return slots.length;
 }
