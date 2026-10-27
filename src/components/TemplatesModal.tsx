@@ -32,7 +32,7 @@ interface CategoryTab {
 }
 
 const MODAL_CATEGORIES: CategoryTab[] = [
-  { id: 'shablony1', label: 'шаблоны tier' },
+  { id: 'shablony1', label: 'шаблоны MAGNAT' },
   { id: 'classic', label: 'классика' },
   { id: 'characters', label: 'персонажи' },
   { id: 'gifts', label: 'подарки' },
@@ -189,7 +189,7 @@ export function TemplatesModal({
       <div className="tier-modal-window" onClick={(e) => e.stopPropagation()}>
         {/* TOP HEADER */}
         <div className="tier-modal-header">
-          <div className="tier-modal-title">шаблоны tier</div>
+          <div className="tier-modal-title">шаблоны MAGNAT</div>
 
           <div className="tier-modal-controls">
             {/* Whale filter dropdown */}
@@ -373,7 +373,7 @@ export function TemplatesModal({
               <div className="tier-brief-header">
                 <div className="tier-brief-title">
                   <Info size={18} className="tier-brief-icon" />
-                  <span>Брифы и стандарты шаблонов tier</span>
+                  <span>Брифы и стандарты шаблонов MAGNAT</span>
                 </div>
                 <button
                   type="button"

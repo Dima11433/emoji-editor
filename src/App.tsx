@@ -1100,16 +1100,16 @@ export default function App() {
               setModalAddToPack(false);
               setShowModal(true);
             }}
-            title="Каталог шаблонов tier"
+            title="Каталог шаблонов MAGNAT"
           >
-            tier
+            MAGNAT
           </span>
           <button
             type="button"
             className="tier-nav-btn"
             onClick={() => {
               setIsEmptyHero(true);
-              say('Открыт стартовый экран tier');
+              say('Открыт стартовый экран MAGNAT');
             }}
             title="Создать новый проект / Стартовый экран"
           >
@@ -1360,7 +1360,7 @@ export default function App() {
             <div className="tier-canvas-area">
               <div className="tier-empty-hero">
                 <div className="tier-hero-circle">
-                  <span className="tier-hero-circle-text">tier</span>
+                  <span className="tier-hero-circle-text">MAGNAT</span>
                 </div>
                 <h2 className="tier-hero-title">редактор эмодзи</h2>
                 <p className="tier-hero-desc">
@@ -1376,7 +1376,7 @@ export default function App() {
                       setShowModal(true);
                     }}
                   >
-                    шаблоны tier
+                    шаблоны MAGNAT
                   </button>
                   <button
                     type="button"

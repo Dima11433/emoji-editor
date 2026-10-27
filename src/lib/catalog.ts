@@ -13,7 +13,7 @@ export interface CatalogItem {
 
 export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string }[] = [
   { id: 'all', label: 'Все' },
-  { id: 'shablony1', label: 'Шаблоны tier' },
+  { id: 'shablony1', label: 'Шаблоны MAGNAT' },
   { id: 'classic', label: 'Классика' },
   { id: 'characters', label: 'Персонажи' },
   { id: 'gifts', label: 'Подарки' },
