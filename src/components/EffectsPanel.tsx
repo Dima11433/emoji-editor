@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type {
   Effects,
   ParticlePlacement,
@@ -39,6 +40,17 @@ const PARTICLE_PLACEMENTS: { id: ParticlePlacement; label: string }[] = [
 ];
 
 export function EffectsPanel({ fx, layers, selectedCount = 1, pixelStatus, onChange }: Props) {
+  const rafRef = useRef<number | null>(null);
+
+  const throttledSliderChange = <K extends keyof Effects>(key: K, patch: Partial<Effects[K]>) => {
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        onChange(key, patch, true);
+      });
+    }
+  };
+
   const targetSelect = (key: 'shimmer' | 'metal' | 'glitch' | 'hologram') => (
     <select
       className="fx-target"
@@ -128,7 +140,7 @@ export function EffectsPanel({ fx, layers, selectedCount = 1, pixelStatus, onCha
                   min={6}
                   max={20}
                   value={fx.particles.count}
-                  onChange={(e) => onChange('particles', { count: Number(e.target.value) }, true)}
+                  onChange={(e) => throttledSliderChange('particles', { count: Number(e.target.value) })}
                 />
               </label>
             </div>
@@ -165,7 +177,7 @@ export function EffectsPanel({ fx, layers, selectedCount = 1, pixelStatus, onCha
                   min={4}
                   max={30}
                   value={fx.glitch.strength}
-                  onChange={(e) => onChange('glitch', { strength: Number(e.target.value) }, true)}
+                  onChange={(e) => throttledSliderChange('glitch', { strength: Number(e.target.value) })}
                 />
               </label>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import lottie, { type AnimationItem } from 'lottie-web/build/player/lottie_light';
 import {
   ChevronLeft,
@@ -53,21 +53,23 @@ interface SeekSignal {
   ratio: number;
 }
 
-function LottieCell({
-  doc,
-  playing,
-  speed,
-  seekSignal,
-  onEnterFrame,
-  className,
-}: {
+interface LottieCellProps {
   doc: LottieDoc;
   playing: boolean;
   speed: number;
   seekSignal: SeekSignal;
   onEnterFrame?: (frame: number) => void;
   className?: string;
-}) {
+}
+
+const LottieCell = React.memo(function LottieCell({
+  doc,
+  playing,
+  speed,
+  seekSignal,
+  onEnterFrame,
+  className,
+}: LottieCellProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<AnimationItem | null>(null);
   const playingRef = useRef(playing);
@@ -82,48 +84,59 @@ function LottieCell({
 
   useEffect(() => {
     if (!boxRef.current) return;
-    // Always pass a fresh clean copy to lottie-web (it mutates animationData in-place with native functions).
-    const clean = cleanForExport(doc) as LottieDoc;
+    let cancelled = false;
     let anim: AnimationItem | null = null;
 
-    try {
-      anim = lottie.loadAnimation({
-        container: boxRef.current,
-        renderer: 'svg',
-        loop: true,
-        autoplay: false,
-        animationData: clean,
-      });
-      anim.setSpeed(speedRef.current);
-      animRef.current = anim;
-    } catch {
-      return;
-    }
+    // Throttle animation initialization via requestAnimationFrame so rapid doc mutations (e.g. slider drag) coalesce
+    const rafId = requestAnimationFrame(() => {
+      if (cancelled || !boxRef.current) return;
 
-    const start = () => {
-      if (!anim) return;
-      const f = Math.min(total - 1, Math.max(0, Math.round(ratioRef.current * (total - 1))));
-      if (playingRef.current) {
-        anim.goToAndPlay(f, true);
-      } else {
-        anim.goToAndStop(f, true);
+      try {
+        const clean = cleanForExport(doc) as LottieDoc;
+        anim = lottie.loadAnimation({
+          container: boxRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: false,
+          animationData: clean,
+        });
+        anim.setSpeed(speedRef.current);
+        animRef.current = anim;
+
+        const start = () => {
+          if (!anim || cancelled) return;
+          const f = Math.min(total - 1, Math.max(0, Math.round(ratioRef.current * (total - 1))));
+          if (playingRef.current) {
+            anim.goToAndPlay(f, true);
+          } else {
+            anim.goToAndStop(f, true);
+          }
+        };
+
+        anim.addEventListener('enterFrame', () => {
+          if (!anim || cancelled) return;
+          const f = Math.floor(anim.currentFrame);
+          ratioRef.current = total > 1 ? f / (total - 1) : 0;
+          onEnterFrameRef.current?.(f);
+        });
+
+        if (anim.isLoaded) start();
+        else anim.addEventListener('DOMLoaded', start);
+
+        // Keep cleanup reference
+        animRef.current = anim;
+      } catch {
+        return;
       }
-    };
-
-    const offFrame = anim.addEventListener('enterFrame', () => {
-      if (!anim) return;
-      const f = Math.floor(anim.currentFrame);
-      ratioRef.current = total > 1 ? f / (total - 1) : 0;
-      onEnterFrameRef.current?.(f);
     });
 
-    if (anim.isLoaded) start();
-    else anim.addEventListener('DOMLoaded', start);
-
     return () => {
-      offFrame();
-      anim?.destroy();
-      animRef.current = null;
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      if (animRef.current) {
+        animRef.current.destroy();
+        animRef.current = null;
+      }
     };
   }, [doc, total]);
 
@@ -144,7 +157,7 @@ function LottieCell({
   }, [seekSignal, total]);
 
   return <div className={className ?? 'stage-canvas'} ref={boxRef} />;
-}
+});
 
 /** Studio player supporting single 512×512 view, seamless multi-tile Telegram banner strip, and live multi-grid. */
 export function Preview({
@@ -155,8 +168,9 @@ export function Preview({
   onCollapseToSingle,
 }: PreviewProps) {
   const [playing, setPlaying] = useState(true);
-  const [frame, setFrame] = useState(0);
   const frameRef = useRef(0);
+  const scrubberRef = useRef<HTMLInputElement>(null);
+  const counterRef = useRef<HTMLSpanElement>(null);
   const [speed, setSpeed] = useState<number>(1);
   const [showGrid, setShowGrid] = useState(false);
   const [backdrop, setBackdrop] = useState<Backdrop>('dark');
@@ -193,21 +207,32 @@ export function Preview({
         ? 'grid'
         : viewPref;
 
-  const handlePrimaryFrame = (f: number) => {
-    if (f !== frameRef.current) {
+  // Ultra-fast 60 FPS frame sync directly updating DOM input and label without React re-rendering the whole stage
+  const handlePrimaryFrame = useCallback(
+    (f: number) => {
       frameRef.current = f;
-      setFrame(f);
-    }
-  };
+      if (scrubberRef.current && Number(scrubberRef.current.value) !== f) {
+        scrubberRef.current.value = String(f);
+      }
+      if (counterRef.current) {
+        counterRef.current.textContent = `${Math.min(f, total - 1) + 1}/${total}`;
+      }
+    },
+    [total],
+  );
 
-  const seek = (nextFrame: number) => {
-    const clamped = ((nextFrame % total) + total) % total;
-    setPlaying(false);
-    frameRef.current = clamped;
-    setFrame(clamped);
-    const ratio = total > 1 ? clamped / (total - 1) : 0;
-    setSeekSignal((prev) => ({ tick: prev.tick + 1, ratio }));
-  };
+  const seek = useCallback(
+    (nextFrame: number) => {
+      const clamped = ((nextFrame % total) + total) % total;
+      setPlaying(false);
+      frameRef.current = clamped;
+      if (scrubberRef.current) scrubberRef.current.value = String(clamped);
+      if (counterRef.current) counterRef.current.textContent = `${clamped + 1}/${total}`;
+      const ratio = total > 1 ? clamped / (total - 1) : 0;
+      setSeekSignal((prev) => ({ tick: prev.tick + 1, ratio }));
+    },
+    [total],
+  );
 
   const visibleGridStickers = selectedStickers.slice(0, 12);
   const gridLen = visibleGridStickers.length;
@@ -424,7 +449,7 @@ export function Preview({
         <button
           type="button"
           className="icon-btn"
-          onClick={() => seek(frame - 1)}
+          onClick={() => seek(frameRef.current - 1)}
           title="Предыдущий кадр"
         >
           <ChevronLeft size={16} />
@@ -440,24 +465,25 @@ export function Preview({
         <button
           type="button"
           className="icon-btn"
-          onClick={() => seek(frame + 1)}
+          onClick={() => seek(frameRef.current + 1)}
           title="Следующий кадр"
         >
           <ChevronRight size={16} />
         </button>
 
         <input
+          ref={scrubberRef}
           className="scrubber"
           type="range"
           min={0}
           max={total - 1}
-          value={Math.min(frame, total - 1)}
+          defaultValue={0}
           onChange={(e) => seek(Number(e.target.value))}
           aria-label="Кадр"
         />
 
-        <span className="frame-count">
-          {Math.min(frame, total - 1) + 1}/{total}
+        <span ref={counterRef} className="frame-count">
+          1/{total}
         </span>
 
         <div className="seg">

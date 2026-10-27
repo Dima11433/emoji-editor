@@ -949,8 +949,23 @@ export default function App() {
     [activeSel, doc, selectedCount, selectedStickers],
   );
 
-  const size = useMemo(() => tgsSize(outDoc), [outDoc]);
-  const checks = useMemo(() => checkTelegram(outDoc, size), [outDoc, size]);
+  const [size, setSize] = useState(() => tgsSize(outDoc));
+  const [checks, setChecks] = useState(() => checkTelegram(outDoc, size));
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      const nextSize = tgsSize(outDoc);
+      setSize(nextSize);
+      setChecks(checkTelegram(outDoc, nextSize));
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [outDoc]);
 
 
   const runColorMutation = (

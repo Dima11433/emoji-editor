@@ -123,6 +123,21 @@ export function BrandPanel({
     onChange(next, mergeKey, selectedCount > 1 ? keepMultiColor : false);
   };
 
+  const rafRef = useRef<number | null>(null);
+  const pendingPatchRef = useRef<Partial<BrandSlotOptions>>({});
+
+  const throttledUpdate = (patch: Partial<BrandSlotOptions>, mergeKey?: string) => {
+    pendingPatchRef.current = { ...pendingPatchRef.current, ...patch };
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const currentPatch = pendingPatchRef.current;
+        pendingPatchRef.current = {};
+        update(currentPatch, mergeKey);
+      });
+    }
+  };
+
   const switchMode = (nextMode: BrandMode) => {
     if (nextMode === 'text') {
       update({
@@ -779,7 +794,7 @@ export function BrandPanel({
             step={0.5}
             disabled={options.strokeHex === null}
             value={options.strokeWidth}
-            onChange={(e) => update({ strokeWidth: Number(e.target.value) }, 'brand:strokeW')}
+            onChange={(e) => throttledUpdate({ strokeWidth: Number(e.target.value) }, 'brand:strokeW')}
           />
         </label>
       </div>
@@ -800,7 +815,7 @@ export function BrandPanel({
             min={30}
             max={300}
             value={options.scale}
-            onChange={(e) => update({ scale: Number(e.target.value) }, 'brand:scale')}
+            onChange={(e) => throttledUpdate({ scale: Number(e.target.value) }, 'brand:scale')}
           />
         </label>
 
@@ -819,7 +834,7 @@ export function BrandPanel({
               min={-80}
               max={80}
               value={options.offsetX}
-              onChange={(e) => update({ offsetX: Number(e.target.value) }, 'brand:ox')}
+              onChange={(e) => throttledUpdate({ offsetX: Number(e.target.value) }, 'brand:ox')}
             />
           </label>
 
@@ -837,7 +852,7 @@ export function BrandPanel({
               min={-80}
               max={80}
               value={options.offsetY}
-              onChange={(e) => update({ offsetY: Number(e.target.value) }, 'brand:oy')}
+              onChange={(e) => throttledUpdate({ offsetY: Number(e.target.value) }, 'brand:oy')}
             />
           </label>
         </div>
@@ -857,7 +872,7 @@ export function BrandPanel({
               min={0}
               max={60}
               value={options.logoGap}
-              onChange={(e) => update({ logoGap: Number(e.target.value) }, 'brand:gap')}
+              onChange={(e) => throttledUpdate({ logoGap: Number(e.target.value) }, 'brand:gap')}
             />
           </label>
         )}
@@ -877,7 +892,7 @@ export function BrandPanel({
               min={-8}
               max={32}
               value={options.letterSpacing}
-              onChange={(e) => update({ letterSpacing: Number(e.target.value) }, 'brand:track')}
+              onChange={(e) => throttledUpdate({ letterSpacing: Number(e.target.value) }, 'brand:track')}
             />
           </label>
         )}
