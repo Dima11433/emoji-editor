@@ -1388,10 +1388,6 @@ export default function App() {
                   <span className="tier-hero-circle-text">MAGNAT</span>
                 </div>
                 <h2 className="tier-hero-title">редактор эмодзи</h2>
-                <p className="tier-hero-desc">
-                  создавай анимированные эмодзи для telegram. доступ по подписке через бота{' '}
-                  <strong>@tierubot</strong>
-                </p>
                 <div className="tier-hero-actions">
                   <button
                     type="button"
