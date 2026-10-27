@@ -1,33 +1,30 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  Check,
-  CheckSquare,
-  Columns3,
   Download,
-  FilePlus2,
-  FolderArchive,
   FolderOpen,
-  Layers,
   LayoutGrid,
+  Link2,
+  Play,
   Plus,
   Redo2,
+  RotateCcw,
+  Send,
   Sparkles,
-  Tag,
+  Square,
   Type,
   Undo2,
-  X,
 } from 'lucide-react';
 import type { Font } from 'opentype.js';
 import { BrandPanel } from './components/BrandPanel';
 import { ChecksPanel } from './components/ChecksPanel';
 import { EffectsPanel } from './components/EffectsPanel';
 import { LayersPanel } from './components/LayersPanel';
-import { LazyThumb } from './components/LazyThumb';
+import { PackLinkModal } from './components/PackLinkModal';
 import { PackTray, type PackItem } from './components/PackTray';
 import { PalettePanel, type BulkColorOp } from './components/PalettePanel';
 import { Preview, type PreviewSticker } from './components/Preview';
+import { TelegramModal } from './components/TelegramModal';
 import { TemplatesModal } from './components/TemplatesModal';
-import { TextPanel, type TextRequest } from './components/TextPanel';
 import {
   applyBrandSlot,
   readBrandSlotInfo,
@@ -61,18 +58,12 @@ import {
   rename,
   toggleHidden,
   type NodePath,
+  type TreeNode,
 } from './lib/layers';
-import { emptyDoc, reindexLayers, type LottieDoc } from './lib/lottie';
+import { emptyDoc, type LottieDoc } from './lib/lottie';
 import { createPackZip, importPackZip } from './lib/packZip';
 import { pixelate } from './lib/pixelSample';
-import {
-  CATALOG,
-  loadCatalogDoc,
-  TEMPLATE_CATEGORIES,
-  type CatalogItem,
-  type TemplateCategory,
-} from './lib/templates';
-import { DEFAULT_TEXT, textToLayer } from './lib/text';
+import { CATALOG, loadCatalogDoc, type CatalogItem } from './lib/templates';
 import { formatKb, optimize, parseSticker, serialize, tgsSize, toTgsAutoFit } from './lib/tgs';
 import { checkTelegram, MAX_BYTES, trimToLimit } from './lib/validate';
 
@@ -197,7 +188,6 @@ function collectMultiPalette(docs: LottieDoc[]): PaletteEntry[] {
     .sort((a, b) => b.count - a.count);
 }
 
-type Tab = 'templates' | 'brand' | 'layers' | 'text';
 
 export default function App() {
   const [hist, dispatch] = useReducer(reducer, null, () => {
@@ -235,10 +225,10 @@ export default function App() {
   const selectedCount = selectedStickers.length;
 
   const [selectedNodePath, setSelectedNodePath] = useState<NodePath | null>(null);
-  const [tab, setTab] = useState<Tab>('templates');
-  const [tplCategory, setTplCategory] = useState<'all' | TemplateCategory>('shablony1');
-  const [tplSearch, setTplSearch] = useState('');
-  const [multiMode, setMultiMode] = useState(false);
+  const [isEmptyHero, setIsEmptyHero] = useState(true);
+  const [showTgModal, setShowTgModal] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [leftFilter, setLeftFilter] = useState<'all' | 'text' | 'shape'>('all');
   const [showPackTray, setShowPackTray] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalAddToPack, setModalAddToPack] = useState(false);
@@ -394,6 +384,7 @@ export default function App() {
           at: Date.now(),
         });
       }
+      setIsEmptyHero(false);
       setSelectedNodePath(null);
     },
     [showPackTray],
@@ -429,6 +420,7 @@ export default function App() {
           key: null,
           at: Date.now(),
         });
+        setIsEmptyHero(false);
         setSelectedNodePath(null);
         say(
           newEntries.length > 1
@@ -442,83 +434,7 @@ export default function App() {
     [say, showPackTray],
   );
 
-  /** Toggles a catalog item in/out of the active multi-selection. */
-  const toggleCatalogMulti = useCallback(
-    async (catItem: CatalogItem) => {
-      const cur = snapRef.current;
-      const existingInSel = cur.items.find(
-        (i) => i.catalogId === catItem.id && cur.selectedIds.includes(i.id),
-      );
-
-      if (existingInSel) {
-        if (cur.selectedIds.length === 1) {
-          setMultiMode(true);
-          say('Режим мультивыбора включён — кликайте по другим эмодзи, чтобы выбрать несколько!');
-          return;
-        }
-        const nextSel = cur.selectedIds.filter((id) => id !== existingInSel.id);
-        const nextItems = showPackTray
-          ? cur.items
-          : cur.items.filter((i) => nextSel.includes(i.id));
-        dispatch({
-          type: 'apply',
-          next: {
-            items: nextItems,
-            selectedIds: nextSel,
-            primaryId: cur.primaryId === existingInSel.id ? nextSel[0] : cur.primaryId,
-          },
-          key: null,
-          at: Date.now(),
-        });
-        return;
-      }
-
-      if (cur.selectedIds.length >= MAX_MULTI_SELECT) {
-        say(`Максимум ${MAX_MULTI_SELECT} эмодзи в одном мультивыборе`, true);
-        return;
-      }
-
-      const existingInPack = cur.items.find((i) => i.catalogId === catItem.id);
-      if (existingInPack) {
-        dispatch({
-          type: 'apply',
-          next: {
-            items: cur.items,
-            selectedIds: [...cur.selectedIds, existingInPack.id],
-            primaryId: cur.primaryId,
-          },
-          key: null,
-          at: Date.now(),
-        });
-        return;
-      }
-
-      try {
-        const loadedDoc = await loadCatalogDoc(catItem);
-        const latest = snapRef.current;
-        const entry: PackItem = {
-          id: makeUid(),
-          name: sanitizeFileName(catItem.name),
-          catalogId: catItem.id,
-          doc: loadedDoc,
-        };
-        dispatch({
-          type: 'apply',
-          next: {
-            items: [...latest.items, entry],
-            selectedIds: [...latest.selectedIds, entry.id],
-            primaryId: latest.primaryId,
-          },
-          key: null,
-          at: Date.now(),
-        });
-      } catch (e) {
-        say(e instanceof Error ? e.message : 'Не удалось загрузить эмодзи', true);
-      }
-    },
-    [say, showPackTray],
-  );
-
+  
   const collapseToSingle = useCallback(() => {
     const cur = snapRef.current;
     if (cur.selectedIds.length <= 1) return;
@@ -530,7 +446,6 @@ export default function App() {
       key: null,
       at: Date.now(),
     });
-    setMultiMode(false);
   }, [showPackTray]);
 
   const setPrimaryFocus = useCallback((id: string) => {
@@ -564,6 +479,7 @@ export default function App() {
       key: null,
       at: Date.now(),
     });
+    setIsEmptyHero(false);
     setSelectedNodePath(null);
     setShowPackTray(true);
     say(`Добавлен «${name}» в пак (#${cur.items.length + 1})`);
@@ -593,6 +509,7 @@ export default function App() {
         key: null,
         at: Date.now(),
       });
+      setIsEmptyHero(false);
       setShowPackTray(true);
       say(`Добавлено и выбрано ${newPackItems.length} эмодзи в паке!`);
     } catch (e) {
@@ -760,7 +677,6 @@ export default function App() {
           at: Date.now(),
         });
         setShowPackTray(true);
-        setTab('brand');
         say(`Импортировано и выбрано ${packItems.length} эмодзи из ${files[0].name}!`);
         return;
       }
@@ -786,7 +702,7 @@ export default function App() {
         editTargets((d) => {
           applyBrandSlot(d, nextOpts, fonts);
         });
-        setTab('brand');
+        setIsEmptyHero(false);
         say(
           selectedCount > 1
             ? `Логотип «${vec.name}» установлен сразу на ${selectedCount} эмодзи!`
@@ -800,6 +716,7 @@ export default function App() {
         const parsed = parseSticker(new Uint8Array(await file.arrayBuffer()));
         const clean = file.name.replace(/\.(tgs|json)$/i, '');
         openSingleSticker(parsed, clean, null);
+        setIsEmptyHero(false);
         say(`Открыт файл ${file.name}`);
         return;
       }
@@ -838,6 +755,7 @@ export default function App() {
           key: null,
           at: Date.now(),
         });
+        setIsEmptyHero(false);
         setShowPackTray(true);
         say(`Загружено и выбрано ${imported.length} эмодзи!`);
       }
@@ -1034,40 +952,6 @@ export default function App() {
   const size = useMemo(() => tgsSize(outDoc), [outDoc]);
   const checks = useMemo(() => checkTelegram(outDoc, size), [outDoc, size]);
 
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: CATALOG.length };
-    for (const item of CATALOG) {
-      counts[item.category] = (counts[item.category] || 0) + 1;
-    }
-    return counts;
-  }, []);
-
-  const filteredCatalog = useMemo(() => {
-    const q = tplSearch.trim().toLowerCase().replace(/^#/, '');
-    return CATALOG.filter((item) => {
-      if (tplCategory !== 'all' && item.category !== tplCategory) return false;
-      if (!q) return true;
-      const numStr = String(item.num);
-      const padStr = String(item.num).padStart(3, '0');
-      return (
-        item.name.toLowerCase().includes(q) ||
-        item.categoryLabel.toLowerCase().includes(q) ||
-        numStr === q ||
-        padStr.includes(q)
-      );
-    });
-  }, [tplCategory, tplSearch]);
-
-  /** Maps catalogId -> 1-based selection index for checked badges in sidebar. */
-  const selectedCatalogOrder = useMemo(() => {
-    const map = new Map<string, number>();
-    selectedStickers.forEach((s, idx) => {
-      if (s.catalogId && !map.has(s.catalogId)) {
-        map.set(s.catalogId, idx + 1);
-      }
-    });
-    return map;
-  }, [selectedStickers]);
 
   const runColorMutation = (
     fn: (node: unknown, skipBrand: boolean) => void,
@@ -1113,34 +997,6 @@ export default function App() {
     });
   };
 
-  const addText = async (req: TextRequest) => {
-    setFontBusy(true);
-    try {
-      const fonts = await ensureFont(req.fontId);
-      editTargets((d) => {
-        const layer = textToLayer({
-          ...DEFAULT_TEXT,
-          ...req,
-          fonts,
-          ip: d.ip,
-          op: d.op,
-        });
-        d.layers.unshift(layer);
-        reindexLayers(d.layers);
-      });
-      setSelectedNodePath([0]);
-      say(
-        selectedCount > 1
-          ? `Текстовый слой добавлен сразу на ${selectedCount} эмодзи`
-          : 'Текстовый слой добавлен поверх эмодзи',
-      );
-    } catch (e) {
-      say(e instanceof Error ? e.message : 'Не получилось добавить текст', true);
-    } finally {
-      setFontBusy(false);
-    }
-  };
-
   const removeSelected = useCallback(() => {
     if (!activeSel) return;
     editPrimary((d) => removeNode(d, activeSel));
@@ -1166,154 +1022,225 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [removeSelected]);
 
-  const pickCatalogSidebar = async (item: CatalogItem, toPack = false) => {
-    try {
-      const loaded = await loadCatalogDoc(item);
-      if (toPack) {
-        addToPack(loaded, item.name, item.id);
-      } else {
-        openSingleSticker(loaded, item.name, item.id);
-        say(`Выбран «${item.name}»`);
-      }
-    } catch (e) {
-      say(e instanceof Error ? e.message : 'Не удалось загрузить эмодзи', true);
-    }
-  };
-
-  const selectPresetByIds = (ids: string[]) => {
-    const byId = new Map(CATALOG.map((c) => [c.id, c]));
-    const items = ids.map((id) => byId.get(id)).filter((x): x is CatalogItem => Boolean(x));
-    openCatalogBatchForEdit(items);
-  };
-
   const tooBig = size > MAX_BYTES;
 
+  const filteredTree = useMemo(() => {
+    if (leftFilter === 'all') return tree;
+    function filterNodes(nodes: TreeNode[]): TreeNode[] {
+      return nodes.flatMap((n) => {
+        const children = n.children ? filterNodes(n.children) : [];
+        const nmLower = n.name.toLowerCase();
+        const match =
+          leftFilter === 'text'
+            ? n.kind === 'text' ||
+              nmLower.includes('text') ||
+              nmLower.includes('надпись') ||
+              nmLower.includes('nik') ||
+              nmLower.includes('name') ||
+              nmLower.includes('plate') ||
+              nmLower.includes('user') ||
+              nmLower.includes('слот')
+            : n.kind === 'shape' ||
+              n.kind === 'group' ||
+              nmLower.includes('shape') ||
+              nmLower.includes('квадрат') ||
+              nmLower.includes('box') ||
+              nmLower.includes('фигур');
+        if (match || children.length > 0) {
+          return [{ ...n, children }];
+        }
+        return [];
+      });
+    }
+    const res = filterNodes(tree);
+    return res.length > 0 ? res : tree;
+  }, [tree, leftFilter]);
+
+  const handleImportPackLink = useCallback(
+    (link: string) => {
+      const q = link.toLowerCase();
+      const matches = CATALOG.filter(
+        (c) => c.name.toLowerCase().includes(q) || c.categoryLabel.toLowerCase().includes(q),
+      );
+      if (matches.length > 0) {
+        setIsEmptyHero(false);
+        openCatalogBatchForEdit(matches.slice(0, 15));
+        say(`Загружено ${Math.min(15, matches.length)} эмодзи из пака «${link}»`);
+      } else {
+        say(`Ссылка «${link}» принята. Выберите шаблон из каталога:`);
+        setShowModal(true);
+      }
+    },
+    [openCatalogBatchForEdit, say],
+  );
+
+  const handleResetAll = useCallback(() => {
+    if (primarySticker.catalogId) {
+      const orig = CATALOG.find((c) => c.id === primarySticker.catalogId);
+      if (orig) {
+        loadCatalogDoc(orig).then((loaded) => {
+          editPrimary((d) => Object.assign(d, loaded));
+          say(`Сброшено до оригинального шаблона «${orig.name}»`);
+        });
+        return;
+      }
+    }
+    handleBrandReset();
+    say('Сброшено');
+  }, [editPrimary, handleBrandReset, primarySticker.catalogId, say]);
+
   return (
-    <div className={`app ${showPackTray ? 'with-tray' : ''}`}>
-      <header className="topbar">
-        <div className="brand">
-          <Sparkles size={20} />
-          <span>MAGNAT Emoji Studio</span>
+    <div className="tier-app">
+      {/* TOP NAVBAR (Screenshot 2 Replica) */}
+      <header className="tier-navbar">
+        <div className="tier-nav-left">
+          <span
+            className="tier-logo"
+            onClick={() => {
+              setModalAddToPack(false);
+              setShowModal(true);
+            }}
+            title="Каталог шаблонов tier"
+          >
+            tier
+          </span>
+          <button
+            type="button"
+            className="tier-nav-btn"
+            onClick={() => {
+              setIsEmptyHero(true);
+              say('Открыт стартовый экран tier');
+            }}
+            title="Создать новый проект / Стартовый экран"
+          >
+            <Plus size={14} /> новый
+          </button>
+          <button
+            type="button"
+            className="tier-nav-btn"
+            onClick={() => fileInput.current?.click()}
+            title="Открыть .tgs, .json, .zip или векторный логотип"
+          >
+            <FolderOpen size={14} /> открыть файл
+          </button>
+          <button
+            type="button"
+            className="tier-nav-btn"
+            onClick={() => setShowLinkModal(true)}
+            title="Импортировать пак по ссылке Telegram"
+          >
+            <Link2 size={14} /> пак по ссылке
+          </button>
+          <button
+            type="button"
+            className="tier-nav-btn"
+            onClick={() => {
+              setModalAddToPack(false);
+              setShowModal(true);
+            }}
+            title={`Открыть каталог всех ${CATALOG.length} шаблонов`}
+          >
+            <LayoutGrid size={14} /> шаблоны
+          </button>
+
+          <div className="tier-history-group">
+            <button
+              type="button"
+              className="tier-nav-icon-btn"
+              disabled={!hist.past.length}
+              onClick={() => dispatch({ type: 'undo' })}
+              title="Отменить (Ctrl+Z)"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              type="button"
+              className="tier-nav-icon-btn"
+              disabled={!hist.future.length}
+              onClick={() => dispatch({ type: 'redo' })}
+              title="Вернуть (Ctrl+Shift+Z)"
+            >
+              <Redo2 size={14} />
+            </button>
+            <button
+              type="button"
+              className="tier-nav-icon-btn"
+              onClick={handleResetAll}
+              title="Сбросить изменения к оригиналу"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="topbar-btn"
-          onClick={() => {
-            setModalAddToPack(false);
-            setShowModal(true);
-          }}
-          title={`Открыть большой каталог всех ${CATALOG.length} шаблонов и эмодзи`}
-        >
-          <LayoutGrid size={15} /> Каталог ({CATALOG.length})
-        </button>
+        <div className="tier-nav-center">
+          <div className="tier-project-badge">
+            <input
+              className="tier-project-name"
+              style={{ background: 'transparent', border: 'none', color: '#ffffff', outline: 'none', maxWidth: 160 }}
+              value={isEmptyHero ? 'Пустой проект' : fileName}
+              onChange={(e) => renamePrimaryFile(e.target.value)}
+              disabled={isEmptyHero}
+              aria-label="Имя проекта"
+            />
+            {selectedCount > 1 && !isEmptyHero && (
+              <span className="tier-project-meta">{selectedCount} эмодзи</span>
+            )}
+            <span
+              className={`tier-project-size ${tooBig ? 'bad' : ''}`}
+              title="Размер сжатого .tgs файла (лимит Telegram 64 кБ)"
+            >
+              {formatKb(size)} / 64 кБ
+            </span>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          className={`topbar-btn ${showPackTray ? 'active' : ''}`}
-          onClick={() => setShowPackTray((v) => !v)}
-          title="Открыть/скрыть панель пака"
-        >
-          <FolderArchive size={15} /> Пак ({pack.length})
-        </button>
-
-        <button
-          type="button"
-          className="topbar-btn"
-          onClick={() => {
-            openSingleSticker(emptyDoc(), 'новый_эмодзи', null);
-            say('Создан чистый холст 512×512');
-          }}
-          title="Создать пустой холст 512×512"
-        >
-          <FilePlus2 size={15} /> Пустой
-        </button>
-
-        <input
-          className="file-name"
-          value={fileName}
-          onChange={(e) => renamePrimaryFile(e.target.value)}
-          aria-label="Имя файла"
-        />
-
-        <div className="top-actions">
+        <div className="tier-nav-right">
           <button
             type="button"
-            onClick={() => fileInput.current?.click()}
-            title="Открыть .tgs, Lottie .json, логотип .svg/.png или архив пака .zip"
+            className="tier-nav-btn"
+            onClick={() => setShowTgModal(true)}
+            title="Посмотреть анимацию в реалистичном чате Telegram"
           >
-            <FolderOpen size={15} /> Открыть
+            <Send size={13} /> как в telegram
           </button>
           <button
             type="button"
-            className="icon-btn"
-            disabled={!hist.past.length}
-            onClick={() => dispatch({ type: 'undo' })}
-            title="Отменить (Ctrl+Z)"
+            className="tier-nav-btn"
+            onClick={() => {
+              setShowTgModal(true);
+              say('Режим видео: предпросмотр анимации в сообщении Telegram');
+            }}
+            title="Предпросмотр анимации / видео"
           >
-            <Undo2 size={16} />
+            <Play size={13} /> видео
           </button>
-          <button
-            type="button"
-            className="icon-btn"
-            disabled={!hist.future.length}
-            onClick={() => dispatch({ type: 'redo' })}
-            title="Вернуть (Ctrl+Shift+Z)"
-          >
-            <Redo2 size={16} />
-          </button>
-          <span className={`size-badge ${tooBig ? 'bad' : ''}`} title="Размер сжатого .tgs файла">
-            {formatKb(size)} / 64 кБ
-          </span>
-
-          {selectedCount > 1 ? (
-            <>
-              <button
-                type="button"
-                disabled={pixelBusy}
-                onClick={() => downloadSingle('tgs')}
-                title="Скачать только активный .tgs файл"
-              >
-                <Download size={14} /> 1 .tgs
-              </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={pixelBusy}
-                onClick={() => downloadZipList(selectedStickers, 'magnat_selected')}
-                title={`Скачать все ${selectedCount} выбранных эмодзи готовым архивом .zip`}
-              >
-                <Download size={15} /> Скачать выбранные ({selectedCount}) .zip
-              </button>
-            </>
+          {selectedCount > 1 && !isEmptyHero ? (
+            <button
+              type="button"
+              className="tier-nav-btn tier-btn-primary"
+              disabled={pixelBusy}
+              onClick={() => downloadZipList(selectedStickers, 'magnat_selected')}
+              title={`Скачать выбранные ${selectedCount} эмодзи готовым архивом .zip`}
+            >
+              <Download size={14} /> скачать ({selectedCount}) .zip
+            </button>
           ) : (
-            <>
-              <button
-                type="button"
-                className="zip-btn"
-                onClick={() => downloadZipList(pack, 'magnat_emoji_pack')}
-                title="Скачать весь пак готовых .tgs эмодзи в .zip"
-              >
-                <Download size={15} /> Пак .zip ({pack.length})
-              </button>
-              <button
-                type="button"
-                disabled={pixelBusy}
-                onClick={() => downloadSingle('json')}
-                title="Скачать исходник Lottie JSON"
-              >
-                JSON
-              </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={pixelBusy}
-                onClick={() => downloadSingle('tgs')}
-              >
-                <Download size={15} /> Скачать .tgs
-              </button>
-            </>
+            <button
+              type="button"
+              className="tier-nav-btn tier-btn-primary"
+              disabled={pixelBusy}
+              onClick={() => downloadSingle('tgs')}
+              title="Скачать готовый .tgs для Telegram"
+            >
+              <Download size={14} /> скачать tgs
+            </button>
           )}
+
+          <div className="tier-profile-badge" title="Профиль MAGNAT Studio">
+            <div className="tier-avatar">M</div>
+            <span className="tier-username">MAGNAT</span>
+          </div>
         </div>
 
         <input
@@ -1323,244 +1250,185 @@ export default function App() {
           accept=".tgs,.json,.zip,.svg,.png,.webp,.jpg,.jpeg,application/json,application/zip,image/*"
           hidden
           onChange={(e) => {
-            if (e.target.files?.length) openFiles(e.target.files);
+            if (e.target.files?.length) {
+              setIsEmptyHero(false);
+              openFiles(e.target.files);
+            }
             e.target.value = '';
           }}
         />
       </header>
 
-      <aside className="left">
-        <nav className="tabs">
-          <button
-            type="button"
-            className={tab === 'templates' ? 'on' : ''}
-            onClick={() => setTab('templates')}
-            title="Шаблоны и мультивыбор эмодзи"
-          >
-            <LayoutGrid size={14} /> Паки
-          </button>
-          <button
-            type="button"
-            className={tab === 'brand' ? 'on' : ''}
-            onClick={() => setTab('brand')}
-            title="Брендирование: никнейм, логотип или плашка сразу на все выбранные эмодзи"
-          >
-            <Tag size={14} /> Бренд{selectedCount > 1 ? ` (${selectedCount})` : ''}
-          </button>
-          <button
-            type="button"
-            className={tab === 'layers' ? 'on' : ''}
-            onClick={() => setTab('layers')}
-            title="Слои, вложенные композиции и трансформация"
-          >
-            <Layers size={14} /> Слои
-          </button>
-          <button
-            type="button"
-            className={tab === 'text' ? 'on' : ''}
-            onClick={() => setTab('text')}
-            title="Добавить дополнительный текстовый слой"
-          >
-            <Type size={14} /> +Текст
-          </button>
-        </nav>
-
-        <div className="tab-body">
-          {tab === 'templates' && (
-            <div className="templates-panel pad">
+      {/* 3-PANEL STUDIO GRID (Screenshot 2 Replica) */}
+      <div className="tier-studio">
+        {/* LEFT PANEL: ЧАСТИ ЭМОДЗИ */}
+        <aside className="tier-panel tier-panel-left">
+          <div className="tier-panel-header">
+            <div className="tier-panel-title-row">
+              <h3 className="tier-panel-title">части эмодзи</h3>
+              {tree.length > 0 && !isEmptyHero && (
+                <span className="muted tiny">{tree.length} слоёв</span>
+              )}
+            </div>
+            <div className="tier-filter-pills">
               <button
                 type="button"
-                className="goto-brand-cta"
-                onClick={() => setTab('brand')}
+                className={`tier-filter-pill ${leftFilter === 'text' ? 'active' : ''}`}
+                onClick={() => setLeftFilter((f) => (f === 'text' ? 'all' : 'text'))}
               >
-                <Sparkles size={14} />
-                <span>
-                  {selectedCount > 1
-                    ? `Изменить бренд сразу на ${selectedCount} эмодзи`
-                    : brandInfo.count > 0
-                      ? `Настроить бренд «${brandInfo.options.text || 'ЛОГО'}»`
-                      : 'Добавить ник / логотип на этот шаблон'}
-                </span>
+                <Type size={11} /> надпись
               </button>
+              <button
+                type="button"
+                className={`tier-filter-pill ${leftFilter === 'shape' ? 'active' : ''}`}
+                onClick={() => setLeftFilter((f) => (f === 'shape' ? 'all' : 'shape'))}
+              >
+                <Square size={11} /> квадрат
+              </button>
+              <button
+                type="button"
+                className={`tier-filter-pill ${leftFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setLeftFilter('all')}
+              >
+                все
+              </button>
+            </div>
+          </div>
 
-              {/* Multi-Select Toolbar */}
-              <div className="multi-select-box">
-                <div className="multi-select-top">
-                  <button
-                    type="button"
-                    className={`multi-toggle-btn ${multiMode || selectedCount > 1 ? 'on' : ''}`}
-                    onClick={() => setMultiMode((v) => !v)}
-                    title="Когда включено, клик по карточкам выбирает сразу много эмодзи для одновременной переделки"
-                  >
-                    <CheckSquare size={14} />
-                    <span>
-                      {selectedCount > 1
-                        ? `Мультивыбор: ${selectedCount} шт.`
-                        : multiMode
-                          ? 'Кликайте по эмодзи…'
-                          : 'Выбрать несколько'}
-                    </span>
-                  </button>
-
-                  {selectedCount > 1 && (
-                    <button
-                      type="button"
-                      className="mini-btn"
-                      onClick={collapseToSingle}
-                      title="Оставить только 1 эмодзи"
-                    >
-                      <X size={12} /> Сброс
-                    </button>
-                  )}
-                </div>
-
-                <div className="multi-quick-row">
-                  <button
-                    type="button"
-                    className="mini-btn"
-                    onClick={() =>
-                      selectPresetByIds(['shablony1_012', 'shablony1_013', 'shablony1_014'])
-                    }
-                    title="Выбрать 3 части широкого баннера XXX SHOP вместе"
-                  >
-                    <Columns3 size={12} /> Баннер 3 шт.
-                  </button>
-                  <button
-                    type="button"
-                    className="mini-btn"
-                    onClick={() =>
-                      selectPresetByIds([
-                        'shablony1_012',
-                        'shablony1_013',
-                        'shablony1_014',
-                        'shablony1_015',
-                      ])
-                    }
-                    title="Выбрать весь набор XXX (баннер 3 шт. + 3D-значок XXX)"
-                  >
-                    Набор XXX (4)
-                  </button>
-                  {filteredCatalog.length > 1 && (
-                    <button
-                      type="button"
-                      className="mini-btn"
-                      onClick={() => openCatalogBatchForEdit(filteredCatalog)}
-                      title="Выбрать все показанные ниже эмодзи (до 60 шт.) для одновременного редактирования"
-                    >
-                      Все ({Math.min(MAX_MULTI_SELECT, filteredCatalog.length)})
-                    </button>
-                  )}
-                </div>
+          <div className="tier-panel-body">
+            {isEmptyHero || !tree.length ? (
+              <div className="tier-layers-empty">
+                здесь появятся части эмодзи: каждую можно выделить, подвинуть, перекрасить и анимировать
               </div>
-
-              <div className="tpl-search-wrap">
-                <input
-                  type="text"
-                  className="tpl-search-input"
-                  placeholder="Поиск (Баннер, Корона, Щит, #001...)"
-                  value={tplSearch}
-                  onChange={(e) => setTplSearch(e.target.value)}
+            ) : (
+              <>
+                {selectedCount > 1 && (
+                  <div className="layers-focus-note" style={{ marginBottom: 10 }}>
+                    Слои для <strong>«{primarySticker.name}»</strong> (кликните по другому эмодзи для смены)
+                  </div>
+                )}
+                <LayersPanel
+                  tree={filteredTree}
+                  selected={activeSel}
+                  selectedOpacity={selectedOpacity}
+                  onSelect={setSelectedNodePath}
+                  onToggle={(p) => editPrimary((d) => toggleHidden(d, p))}
+                  onRename={(p, name) => editPrimary((d) => rename(d, p, name))}
+                  onMove={(dir) => {
+                    if (!activeSel) return;
+                    let moved = activeSel;
+                    editPrimary((d) => {
+                      moved = moveNode(d, activeSel, dir);
+                    });
+                    setSelectedNodePath(moved);
+                  }}
+                  onDuplicate={() => activeSel && editPrimary((d) => duplicateNode(d, activeSel))}
+                  onDelete={removeSelected}
+                  onTransform={(delta, mergeKey) => {
+                    if (!activeSel) return;
+                    editPrimary((d) => adjustNodeTransform(d, activeSel, delta), mergeKey ?? null);
+                  }}
                 />
-                {tplSearch && (
+              </>
+            )}
+          </div>
+
+          <div className="tier-left-footer">
+            <span className="tier-access-label">доступ к редактору</span>
+            <span className="tier-access-date">открыт до 23.11.2026</span>
+          </div>
+        </aside>
+
+        {/* CENTER CANVAS & PLAYER (Screenshot 2 Replica) */}
+        <main
+          className={`tier-center ${dragging ? 'drop' : ''}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            if (e.dataTransfer.files?.length) {
+              setIsEmptyHero(false);
+              openFiles(e.dataTransfer.files);
+            }
+          }}
+        >
+          {isEmptyHero ? (
+            <div className="tier-canvas-area">
+              <div className="tier-empty-hero">
+                <div className="tier-hero-circle">
+                  <span className="tier-hero-circle-text">tier</span>
+                </div>
+                <h2 className="tier-hero-title">редактор эмодзи</h2>
+                <p className="tier-hero-desc">
+                  создавай анимированные эмодзи для telegram. доступ по подписке через бота{' '}
+                  <strong>@tierubot</strong>
+                </p>
+                <div className="tier-hero-actions">
                   <button
                     type="button"
-                    className="tpl-search-clear"
-                    onClick={() => setTplSearch('')}
-                    title="Очистить"
+                    className="tier-hero-btn tier-btn-primary"
+                    onClick={() => {
+                      setModalAddToPack(false);
+                      setShowModal(true);
+                    }}
                   >
-                    ×
+                    шаблоны tier
                   </button>
-                )}
-              </div>
-
-              <div className="tpl-categories">
-                {TEMPLATE_CATEGORIES.map((cat) => (
                   <button
-                    key={cat.id}
                     type="button"
-                    className={`tpl-chip ${tplCategory === cat.id ? 'on' : ''}`}
-                    onClick={() => setTplCategory(cat.id)}
+                    className="tier-hero-btn"
+                    onClick={() => fileInput.current?.click()}
                   >
-                    <span>{cat.label}</span>
-                    <span className="count">{categoryCounts[cat.id] ?? 0}</span>
+                    открыть .tgs
                   </button>
-                ))}
-              </div>
-
-              <div className="templates">
-                {filteredCatalog.map((item) => {
-                  const selOrder = selectedCatalogOrder.get(item.id) ?? 0;
-                  const isSel = selOrder > 0;
-                  return (
-                    <div
-                      key={item.id}
-                      className={`template-card ${isSel ? 'active' : ''}`}
-                      onClick={(e) => {
-                        if (multiMode || e.ctrlKey || e.metaKey || e.shiftKey) {
-                          toggleCatalogMulti(item);
-                        } else {
-                          setMultiMode(false);
-                          pickCatalogSidebar(item, false);
-                        }
-                      }}
-                      title={`${item.name} (галочка в углу — выбрать сразу несколько)`}
-                    >
-                      <div className="template-card-thumb-wrap">
-                        <LazyThumb item={item} />
-                        <button
-                          type="button"
-                          className={`card-check-btn ${isSel ? 'checked' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCatalogMulti(item);
-                          }}
-                          title={
-                            isSel
-                              ? 'Убрать из мультивыбора'
-                              : 'Добавить этот эмодзи к мультивыбору'
-                          }
-                        >
-                          {isSel ? (
-                            selectedCount > 1 ? (
-                              <span>{selOrder}</span>
-                            ) : (
-                              <Check size={11} strokeWidth={3} />
-                            )
-                          ) : null}
-                        </button>
-                      </div>
-                      <div className="template-card-foot">
-                        <span className="template-card-title">
-                          {item.category === 'shablony1'
-                            ? item.name
-                                .replace(/^Баннер\s+(\d\/3)\s*·\s*/, '$1 ')
-                                .replace(/^Значок\s+3D\s*·\s*/, '3D ')
-                                .replace(/^Шаблон\s*(?:#\d+\s*)?·?\s*/, '')
-                            : `#${String(item.num).padStart(3, '0')}`}
-                        </span>
-                        <button
-                          type="button"
-                          className="template-card-plus"
-                          title="Добавить в пак"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            pickCatalogSidebar(item, true);
-                          }}
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {filteredCatalog.length === 0 && (
-                  <div className="tpl-empty">Ничего не найдено</div>
-                )}
+                  <button
+                    type="button"
+                    className="tier-hero-btn"
+                    onClick={() => setShowLinkModal(true)}
+                  >
+                    пак по ссылке
+                  </button>
+                  <button
+                    type="button"
+                    className="tier-hero-btn"
+                    onClick={() => {
+                      setIsEmptyHero(false);
+                      openSingleSticker(emptyDoc(), 'новый_эмодзи', null);
+                      say('Создан чистый холст 512×512');
+                    }}
+                  >
+                    пустой холст
+                  </button>
+                </div>
+                <span className="tier-hero-drag">или перетащи файлы сюда</span>
               </div>
             </div>
+          ) : (
+            <Preview
+              doc={outDoc}
+              selectedStickers={previewStickers}
+              primaryId={primarySticker.id}
+              onSelectPrimary={setPrimaryFocus}
+              onCollapseToSingle={collapseToSingle}
+            />
           )}
+        </main>
 
-          {tab === 'brand' && (
+        {/* RIGHT PANEL: 3 SECTIONS (Screenshot 2 Replica) */}
+        <aside className="tier-panel tier-right-panel">
+          {/* SECTION 1: T НАДПИСЬ */}
+          <section className="tier-section">
+            <div className="tier-section-title">
+              <Type size={16} color="#93c5fd" />
+              <span>T надпись</span>
+              {selectedCount > 1 && !isEmptyHero && (
+                <span className="pill accent-pill">на {selectedCount} эмодзи</span>
+              )}
+            </div>
             <BrandPanel
               slotCount={brandInfo.count}
               isInjected={brandInfo.isInjected}
@@ -1574,128 +1442,92 @@ export default function App() {
               busy={fontBusy}
               uploadedLogo={uploadedLogo}
               onUploadedLogoChange={setUploadedLogo}
-              onChange={handleBrandChange}
+              onChange={(opts, mergeKey, keepCol) => {
+                setIsEmptyHero(false);
+                handleBrandChange(opts, mergeKey, keepCol);
+              }}
               onReset={handleBrandReset}
               onApplyToPack={handleApplyBrandToPack}
               onSay={say}
             />
-          )}
+          </section>
 
-          {tab === 'layers' && (
-            <>
-              {selectedCount > 1 && (
-                <div className="layers-focus-note">
-                  Слои открыты для <strong>«{primarySticker.name}»</strong> (кликните по другому эмодзи на холсте для смены)
-                </div>
-              )}
-              <LayersPanel
-                tree={tree}
-                selected={activeSel}
-                selectedOpacity={selectedOpacity}
-                onSelect={setSelectedNodePath}
-                onToggle={(p) => editPrimary((d) => toggleHidden(d, p))}
-                onRename={(p, name) => editPrimary((d) => rename(d, p, name))}
-                onMove={(dir) => {
-                  if (!activeSel) return;
-                  let moved = activeSel;
-                  editPrimary((d) => {
-                    moved = moveNode(d, activeSel, dir);
-                  });
-                  setSelectedNodePath(moved);
-                }}
-                onDuplicate={() => activeSel && editPrimary((d) => duplicateNode(d, activeSel))}
-                onDelete={removeSelected}
-                onTransform={(delta, mergeKey) => {
-                  if (!activeSel) return;
-                  editPrimary((d) => adjustNodeTransform(d, activeSel, delta), mergeKey ?? null);
-                }}
-              />
-            </>
-          )}
+          {/* SECTION 2: ⊚ ВСЕ ЦВЕТА */}
+          <section className="tier-section">
+            <div className="tier-section-title">
+              <Sparkles size={16} color="#fbbf24" />
+              <span>⊚ все цвета</span>
+            </div>
+            <PalettePanel
+              entries={palette}
+              scopeName={activeSel ? selectedNode?.nm || 'выбранный слой' : null}
+              selectedCount={selectedCount}
+              packCount={pack.length}
+              onClearScope={() => setSelectedNodePath(null)}
+              onChange={(from, to) => {
+                setIsEmptyHero(false);
+                runColorMutation(
+                  (n) => replaceColor(n, from, to),
+                  `color:${activeSel?.join('.') ?? 'multi'}`,
+                );
+              }}
+              onTheme={(themeId) => {
+                setIsEmptyHero(false);
+                runColorMutation(
+                  (n, skipBrand) => applyColorTheme(n, themeId, { skipBrandSlot: skipBrand }),
+                  `theme:${activeSel?.join('.') ?? 'multi'}`,
+                );
+              }}
+              onThemeToPack={handleApplyThemeToPack}
+              onBulk={handleBulkColor}
+            />
+          </section>
 
-          {tab === 'text' && <TextPanel onAdd={addText} busy={fontBusy} />}
-        </div>
-      </aside>
+          {/* SECTION 3: ✦ ЭФФЕКТЫ */}
+          <section className="tier-section">
+            <div className="tier-section-title">
+              <Sparkles size={16} color="#ec4899" />
+              <span>✦ эффекты</span>
+            </div>
+            <EffectsPanel
+              fx={fx}
+              layers={doc.layers
+                .filter((l) => l.ind !== undefined)
+                .map((l, i) => ({ ind: l.ind!, name: l.nm || `Слой ${i + 1}` }))}
+              selectedCount={selectedCount}
+              pixelStatus={pixelStatus}
+              onChange={(k, p, m) => {
+                setIsEmptyHero(false);
+                setEffect(k, p, m);
+              }}
+            />
+            <ChecksPanel
+              checks={checks}
+              onTrim={() => editTargets(trimToLimit)}
+              onOptimize={() => {
+                let saved = 0;
+                editTargets((d) => {
+                  const before = tgsSize(applyShapeEffects(d));
+                  const opt = { ...optimize(d), fx: d.fx };
+                  saved += Math.max(0, before - tgsSize(applyShapeEffects(opt)));
+                  Object.assign(d, opt);
+                });
+                say(saved > 0 ? `Сжато суммарно на ${formatKb(saved)}` : 'Файлы уже оптимальны');
+              }}
+            />
+          </section>
+        </aside>
+      </div>
 
-      <main
-        className={`center ${dragging ? 'drop' : ''}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          if (e.dataTransfer.files?.length) openFiles(e.dataTransfer.files);
-        }}
-      >
-        <Preview
-          doc={outDoc}
-          selectedStickers={previewStickers}
-          primaryId={primarySticker.id}
-          onSelectPrimary={setPrimaryFocus}
-          onCollapseToSingle={collapseToSingle}
-        />
-        <p className="muted small hint">
-          Перетащите сюда <code>.svg</code> / <code>.png</code> логотип, несколько <code>.tgs</code> или архив <code>.zip</code>
-        </p>
-      </main>
-
-      <aside className="right">
-        <PalettePanel
-          entries={palette}
-          scopeName={activeSel ? (selectedNode?.nm || 'выбранный слой') : null}
-          selectedCount={selectedCount}
-          packCount={pack.length}
-          onClearScope={() => setSelectedNodePath(null)}
-          onChange={(from, to) =>
-            runColorMutation(
-              (n) => replaceColor(n, from, to),
-              `color:${activeSel?.join('.') ?? 'multi'}`,
-            )
-          }
-          onTheme={(themeId) =>
-            runColorMutation(
-              (n, skipBrand) => applyColorTheme(n, themeId, { skipBrandSlot: skipBrand }),
-              `theme:${activeSel?.join('.') ?? 'multi'}`,
-            )
-          }
-          onThemeToPack={handleApplyThemeToPack}
-          onBulk={handleBulkColor}
-        />
-
-        <EffectsPanel
-          fx={fx}
-          layers={doc.layers
-            .filter((l) => l.ind !== undefined)
-            .map((l, i) => ({ ind: l.ind!, name: l.nm || `Слой ${i + 1}` }))}
-          selectedCount={selectedCount}
-          pixelStatus={pixelStatus}
-          onChange={setEffect}
-        />
-
-        <ChecksPanel
-          checks={checks}
-          onTrim={() => editTargets(trimToLimit)}
-          onOptimize={() => {
-            let saved = 0;
-            editTargets((d) => {
-              const before = tgsSize(applyShapeEffects(d));
-              const opt = { ...optimize(d), fx: d.fx };
-              saved += Math.max(0, before - tgsSize(applyShapeEffects(opt)));
-              Object.assign(d, opt);
-            });
-            say(saved > 0 ? `Сжато суммарно на ${formatKb(saved)}` : 'Файлы уже оптимальны');
-          }}
-        />
-      </aside>
-
+      {/* DRAWERS & MODALS */}
       <PackTray
         pack={pack}
         selectedIds={selectedIds}
         primaryId={primarySticker.id}
-        onSelect={handlePackSelect}
+        onSelect={(id, toggleMulti) => {
+          setIsEmptyHero(false);
+          handlePackSelect(id, toggleMulti);
+        }}
         onSelectAll={handleSelectAllInPack}
         onCollapseSelection={collapseToSingle}
         onAdd={() => {
@@ -1715,6 +1547,7 @@ export default function App() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSelect={(newDoc, item, isAdd) => {
+          setIsEmptyHero(false);
           if (isAdd) {
             addToPack(newDoc, item.name, item.id);
           } else {
@@ -1723,9 +1556,28 @@ export default function App() {
             setShowModal(false);
           }
         }}
-        onOpenMultiForEdit={openCatalogBatchForEdit}
-        onAddBatchToPack={handleAddBatchToPack}
+        onOpenMultiForEdit={(items) => {
+          setIsEmptyHero(false);
+          openCatalogBatchForEdit(items);
+        }}
+        onAddBatchToPack={(items) => {
+          setIsEmptyHero(false);
+          handleAddBatchToPack(items);
+        }}
         defaultAddToPack={modalAddToPack}
+      />
+
+      <TelegramModal
+        isOpen={showTgModal}
+        onClose={() => setShowTgModal(false)}
+        doc={outDoc}
+        title="MAGNAT"
+      />
+
+      <PackLinkModal
+        isOpen={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+        onImport={handleImportPackLink}
       />
 
       {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
