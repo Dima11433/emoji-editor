@@ -1177,11 +1177,21 @@ export default function App() {
           <div className="tier-project-badge">
             <input
               className="tier-project-name"
-              style={{ background: 'transparent', border: 'none', color: '#ffffff', outline: 'none', maxWidth: 160 }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#ffffff',
+                outline: 'none',
+                width: `${Math.max(6, Math.min(16, (isEmptyHero ? 'Пустой проект' : fileName).length + 1))}ch`,
+                padding: 0,
+                fontSize: '12.5px',
+                fontWeight: 600,
+              }}
               value={isEmptyHero ? 'Пустой проект' : fileName}
               onChange={(e) => renamePrimaryFile(e.target.value)}
               disabled={isEmptyHero}
               aria-label="Имя проекта"
+              title={isEmptyHero ? 'Пустой проект' : fileName}
             />
             {selectedCount > 1 && !isEmptyHero && (
               <span className="tier-project-meta">{selectedCount} эмодзи</span>

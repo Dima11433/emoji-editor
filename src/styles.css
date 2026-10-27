@@ -192,7 +192,7 @@ button:disabled {
 
 .tier-project-badge {
   pointer-events: auto;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   background: #151824;
@@ -200,34 +200,62 @@ button:disabled {
   padding: 4px 12px;
   border-radius: var(--radius-full);
   font-size: 12.5px;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .tier-project-name {
   font-weight: 600;
   color: #ffffff;
-  max-width: 180px;
+  max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  flex-shrink: 1;
 }
 
 .tier-project-meta {
   color: var(--text-muted);
   font-size: 11.5px;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .tier-project-size {
   font-size: 11px;
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.06);
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
 }
 
 .tier-project-size.bad {
   background: var(--error);
   color: #ffffff;
+}
+
+@media (max-width: 1300px) {
+  .tier-navbar {
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .tier-nav-left {
+    gap: 6px;
+  }
+  .tier-nav-right {
+    gap: 6px;
+  }
+  .tier-nav-btn {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
 }
 
 /* RIGHT ACTIONS */
