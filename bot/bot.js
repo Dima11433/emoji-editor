@@ -4,20 +4,15 @@
  * Zero external dependencies (runs with standard Node.js https).
  *
  * HOW TO RUN:
- *   set TELEGRAM_BOT_TOKEN=123456789:ABCDEF...
- *   node bot.js
+ *   node bot/bot.js
  */
 
 const https = require('https');
+const http = require('http');
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
-const WEB_APP_URL = process.env.WEB_APP_URL || 'https://dima11433.github.io/emoji-editor/';
-
-if (BOT_TOKEN === 'YOUR_BOT_TOKEN_HERE') {
-  console.log('⚠️ Внимание: укажите токен бота через переменную окружения TELEGRAM_BOT_TOKEN:');
-  console.log('   set TELEGRAM_BOT_TOKEN=ваш_токен_из_BotFather');
-  console.log('   node bot.js\n');
-}
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '9138718385:AAGs-H7KUADtf2_QlU1ukIsKeEl6icd8y58';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://emoji-editor-ten.vercel.app';
+const PORT = process.env.PORT || 3200;
 
 /**
  * Call Telegram Bot API
@@ -139,6 +134,24 @@ async function handleUpdate(update) {
     return;
   }
 
+  if (text.startsWith('/editor')) {
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `🚀 Запускайте веб-редактор MAGNAT Emoji Studio по кнопке ниже:`,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: '🎨 Запустить редактор',
+              web_app: { url: WEB_APP_URL },
+            },
+          ],
+        ],
+      },
+    });
+    return;
+  }
+
   if (text.startsWith('/pro')) {
     await sendStarsInvoice(chatId, 'pro');
     return;
@@ -161,6 +174,7 @@ async function handleUpdate(update) {
         `5. Отправьте ваши скачанные файлы.\n\n` +
         `⭐️ Команды бота:\n` +
         `/start — Главное меню и запуск приложения\n` +
+        `/editor — Открыть веб-редактор\n` +
         `/pro — Оплата месячной подписки PRO за Stars\n` +
         `/vip — Оплата вечной подписки Lifetime VIP за Stars`,
       parse_mode: 'Markdown',
@@ -243,11 +257,76 @@ async function pollUpdates() {
   setImmediate(pollUpdates);
 }
 
-// Start polling if token configured
-if (BOT_TOKEN !== 'YOUR_BOT_TOKEN_HERE') {
+/**
+ * Health check & Webhook HTTP server
+ */
+const server = http.createServer(async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
+
+  if (req.url === '/health' || req.url === '/') {
+    res.writeHead(200);
+    return res.end(JSON.stringify({ status: 'ok', service: 'MAGNAT Emoji Bot', webAppUrl: WEB_APP_URL }));
+  }
+
+  if (req.method === 'POST' && req.url === '/webhook') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const update = JSON.parse(body);
+        await handleUpdate(update);
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  res.writeHead(404);
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+// Initialize bot settings in Telegram
+async function initBot() {
+  try {
+    const me = await api('getMe');
+    if (me.ok) {
+      console.log(`🤖 Бот авторизован: @${me.result.username} (${me.result.first_name})`);
+    }
+
+    await api('setChatMenuButton', {
+      menu_button: {
+        type: 'web_app',
+        text: '🎨 Открыть редактор',
+        web_app: { url: WEB_APP_URL },
+      },
+    });
+    console.log('✅ Menu Button установлена на:', WEB_APP_URL);
+
+    await api('setMyCommands', {
+      commands: [
+        { command: 'start', description: 'Запустить MAGNAT Studio' },
+        { command: 'editor', description: 'Открыть веб-редактор' },
+        { command: 'pro', description: 'Подписка PRO (Stars)' },
+        { command: 'vip', description: 'Lifetime VIP (Stars)' },
+        { command: 'help', description: 'Инструкция по загрузке в @Stickers' },
+      ],
+    });
+  } catch (err) {
+    console.error('Ошибка инициализации настроек бота:', err.message);
+  }
+}
+
+// Start
+initBot().then(() => {
   console.log('🚀 MAGNAT Telegram Bot запущен!');
   console.log(`🔗 WebApp URL: ${WEB_APP_URL}`);
   pollUpdates();
-} else {
-  console.log('ℹ️ Чтобы запустить бота, настройте токен в TELEGRAM_BOT_TOKEN.');
-}
+  server.listen(PORT, () => {
+    console.log(`📡 HTTP Server слушает на порту ${PORT}`);
+  });
+});

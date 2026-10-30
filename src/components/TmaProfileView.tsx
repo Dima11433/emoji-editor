@@ -88,6 +88,7 @@ export function TmaProfileView({
   } | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<'stars' | 'cryptobot'>('stars');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoFeedback, setPromoFeedback] = useState<{ text: string; bad?: boolean } | null>(null);
 
@@ -145,6 +146,83 @@ export function TmaProfileView({
     }
 
     setShowCheckoutModal(false);
+  };
+
+  const handlePayStars = async () => {
+    if (!checkoutTarget) return;
+    haptic('medium');
+    setIsProcessingPayment(true);
+    try {
+      const res = await fetch('/api/create-stars-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: checkoutTarget.starsPrice,
+          title: `MAGNAT ${checkoutTarget.title}`.slice(0, 32),
+          description: `Оплата «${checkoutTarget.title}» в MAGNAT Emoji Studio`,
+          payload: `sub_${checkoutTarget.type}_${Date.now()}`,
+        }),
+      });
+      const data = await res.json();
+      const tg = getTelegramWebApp();
+      if (data.ok && data.invoiceLink) {
+        if (tg?.openInvoice) {
+          tg.openInvoice(data.invoiceLink, (status: string) => {
+            if (status === 'paid') {
+              handleConfirmPayment();
+            } else if (status === 'cancelled') {
+              haptic('warning');
+            }
+          });
+          setIsProcessingPayment(false);
+          return;
+        } else {
+          window.open(data.invoiceLink, '_blank');
+        }
+      }
+    } catch (err) {
+      console.warn('Stars invoice API error:', err);
+    }
+    handleConfirmPayment();
+    setIsProcessingPayment(false);
+  };
+
+  const handlePayCrypto = async () => {
+    if (!checkoutTarget) return;
+    haptic('medium');
+    setIsProcessingPayment(true);
+    try {
+      const res = await fetch('/api/create-crypto-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: checkoutTarget.rubPrice,
+          currency: 'RUB',
+          asset: 'USDT',
+          description: `MAGNAT: ${checkoutTarget.title}`,
+        }),
+      });
+      const data = await res.json();
+      const targetUrl = data.botInvoiceUrl || data.payUrl || 'https://t.me/CryptoBot';
+      const tg = getTelegramWebApp();
+      if (tg?.openTelegramLink && targetUrl.startsWith('https://t.me/')) {
+        tg.openTelegramLink(targetUrl);
+      } else {
+        window.open(targetUrl, '_blank');
+      }
+      handleConfirmPayment();
+    } catch (err) {
+      console.warn('Crypto invoice API error:', err);
+      const tg = getTelegramWebApp();
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink('https://t.me/CryptoBot');
+      } else {
+        window.open('https://t.me/CryptoBot', '_blank');
+      }
+      handleConfirmPayment();
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   const handleApplyPromo = () => {
@@ -620,10 +698,11 @@ export function TmaProfileView({
                 <button
                   type="button"
                   className="tma-btn-blue tma-btn-pay-action"
-                  onClick={handleConfirmPayment}
+                  disabled={isProcessingPayment}
+                  onClick={handlePayStars}
                 >
                   <Star size={16} fill="#fff" color="#fff" />
-                  Оплатить {checkoutTarget.starsPrice} Stars
+                  {isProcessingPayment ? 'Создание счёта...' : `Оплатить ${checkoutTarget.starsPrice} Stars`}
                 </button>
                 <span className="tma-pay-note">
                   Списание с баланса Telegram в 1 клик • 0% комиссий
@@ -636,18 +715,13 @@ export function TmaProfileView({
                 <button
                   type="button"
                   className="tma-btn-blue tma-btn-pay-action tma-btn-crypto-pay"
-                  onClick={() => {
-                    const tg = getTelegramWebApp();
-                    if (tg?.openTelegramLink) {
-                      tg.openTelegramLink('https://t.me/CryptoBot');
-                    } else {
-                      window.open('https://t.me/CryptoBot', '_blank');
-                    }
-                    handleConfirmPayment();
-                  }}
+                  disabled={isProcessingPayment}
+                  onClick={handlePayCrypto}
                 >
                   <Wallet size={16} />
-                  Оплатить {(checkoutTarget.rubPrice / 95).toFixed(2)} USDT в CryptoBot
+                  {isProcessingPayment
+                    ? 'Создание счёта...'
+                    : `Оплатить ${(checkoutTarget.rubPrice / 95).toFixed(2)} USDT в CryptoBot`}
                 </button>
                 <span className="tma-pay-note">
                   USDT, TON, BTC через официального @CryptoBot
