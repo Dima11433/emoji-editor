@@ -651,7 +651,7 @@ export function readBrandSlotInfo(doc: LottieDoc): {
     origPlateText,
     options: {
       ...DEFAULT_BRAND_OPTIONS,
-      text: hasInjected ? DEFAULT_BRAND_OPTIONS.text : origText,
+      text: hasInjected ? ((doc._brandState as Partial<BrandSlotOptions> | undefined)?.text ?? '') : origText,
       plateText: 'MAGNAT',
       plateTextEnabled: true,
       syncPlateText: false,
@@ -957,10 +957,24 @@ export function applyBrandSlot(
   options?: { keepStickerColor?: boolean; autoCreate?: boolean },
 ): number {
   let slots = findBrandSlots(doc);
+  const hasText = Boolean(opts.text?.trim());
+  const hasLogo = (opts.mode === 'logo' || opts.mode === 'logo+text') && Boolean(opts.logo);
+
   if (!slots.length) {
     if (options?.autoCreate === false) return 0;
+    // Don't inject overlay onto clean templates if user hasn't specified text or logo
+    if (!hasText && !hasLogo) return 0;
     slots = [createInjectedBrandLayer(doc, opts)];
   } else {
+    // If template only had injected layers and user cleared text/logo, remove them cleanly
+    const hasOnlyInjected =
+      doc.layers.some(isInjectedBrandLayer) &&
+      !doc.layers.some((l) => isBrandSlotNode(l) && !isInjectedBrandLayer(l));
+    if (hasOnlyInjected && !hasText && !hasLogo) {
+      resetBrandSlot(doc);
+      return 0;
+    }
+
     for (const layer of doc.layers) {
       if (isInjectedBrandLayer(layer)) {
         syncInjectedLayerTransform(doc, layer, opts);
@@ -979,7 +993,6 @@ export function applyBrandSlot(
 
   const prevBrand = readBrandSlotInfo(doc).options;
   const origText = detectOrigText(doc);
-  const hasLogo = (opts.mode === 'logo' || opts.mode === 'logo+text') && Boolean(opts.logo);
 
   for (const gr of slots) {
     const snap = ensureSnapshot(gr, injectedSlots.has(gr));
@@ -1147,10 +1160,10 @@ export function applyBrandSlot(
     const canUseOrig = snap.origShapes.length > 0 && !snap.injected;
     const targetText = role === 'plate'
       ? (opts.syncPlateText ? opts.text : (opts.plateText || 'MAGNAT'))
-      : (opts.text || (snap.injected ? 'MAGNAT' : ''));
+      : (opts.text || (snap.injected ? '' : origText));
     const isExactOrigName = role === 'plate'
       ? (targetText === 'MAGNAT' || targetText === 'USERNAME')
-      : (targetText === (snap.injected ? 'MAGNAT' : origText));
+      : (targetText === (snap.injected ? '' : origText));
     const useOrig = opts.mode === 'text' && canUseOrig && (opts.useOriginalGlyphs || !fonts) && isExactOrigName;
 
     if (useOrig) {

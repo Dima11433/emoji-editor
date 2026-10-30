@@ -38,7 +38,7 @@ interface CategoryTab {
 }
 
 const MODAL_CATEGORIES: CategoryTab[] = [
-  { id: 'shablony1', label: 'шаблоны MAGNAT' },
+  { id: 'shablony1', label: 'шаблоны' },
   { id: 'classic', label: 'классика' },
   { id: 'characters', label: 'персонажи' },
   { id: 'gifts', label: 'подарки' },

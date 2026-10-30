@@ -13,12 +13,31 @@ export interface CatalogItem {
 
 export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string }[] = [
   { id: 'all', label: 'Все' },
-  { id: 'shablony1', label: 'Шаблоны MAGNAT' },
+  { id: 'shablony1', label: 'Шаблоны' },
   { id: 'classic', label: 'Классика' },
   { id: 'characters', label: 'Персонажи' },
   { id: 'gifts', label: 'Подарки' },
   { id: 'love', label: 'Любовь' },
 ];
+
+export const PURE_ICON_TEMPLATE_IDS = new Set<string>([
+  'shablony1_001',
+  'shablony1_002',
+  'shablony1_003',
+  'shablony1_004',
+  'shablony1_005',
+  'shablony1_006',
+  'shablony1_007',
+  'shablony1_008',
+  'shablony1_009',
+  'shablony1_010',
+  'shablony1_011',
+]);
+
+export function isPureIconTemplate(id: string | null | undefined): boolean {
+  if (!id) return false;
+  return PURE_ICON_TEMPLATE_IDS.has(id);
+}
 
 export const CATALOG: CatalogItem[] = [
   {

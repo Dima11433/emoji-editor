@@ -1,8 +1,22 @@
-import { CATALOG, TEMPLATE_CATEGORIES, type CatalogItem, type TemplateCategory } from './catalog';
+import {
+  CATALOG,
+  TEMPLATE_CATEGORIES,
+  PURE_ICON_TEMPLATE_IDS,
+  isPureIconTemplate,
+  type CatalogItem,
+  type TemplateCategory,
+} from './catalog';
 import type { LottieDoc } from './lottie';
 import { parseSticker } from './tgs';
 
-export { CATALOG, TEMPLATE_CATEGORIES, type CatalogItem, type TemplateCategory };
+export {
+  CATALOG,
+  TEMPLATE_CATEGORIES,
+  PURE_ICON_TEMPLATE_IDS,
+  isPureIconTemplate,
+  type CatalogItem,
+  type TemplateCategory,
+};
 
 const docCache = new Map<string, LottieDoc>();
 const inflight = new Map<string, Promise<LottieDoc>>();

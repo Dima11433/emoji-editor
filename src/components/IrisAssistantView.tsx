@@ -21,10 +21,16 @@ import {
 import lottie, { type AnimationItem } from 'lottie-web/build/player/lottie_light';
 import type { LottieDoc } from '../lib/lottie';
 import { cleanForExport, toTgsAutoFit } from '../lib/tgs';
-import { applyBrandSlot, DEFAULT_BRAND_OPTIONS } from '../lib/brandSlot';
+import { applyBrandSlot, resetBrandSlot, DEFAULT_BRAND_OPTIONS } from '../lib/brandSlot';
 import { FONTS, loadFont, type FontId } from '../lib/fonts';
 import { fileToVectorLogo, type VectorLogo } from '../lib/logoVector';
-import { CATALOG, TEMPLATE_CATEGORIES, type CatalogItem, type TemplateCategory } from '../lib/templates';
+import {
+  CATALOG,
+  TEMPLATE_CATEGORIES,
+  isPureIconTemplate,
+  type CatalogItem,
+  type TemplateCategory,
+} from '../lib/templates';
 import type { PackItem } from './PackTray';
 import type { SubscriptionState } from '../lib/subscription';
 import type { TelegramUser } from '../lib/telegram';
@@ -120,13 +126,24 @@ export function IrisAssistantView({
   onOpenProfile,
   onOpenAdvancedStudio: _onOpenAdvancedStudio,
 }: IrisAssistantViewProps) {
+  const isPureIcon = isPureIconTemplate(templateItem?.id);
   const [activeTab, setActiveTab] = useState<'editor' | 'catalog' | 'packs' | 'chat'>('editor');
-  const [brandText, setBrandText] = useState('MAGNAT');
+  const [brandText, setBrandText] = useState(isPureIcon ? '' : 'MAGNAT');
   const [fillColor, setFillColor] = useState('#131822');
   const [strokeColor, setStrokeColor] = useState('#a8c7ef');
   const [selectedFontId, setSelectedFontId] = useState<FontId>('montserrat');
   const [uploadedLogo, setUploadedLogo] = useState<VectorLogo | null>(null);
   const [fonts, setFonts] = useState<Font[] | null>(null);
+
+  // Reset personalization when switching between templates
+  useEffect(() => {
+    if (isPureIconTemplate(templateItem?.id)) {
+      setBrandText('');
+      setUploadedLogo(null);
+    } else {
+      setBrandText('MAGNAT');
+    }
+  }, [templateItem?.id]);
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(true);
@@ -157,15 +174,25 @@ export function IrisAssistantView({
   // Compute live styled LottieDoc
   const customizedDoc = useMemo(() => {
     const clone = structuredClone(initialDoc);
-    if (fonts) {
+    const trimmedText = brandText.trim();
+    const hasText = trimmedText.length > 0;
+    const hasLogo = Boolean(uploadedLogo);
+
+    // Pure icon templates remain 100% clean without forced MAGNAT
+    if (isPureIcon && !hasText && !hasLogo) {
+      resetBrandSlot(clone);
+      return clone;
+    }
+
+    if (fonts && (hasText || hasLogo)) {
       applyBrandSlot(
         clone,
         {
           ...DEFAULT_BRAND_OPTIONS,
-          mode: uploadedLogo ? 'logo+text' : 'text',
+          mode: uploadedLogo ? (hasText ? 'logo+text' : 'logo') : 'text',
           logo: uploadedLogo,
-          text: brandText.trim() || 'MAGNAT',
-          plateText: brandText.trim() || 'MAGNAT',
+          text: trimmedText,
+          plateText: trimmedText,
           fillHex: fillColor,
           strokeHex: strokeColor,
           strokeWidth: strokeColor ? 4 : 0,
@@ -173,9 +200,11 @@ export function IrisAssistantView({
         },
         fonts,
       );
+    } else if (!hasText && !hasLogo) {
+      resetBrandSlot(clone);
     }
     return clone;
-  }, [initialDoc, brandText, fillColor, strokeColor, uploadedLogo, fonts]);
+  }, [initialDoc, brandText, fillColor, strokeColor, uploadedLogo, fonts, isPureIcon]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -192,7 +221,10 @@ export function IrisAssistantView({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${templateItem.id}_magnat.tgs`;
+      const cleanFileName = brandText.trim()
+        ? `${templateItem.id}_${brandText.trim().toLowerCase().replace(/\s+/g, '_')}.tgs`
+        : `${templateItem.id}.tgs`;
+      a.download = cleanFileName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast(`Файл «${templateItem.name}.tgs» успешно скачан!`);
@@ -205,7 +237,9 @@ export function IrisAssistantView({
   const handleSaveToPack = () => {
     haptic('success');
     const docToSave = customizedDoc || initialDoc;
-    const name = `${templateItem.name} (${brandText.trim() || 'MAGNAT'})`;
+    const name = brandText.trim()
+      ? `${templateItem.name} (${brandText.trim()})`
+      : templateItem.name;
     onSaveSticker(docToSave, name);
     showToast(`«${name}» сохранён в ваши паки!`);
   };
@@ -586,7 +620,7 @@ export function IrisAssistantView({
                   <input
                     type="text"
                     className="composer-main-input"
-                    placeholder="Впишите надпись (например MAGNAT)..."
+                    placeholder={isPureIcon ? "Впишите текст (по желанию)..." : "Впишите надпись (например MAGNAT)..."}
                     value={brandText}
                     onChange={(e) => setBrandText(e.target.value)}
                     maxLength={18}

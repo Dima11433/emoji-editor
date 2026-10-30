@@ -11,7 +11,7 @@ import {
   readBrandSlotInfo,
   resetBrandSlot,
 } from './brandSlot';
-import { CATALOG } from './catalog';
+import { CATALOG, isPureIconTemplate } from './catalog';
 import { BUILTIN_LOGOS, svgPathToShapes, traceRgbaToVectorLogo } from './logoVector';
 import { applyColorTheme, collectColors, replaceColor, shiftHue } from './colors';
 import { applyShapeEffects, getEffects } from './effects';
@@ -145,6 +145,35 @@ describe('Custom templates (shablony1): overlay branding & 3D themes', () => {
       expect(findBrandSlots(doc)).toHaveLength(0);
       expect(doc.layers).toHaveLength(origLayerCount);
     }
+  });
+
+  it('keeps all 11 pure icon templates (001..011) clean without forced MAGNAT when text is empty', () => {
+    for (let i = 1; i <= 11; i++) {
+      const id = `shablony1_${String(i).padStart(3, '0')}`;
+      expect(isPureIconTemplate(id)).toBe(true);
+
+      const doc = loadPublicTgs(`templates/shablony1/${String(i).padStart(3, '0')}.tgs`);
+      expect(findBrandSlots(doc)).toHaveLength(0);
+
+      // Calling applyBrandSlot with empty text and no logo must NOT inject brand slot
+      const added = applyBrandSlot(doc, { ...DEFAULT_BRAND_OPTIONS, text: '' }, montserrat);
+      expect(added).toBe(0);
+      expect(findBrandSlots(doc)).toHaveLength(0);
+
+      // Explicitly adding custom text injects the slot
+      const addedCustom = applyBrandSlot(doc, { ...DEFAULT_BRAND_OPTIONS, text: 'CUSTOM' }, montserrat);
+      expect(addedCustom).toBe(1);
+      expect(findBrandSlots(doc)).toHaveLength(1);
+
+      // Clearing text again removes the injected slot and restores clean state
+      const cleared = applyBrandSlot(doc, { ...DEFAULT_BRAND_OPTIONS, text: '' }, montserrat);
+      expect(cleared).toBe(0);
+      expect(findBrandSlots(doc)).toHaveLength(0);
+    }
+
+    // Verify capsule templates (016..021) and classic templates are not pure icons
+    expect(isPureIconTemplate('shablony1_016')).toBe(false);
+    expect(isPureIconTemplate('classic_001')).toBe(false);
   });
 
   it('supports dual-slot editing on capsule templates (016..021) for center nickname and lower plate text', () => {

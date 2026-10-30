@@ -11,12 +11,13 @@ import type { LottieDoc } from '../lib/lottie';
 import { cleanForExport, toTgsAutoFit } from '../lib/tgs';
 import {
   applyBrandSlot,
+  resetBrandSlot,
   DEFAULT_BRAND_OPTIONS,
 } from '../lib/brandSlot';
 import { loadFont } from '../lib/fonts';
 import { fileToVectorLogo, type VectorLogo } from '../lib/logoVector';
 import { haptic } from '../lib/telegram';
-import type { CatalogItem } from '../lib/catalog';
+import { isPureIconTemplate, type CatalogItem } from '../lib/catalog';
 import type { SubscriptionState } from '../lib/subscription';
 import type { Font } from 'opentype.js';
 
@@ -70,8 +71,9 @@ export function TmaEditorView({
   onOpenTemplatesModal,
   onOpenProModal,
 }: TmaEditorViewProps) {
+  const isPureIcon = isPureIconTemplate(templateItem?.id);
   const [packType, setPackType] = useState<'emoji' | 'stickers'>('emoji');
-  const [brandText, setBrandText] = useState('MAGNAT');
+  const [brandText, setBrandText] = useState(isPureIcon ? '' : 'MAGNAT');
   const [fillColor, setFillColor] = useState('#131822');
   const [strokeColor, setStrokeColor] = useState('#a8c7ef');
   const [uploadedLogo, setUploadedLogo] = useState<VectorLogo | null>(null);
@@ -83,6 +85,16 @@ export function TmaEditorView({
   const fillInputRef = useRef<HTMLInputElement>(null);
   const strokeInputRef = useRef<HTMLInputElement>(null);
 
+  // Reset personalization when switching between templates
+  useEffect(() => {
+    if (isPureIconTemplate(templateItem?.id)) {
+      setBrandText('');
+      setUploadedLogo(null);
+    } else {
+      setBrandText('MAGNAT');
+    }
+  }, [templateItem?.id]);
+
   // Load brand font on mount
   useEffect(() => {
     loadFont('montserrat')
@@ -93,15 +105,25 @@ export function TmaEditorView({
   // Compute live customized Lottie document
   const customizedDoc = useMemo(() => {
     const clone = structuredClone(initialDoc);
-    if (fonts) {
+    const trimmedText = brandText.trim();
+    const hasText = trimmedText.length > 0;
+    const hasLogo = Boolean(uploadedLogo);
+
+    // Pure icon templates remain 100% clean without forced MAGNAT
+    if (isPureIcon && !hasText && !hasLogo) {
+      resetBrandSlot(clone);
+      return clone;
+    }
+
+    if (fonts && (hasText || hasLogo)) {
       applyBrandSlot(
         clone,
         {
           ...DEFAULT_BRAND_OPTIONS,
-          mode: uploadedLogo ? 'logo+text' : 'text',
+          mode: uploadedLogo ? (hasText ? 'logo+text' : 'logo') : 'text',
           logo: uploadedLogo,
-          text: brandText.trim() || 'MAGNAT',
-          plateText: brandText.trim() || 'MAGNAT',
+          text: trimmedText,
+          plateText: trimmedText,
           fillHex: fillColor,
           strokeHex: strokeColor,
           strokeWidth: strokeColor ? 4 : 0,
@@ -109,9 +131,11 @@ export function TmaEditorView({
         },
         fonts,
       );
+    } else if (!hasText && !hasLogo) {
+      resetBrandSlot(clone);
     }
     return clone;
-  }, [initialDoc, brandText, fillColor, strokeColor, uploadedLogo, fonts]);
+  }, [initialDoc, brandText, fillColor, strokeColor, uploadedLogo, fonts, isPureIcon]);
 
   // Handle logo file upload
   const handleLogoUpload = async (file: File) => {
@@ -128,7 +152,8 @@ export function TmaEditorView({
   const handleCreate = () => {
     haptic('medium');
     const docToSave = customizedDoc || initialDoc;
-    const name = `${templateItem.name} (MAGNAT)`;
+    const trimmed = brandText.trim();
+    const name = trimmed ? `${templateItem.name} (${trimmed})` : templateItem.name;
 
     // 1. Save to user's pack in state
     onSaveSticker(docToSave, name);
@@ -140,7 +165,10 @@ export function TmaEditorView({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${templateItem.id}_magnat.tgs`;
+      const cleanFileName = trimmed
+        ? `${templateItem.id}_${trimmed.toLowerCase().replace(/\s+/g, '_')}.tgs`
+        : `${templateItem.id}.tgs`;
+      a.download = cleanFileName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {}
@@ -247,7 +275,7 @@ export function TmaEditorView({
               <input
                 type="text"
                 className="tma-editor-input"
-                placeholder="впишите текст"
+                placeholder={isPureIcon ? "без текста (впишите при желании)" : "впишите текст"}
                 value={brandText}
                 onChange={(e) => setBrandText(e.target.value)}
                 maxLength={18}
