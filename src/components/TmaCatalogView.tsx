@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, Sparkles, Trash2, User, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, ChevronRight, FolderOpen, LayoutGrid, Pencil, Sparkles, User } from 'lucide-react';
 import { CATALOG, TEMPLATE_CATEGORIES, type CatalogItem, type TemplateCategory } from '../lib/templates';
 import type { SubscriptionState } from '../lib/subscription';
 import type { TelegramUser } from '../lib/telegram';
@@ -13,6 +13,7 @@ interface TmaCatalogViewProps {
   onOpenProfile: () => void;
   onOpenPacks: () => void;
   onOpenEditor: () => void;
+  onBackToStudio?: () => void;
 }
 
 export function TmaCatalogView({
@@ -21,6 +22,8 @@ export function TmaCatalogView({
   onSelectTemplate,
   onOpenProfile,
   onOpenPacks,
+  onOpenEditor,
+  onBackToStudio,
 }: TmaCatalogViewProps) {
   const [activeCat, setActiveCat] = useState<'all' | TemplateCategory>('classic');
   const [showCatDropdown, setShowCatDropdown] = useState(false);
@@ -43,19 +46,47 @@ export function TmaCatalogView({
     <div className="tma-view-container tma-catalog-view">
       {/* TOP HEADER */}
       <div className="tma-top-bar">
-        <div className="tma-avatar-wrap" onClick={onOpenProfile} title="Профиль">
-          {telegramUser?.photo_url ? (
-            <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
-          ) : (
-            <div className="tma-user-avatar-placeholder">
-              {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+        {onBackToStudio ? (
+          <button
+            type="button"
+            className="tma-back-studio-btn"
+            onClick={() => {
+              onBackToStudio();
+              haptic('light');
+            }}
+            title="Вернуться в веб-студию MAGNAT"
+          >
+            <ArrowLeft size={14} />
+            <span>В веб-студию MAGNAT</span>
+          </button>
+        ) : (
+          <div className="tma-avatar-wrap" onClick={onOpenProfile} title="Профиль">
+            {telegramUser?.photo_url ? (
+              <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+            ) : (
+              <div className="tma-user-avatar-placeholder">
+                {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onBackToStudio && (
+            <div className="tma-avatar-wrap" onClick={onOpenProfile} title="Профиль">
+              {telegramUser?.photo_url ? (
+                <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+              ) : (
+                <div className="tma-user-avatar-placeholder">
+                  {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+                </div>
+              )}
             </div>
           )}
-        </div>
-
-        <div className="tma-balance-pill" onClick={onOpenProfile} title="Баланс генераций">
-          <Sparkles size={14} color="#ffd700" />
-          <span>{subscription.generationsBalance}</span>
+          <div className="tma-balance-pill" onClick={onOpenProfile} title="Баланс генераций">
+            <Sparkles size={14} color="#ffd700" />
+            <span>{subscription.generationsBalance}</span>
+          </div>
         </div>
       </div>
 
@@ -118,7 +149,7 @@ export function TmaCatalogView({
         ))}
       </div>
 
-      {/* FLOATING BOTTOM DOCK (Matching Screenshot 1) */}
+      {/* FLOATING BOTTOM DOCK */}
       <div className="tma-dock-wrapper">
         <nav className="tma-floating-dock">
           <button type="button" className="tma-dock-btn active">
@@ -129,11 +160,22 @@ export function TmaCatalogView({
             type="button"
             className="tma-dock-btn"
             onClick={() => {
+              onOpenEditor();
+              haptic('select');
+            }}
+          >
+            <Pencil size={17} />
+            <span>редактор</span>
+          </button>
+          <button
+            type="button"
+            className="tma-dock-btn"
+            onClick={() => {
               onOpenPacks();
               haptic('select');
             }}
           >
-            <Trash2 size={17} />
+            <FolderOpen size={17} />
             <span>мои паки</span>
           </button>
           <button

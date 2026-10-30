@@ -3,7 +3,9 @@ import {
   ArrowLeft,
   ChevronRight,
   Download,
+  FolderOpen,
   LayoutGrid,
+  Pencil,
   Send,
   Sparkles,
   Trash2,
@@ -30,6 +32,8 @@ interface TmaPacksViewProps {
   onOpenCatalog: () => void;
   onOpenProfile: () => void;
   onOpenEditorForSticker: (item: PackItem) => void;
+  onOpenEditor?: () => void;
+  onBackToStudio?: () => void;
   onDownloadZip: () => void;
   onRemoveSticker: (id: string) => void;
   onClearPack: () => void;
@@ -68,6 +72,8 @@ export function TmaPacksView({
   onOpenCatalog,
   onOpenProfile,
   onOpenEditorForSticker,
+  onOpenEditor,
+  onBackToStudio,
   onDownloadZip,
   onRemoveSticker,
   onClearPack,
@@ -92,19 +98,47 @@ export function TmaPacksView({
     <div className="tma-view-container tma-packs-view">
       {/* TOP BAR (Avatar + Balance) */}
       <div className="tma-top-bar">
-        <div className="tma-avatar-wrap" onClick={onOpenProfile} title="Профиль">
-          {telegramUser?.photo_url ? (
-            <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
-          ) : (
-            <div className="tma-user-avatar-placeholder">
-              {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+        {onBackToStudio ? (
+          <button
+            type="button"
+            className="tma-back-studio-btn"
+            onClick={() => {
+              onBackToStudio();
+              haptic('light');
+            }}
+            title="Вернуться в веб-студию MAGNAT"
+          >
+            <ArrowLeft size={14} />
+            <span>В веб-студию MAGNAT</span>
+          </button>
+        ) : (
+          <div className="tma-avatar-wrap" onClick={onOpenProfile} title="Профиль">
+            {telegramUser?.photo_url ? (
+              <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+            ) : (
+              <div className="tma-user-avatar-placeholder">
+                {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onBackToStudio && (
+            <div className="tma-avatar-wrap" onClick={onOpenProfile} title="Профиль">
+              {telegramUser?.photo_url ? (
+                <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+              ) : (
+                <div className="tma-user-avatar-placeholder">
+                  {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+                </div>
+              )}
             </div>
           )}
-        </div>
-
-        <div className="tma-balance-pill" onClick={onOpenProfile} title="Баланс">
-          <Sparkles size={14} color="#ffd700" />
-          <span>{subscription?.generationsBalance ?? 0}</span>
+          <div className="tma-balance-pill" onClick={onOpenProfile} title="Баланс">
+            <Sparkles size={14} color="#ffd700" />
+            <span>{subscription?.generationsBalance ?? 0}</span>
+          </div>
         </div>
       </div>
 
@@ -297,8 +331,21 @@ export function TmaPacksView({
             <LayoutGrid size={17} />
             <span>шаблоны</span>
           </button>
+          {onOpenEditor && (
+            <button
+              type="button"
+              className="tma-dock-btn"
+              onClick={() => {
+                onOpenEditor();
+                haptic('select');
+              }}
+            >
+              <Pencil size={17} />
+              <span>редактор</span>
+            </button>
+          )}
           <button type="button" className="tma-dock-btn active">
-            <Trash2 size={17} />
+            <FolderOpen size={17} />
             <span>мои паки</span>
           </button>
           <button

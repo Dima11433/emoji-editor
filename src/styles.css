@@ -3313,6 +3313,28 @@ button:disabled {
   -webkit-backdrop-filter: blur(14px);
 }
 
+.tma-back-studio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(88, 101, 242, 0.16);
+  border: 1px solid rgba(88, 101, 242, 0.45);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tma-back-studio-btn:hover {
+  background: rgba(88, 101, 242, 0.32);
+  border-color: rgba(88, 101, 242, 0.75);
+  color: #ffffff;
+  transform: translateX(-1px);
+}
+
 .tma-avatar-wrap {
   width: 40px;
   height: 40px;

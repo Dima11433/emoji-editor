@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import {
+  ArrowLeft,
   ChevronRight,
   CreditCard,
   Crown,
   FileText,
+  FolderOpen,
   Layers,
   LayoutGrid,
   Minus,
@@ -14,7 +16,6 @@ import {
   Sparkles,
   Square,
   Star,
-  Trash2,
   User,
   Wallet,
   X,
@@ -37,6 +38,8 @@ interface TmaProfileViewProps {
   onSubscriptionChange: (next: SubscriptionState) => void;
   onBackToCatalog: () => void;
   onOpenPacks: () => void;
+  onOpenEditor?: () => void;
+  onBackToStudio?: () => void;
 }
 
 function renderBadgeChip(text: string, idx: number) {
@@ -75,6 +78,8 @@ export function TmaProfileView({
   onSubscriptionChange,
   onBackToCatalog,
   onOpenPacks,
+  onOpenEditor,
+  onBackToStudio,
 }: TmaProfileViewProps) {
   const [periodKey, setPeriodKey] = useState<BillingPeriod>('month');
   const [pieceCount, setPieceCount] = useState<number>(20);
@@ -251,19 +256,47 @@ export function TmaProfileView({
     <div className="tma-view-container tma-profile-view">
       {/* TOP HEADER (Matching Screenshot 2) */}
       <div className="tma-top-bar">
-        <div className="tma-avatar-wrap" onClick={onBackToCatalog} title="Каталог">
-          {telegramUser?.photo_url ? (
-            <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
-          ) : (
-            <div className="tma-user-avatar-placeholder">
-              {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+        {onBackToStudio ? (
+          <button
+            type="button"
+            className="tma-back-studio-btn"
+            onClick={() => {
+              onBackToStudio();
+              haptic('light');
+            }}
+            title="Вернуться в веб-студию MAGNAT"
+          >
+            <ArrowLeft size={14} />
+            <span>В веб-студию MAGNAT</span>
+          </button>
+        ) : (
+          <div className="tma-avatar-wrap" onClick={onBackToCatalog} title="Каталог">
+            {telegramUser?.photo_url ? (
+              <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+            ) : (
+              <div className="tma-user-avatar-placeholder">
+                {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {onBackToStudio && (
+            <div className="tma-avatar-wrap" onClick={onBackToCatalog} title="Каталог">
+              {telegramUser?.photo_url ? (
+                <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+              ) : (
+                <div className="tma-user-avatar-placeholder">
+                  {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+                </div>
+              )}
             </div>
           )}
-        </div>
-
-        <div className="tma-balance-pill">
-          <Sparkles size={14} color="#ffd700" />
-          <span>{subscription.generationsBalance}</span>
+          <div className="tma-balance-pill">
+            <Sparkles size={14} color="#ffd700" />
+            <span>{subscription.generationsBalance}</span>
+          </div>
         </div>
       </div>
 
@@ -589,6 +622,19 @@ export function TmaProfileView({
             <LayoutGrid size={17} />
             <span>шаблоны</span>
           </button>
+          {onOpenEditor && (
+            <button
+              type="button"
+              className="tma-dock-btn"
+              onClick={() => {
+                onOpenEditor();
+                haptic('select');
+              }}
+            >
+              <Pencil size={17} />
+              <span>редактор</span>
+            </button>
+          )}
           <button
             type="button"
             className="tma-dock-btn"
@@ -597,7 +643,7 @@ export function TmaProfileView({
               haptic('select');
             }}
           >
-            <Trash2 size={17} />
+            <FolderOpen size={17} />
             <span>мои паки</span>
           </button>
           <button type="button" className="tma-dock-btn active">

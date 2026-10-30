@@ -1245,12 +1245,17 @@ export default function App() {
           subscription={sub}
           telegramUser={tgUser}
           onSelectTemplate={(item) => {
-            loadCatalogDoc(item).then((d) => {
-              openSingleSticker(d, item.name, item.id);
-              setSelectedCatalogItem(item);
-              setMainView('tma_editor');
-              say(`Открыт #${item.num} «${item.name}»`);
-            });
+            loadCatalogDoc(item)
+              .then((d) => {
+                openSingleSticker(d, item.name, item.id);
+                setSelectedCatalogItem(item);
+                setMainView(inTma ? 'tma_editor' : 'iris_assistant');
+                say(`Открыт #${item.num} «${item.name}»`);
+              })
+              .catch((err) => {
+                console.error('Failed to load catalog item:', err);
+                say(`Ошибка загрузки #${item.num}: ${err.message || 'файл недоступен'}`, true);
+              });
           }}
           onOpenProfile={() => {
             setMainView('tma_profile');
@@ -1265,9 +1270,13 @@ export default function App() {
               const matched = CATALOG.find((c) => c.id === primarySticker.catalogId) || CATALOG[0];
               setSelectedCatalogItem(matched);
             }
-            setMainView('tma_editor');
+            setMainView(inTma ? 'tma_editor' : 'iris_assistant');
             haptic('select');
           }}
+          onBackToStudio={!inTma ? () => {
+            setMainView('iris_assistant');
+            haptic('light');
+          } : undefined}
         />
         {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
       </>
@@ -1286,7 +1295,7 @@ export default function App() {
             haptic('select');
           }}
           onOpenAdvancedStudio={() => {
-            setMainView('studio');
+            setMainView('iris_assistant');
             haptic('light');
           }}
           onSaveSticker={(newDoc, name) => {
@@ -1365,6 +1374,18 @@ export default function App() {
             setMainView('tma_packs');
             haptic('select');
           }}
+          onOpenEditor={() => {
+            if (!selectedCatalogItem) {
+              const matched = CATALOG.find((c) => c.id === primarySticker.catalogId) || CATALOG[0];
+              setSelectedCatalogItem(matched);
+            }
+            setMainView(inTma ? 'tma_editor' : 'iris_assistant');
+            haptic('select');
+          }}
+          onBackToStudio={!inTma ? () => {
+            setMainView('iris_assistant');
+            haptic('light');
+          } : undefined}
         />
         {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
       </>
@@ -1390,9 +1411,21 @@ export default function App() {
             const catItem = CATALOG.find((c) => c.id === item.catalogId) || CATALOG[0];
             setSelectedCatalogItem(catItem);
             openSingleSticker(item.doc, item.name, item.catalogId);
-            setMainView(inTma ? 'tma_editor' : 'studio');
+            setMainView(inTma ? 'tma_editor' : 'iris_assistant');
             haptic('select');
           }}
+          onOpenEditor={() => {
+            if (!selectedCatalogItem) {
+              const matched = CATALOG.find((c) => c.id === primarySticker.catalogId) || CATALOG[0];
+              setSelectedCatalogItem(matched);
+            }
+            setMainView(inTma ? 'tma_editor' : 'iris_assistant');
+            haptic('select');
+          }}
+          onBackToStudio={!inTma ? () => {
+            setMainView('iris_assistant');
+            haptic('light');
+          } : undefined}
           onDownloadZip={() => downloadZipList(pack, 'magnat_emoji_pack')}
           onRemoveSticker={removePackSticker}
           onClearPack={clearUnselectedPackStickers}
@@ -1412,11 +1445,16 @@ export default function App() {
           subscription={sub}
           telegramUser={tgUser}
           onSelectTemplate={(item) => {
-            loadCatalogDoc(item).then((d) => {
-              openSingleSticker(d, item.name, item.id);
-              setSelectedCatalogItem(item);
-              say(`Открыт #${item.num} «${item.name}»`);
-            });
+            loadCatalogDoc(item)
+              .then((d) => {
+                openSingleSticker(d, item.name, item.id);
+                setSelectedCatalogItem(item);
+                say(`Открыт #${item.num} «${item.name}»`);
+              })
+              .catch((err) => {
+                console.error('Failed to load catalog item:', err);
+                say(`Ошибка загрузки #${item.num}: ${err.message || 'файл недоступен'}`, true);
+              });
           }}
           onSaveSticker={(newDoc, name) => {
             addToPack(newDoc, name, selectedCatalogItem?.id ?? null);
@@ -1429,7 +1467,7 @@ export default function App() {
             haptic('select');
           }}
           onOpenAdvancedStudio={() => {
-            setMainView('studio');
+            setMainView('iris_assistant');
             haptic('light');
           }}
         />

@@ -125,7 +125,7 @@ export const TIER_PLANS: Record<Exclude<PlanId, 'free'>, PlanConfig> = {
   editor: {
     id: 'editor',
     name: 'Редактор',
-    subtitle: 'весь веб-редактор editor.tierapp.top',
+    subtitle: 'весь веб-редактор MAGNAT Studio',
     highlight: 'веб-редактор ✨',
     prices: {
       month: { rub: 200, stars: 150, label: '200 ₽ в месяц' },
