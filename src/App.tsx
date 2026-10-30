@@ -1267,6 +1267,8 @@ export default function App() {
       <>
         <TmaPacksView
           pack={pack}
+          subscription={sub}
+          telegramUser={tgUser}
           onOpenCatalog={() => {
             setMainView('tma_catalog');
             haptic('select');

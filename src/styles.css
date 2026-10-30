@@ -3828,6 +3828,114 @@ button:disabled {
   cursor: pointer;
 }
 
+/* TMA PACKS LIST (Screenshot media_1793367215727_cb60614d.png Replica) */
+.tma-packs-list-card {
+  background: #151823;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  margin-top: 8px;
+}
+
+.tma-pack-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.14s ease;
+}
+
+.tma-pack-row-item:last-child {
+  border-bottom: none;
+}
+
+.tma-pack-row-item:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tma-pack-row-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.tma-pack-stack-wrap {
+  position: relative;
+  width: 48px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.tma-pack-stack-layer {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.tma-pack-stack-layer.layer-back {
+  left: 0;
+  top: 4px;
+  background: #1b1e2a;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transform: scale(0.88);
+}
+
+.tma-pack-stack-layer.layer-mid {
+  left: 5px;
+  top: 4px;
+  background: #202434;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transform: scale(0.94);
+}
+
+.tma-pack-stack-layer.layer-front {
+  left: 10px;
+  top: 4px;
+  background: #181c2b;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.tma-pack-stack-fallback {
+  font-size: 13px;
+  font-weight: 800;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.tma-pack-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  margin-left: 6px;
+}
+
+.tma-pack-row-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tma-pack-row-subtitle {
+  font-size: 12.5px;
+  color: #848c9e;
+  font-weight: 500;
+}
+
 
 /* ==========================================================================
    GLASS IRIS ASSISTANT DASHBOARD STYLES
