@@ -3804,3 +3804,728 @@ button:disabled {
   padding: 4px;
   cursor: pointer;
 }
+
+
+/* ==========================================================================
+   GLASS IRIS ASSISTANT DASHBOARD STYLES
+   ========================================================================== */
+.iris-page-root {
+  --u: min(100vw / 1440, 100dvh / 1008);
+  --page-bg: #0E0E0E;
+  --surface-1: #151515;
+  --surface-2: #191919;
+  --surface-3: #1D1D1D;
+  --text-white: #FFFFFF;
+  --text-secondary: #8C8C8C;
+  --text-muted: #6E6E6E;
+  --accent-blue: #2F6BFF;
+  --accent-indigo: #4A5BFF;
+  --accent-violet: #5A4CF5;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-hairline: rgba(255, 255, 255, 0.05);
+
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--page-bg);
+  color: var(--text-white);
+  overflow: hidden;
+  z-index: 100;
+  display: flex;
+}
+
+.iris-page-root .top-glow-system {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(520 * var(--u));
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.iris-page-root .glow-center-blue {
+  position: absolute;
+  top: calc(-160 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(720 * var(--u));
+  height: calc(500 * var(--u));
+  background: radial-gradient(ellipse at center, rgba(64, 110, 255, 0.78) 0%, rgba(47, 107, 255, 0.38) 42%, transparent 72%);
+  filter: blur(calc(60 * var(--u)));
+  opacity: 0.95;
+}
+
+.iris-page-root .glow-right-violet {
+  position: absolute;
+  top: calc(-120 * var(--u));
+  left: calc(50% + 190 * var(--u));
+  width: calc(500 * var(--u));
+  height: calc(440 * var(--u));
+  background: radial-gradient(ellipse at center, rgba(124, 72, 240, 0.42) 0%, rgba(90, 76, 245, 0.18) 46%, transparent 74%);
+  filter: blur(calc(70 * var(--u)));
+  opacity: 0.9;
+}
+
+.iris-page-root .glow-left-cyan {
+  position: absolute;
+  top: calc(-110 * var(--u));
+  left: calc(50% - 250 * var(--u));
+  width: calc(420 * var(--u));
+  height: calc(360 * var(--u));
+  background: radial-gradient(ellipse at center, rgba(0, 210, 255, 0.22) 0%, rgba(0, 180, 230, 0.08) 48%, transparent 75%);
+  filter: blur(calc(65 * var(--u)));
+  opacity: 0.85;
+}
+
+.iris-page-root .app-shell {
+  position: relative;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.iris-page-root .left-rail {
+  width: calc(48 * var(--u));
+  height: 100%;
+  background: #111111;
+  border-right: 1px solid var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(14 * var(--u)) 0;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.iris-page-root .rail-logo-tile {
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-bottom: calc(20 * var(--u));
+  transition: transform 0.18s ease;
+  box-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(255, 255, 255, 0.2);
+}
+
+.iris-page-root .rail-logo-tile:hover {
+  transform: scale(1.06);
+}
+
+.iris-page-root .rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--u));
+  width: 100%;
+  align-items: center;
+}
+
+.iris-page-root .rail-tile {
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: transparent;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  position: relative;
+}
+
+.iris-page-root .rail-tile:hover {
+  background: var(--surface-2);
+  color: var(--text-white);
+  border-color: var(--border-hairline);
+}
+
+.iris-page-root .rail-tile.active {
+  background: #1D1D1D;
+  color: var(--text-white);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.4);
+}
+
+.iris-page-root .rail-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--u));
+  align-items: center;
+}
+
+.iris-page-root .rail-user-tile {
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2F6BFF, #5A4CF5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: calc(12 * var(--u));
+  cursor: pointer;
+}
+
+.iris-page-root .main-viewport {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.iris-page-root .top-bar {
+  height: calc(56 * var(--u));
+  padding: 0 calc(28 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-hairline);
+  background: rgba(14, 14, 14, 0.6);
+  backdrop-filter: blur(calc(16 * var(--u)));
+  -webkit-backdrop-filter: blur(calc(16 * var(--u)));
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.iris-page-root .top-bar-left,
+.iris-page-root .top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+}
+
+.iris-page-root .nav-arrow-tile {
+  width: calc(28 * var(--u));
+  height: calc(28 * var(--u));
+  border-radius: calc(6 * var(--u));
+  background: var(--surface-1);
+  border: 1px solid var(--border-hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.iris-page-root .breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  font-size: calc(13 * var(--u));
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.iris-page-root .breadcrumb-item {
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.iris-page-root .breadcrumb-current {
+  color: var(--text-white);
+  font-weight: 600;
+}
+
+.iris-page-root .glass-search-box {
+  width: calc(220 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-hairline);
+  backdrop-filter: blur(calc(12 * var(--u)));
+  display: flex;
+  align-items: center;
+  padding: 0 calc(10 * var(--u));
+  gap: calc(8 * var(--u));
+}
+
+.iris-page-root .search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #9cb1d6;
+  font-family: inherit;
+  font-size: calc(12 * var(--u));
+  width: 100%;
+}
+
+.iris-page-root .top-icon-btn {
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+}
+
+.iris-page-root .unread-dot {
+  position: absolute;
+  top: calc(7 * var(--u));
+  right: calc(7 * var(--u));
+  width: calc(5 * var(--u));
+  height: calc(5 * var(--u));
+  background: var(--accent-blue);
+  border-radius: 50%;
+  box-shadow: 0 0 calc(6 * var(--u)) var(--accent-blue);
+}
+
+.iris-page-root .top-avatar-tile {
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: #1F2433;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.iris-page-root .sub-bar {
+  height: calc(48 * var(--u));
+  padding: 0 calc(28 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 4;
+}
+
+.iris-page-root .segmented-toggle {
+  display: flex;
+  background: #141414;
+  border: 1px solid var(--border-hairline);
+  border-radius: calc(8 * var(--u));
+  padding: calc(2 * var(--u));
+  gap: calc(2 * var(--u));
+}
+
+.iris-page-root .toggle-segment {
+  padding: calc(6 * var(--u)) calc(14 * var(--u));
+  border-radius: calc(6 * var(--u));
+  font-size: calc(12 * var(--u));
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.iris-page-root .toggle-segment.active {
+  background: #FFFFFF;
+  color: #0E0E0E;
+  font-weight: 600;
+}
+
+.iris-page-root .status-pill-glass {
+  height: calc(30 * var(--u));
+  border-radius: calc(999 * var(--u));
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-hairline);
+  backdrop-filter: blur(calc(12 * var(--u)));
+  display: flex;
+  align-items: center;
+  padding: 0 calc(12 * var(--u));
+  gap: calc(8 * var(--u));
+}
+
+.iris-page-root .status-pulse-dot {
+  width: calc(6 * var(--u));
+  height: calc(6 * var(--u));
+  border-radius: 50%;
+  background: #2F6BFF;
+  box-shadow: 0 0 calc(8 * var(--u)) #2F6BFF;
+}
+
+.iris-page-root .status-pill-text {
+  font-size: calc(12 * var(--u));
+  font-weight: 500;
+  color: #CBD5E1;
+}
+
+.iris-page-root .status-count-badge {
+  font-size: calc(11 * var(--u));
+  font-weight: 700;
+  color: #FFFFFF;
+  background: rgba(47, 107, 255, 0.25);
+  border: 1px solid rgba(47, 107, 255, 0.4);
+  padding: calc(1 * var(--u)) calc(7 * var(--u));
+  border-radius: calc(999 * var(--u));
+}
+
+.iris-page-root .hero-container {
+  width: calc(708 * var(--u));
+  max-width: calc(100% - calc(48 * var(--u)));
+  margin: calc(10 * var(--u)) auto calc(40 * var(--u)) auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 5;
+}
+
+.iris-page-root .orb-stage-layer {
+  width: calc(145 * var(--u));
+  height: calc(145 * var(--u));
+  margin-top: calc(-30.5 * var(--u));
+  margin-bottom: calc(-30.5 * var(--u));
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  mask-image: radial-gradient(circle at center, #000000 0%, #000000 61%, transparent 76%);
+  -webkit-mask-image: radial-gradient(circle at center, #000000 0%, #000000 61%, transparent 76%);
+  overflow: hidden;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.iris-page-root .orb-still-plate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 40%, rgba(124, 72, 240, 0.45) 0%, rgba(47, 107, 255, 0.55) 30%, #090B14 70%);
+  z-index: 1;
+}
+
+.iris-page-root .orb-canvas-core {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.iris-page-root .orb-glass-specular {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.08) 25%, transparent 50%);
+  box-shadow: inset 0 calc(1.5 * var(--u)) calc(3 * var(--u)) rgba(255, 255, 255, 0.6),
+              inset 0 calc(-1.5 * var(--u)) calc(3 * var(--u)) rgba(47, 107, 255, 0.4);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.iris-page-root .hero-text-block {
+  text-align: center;
+  margin-top: calc(18 * var(--u));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.iris-page-root .hero-greeting {
+  font-size: calc(17 * var(--u));
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-bottom: calc(8 * var(--u));
+}
+
+.iris-page-root .hero-headline {
+  font-size: calc(30 * var(--u));
+  font-weight: 500;
+  color: var(--text-white);
+  text-transform: uppercase;
+  letter-spacing: calc(1.2 * var(--u));
+  line-height: 1.15;
+  margin-bottom: calc(10 * var(--u));
+  display: flex;
+  gap: calc(8 * var(--u));
+  justify-content: center;
+}
+
+.iris-page-root .hero-subline {
+  font-size: calc(14 * var(--u));
+  font-weight: 400;
+  color: var(--text-secondary);
+  max-width: calc(480 * var(--u));
+  line-height: 1.45;
+}
+
+.iris-page-root .composer-wrap {
+  width: 100%;
+  height: calc(114 * var(--u));
+  margin-top: calc(26 * var(--u));
+  border-radius: calc(14 * var(--u));
+  position: relative;
+  background: var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(14 * var(--u)) calc(16 * var(--u));
+  box-shadow: 0 calc(12 * var(--u)) calc(32 * var(--u)) rgba(0, 0, 0, 0.6);
+}
+
+.iris-page-root .composer-wrap::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1.2 * var(--u));
+  border-radius: calc(15.2 * var(--u));
+  background: linear-gradient(135deg, #2F6BFF 0%, #4A5BFF 33%, #5A4CF5 66%, #2F6BFF 100%);
+  z-index: -1;
+  opacity: 0.75;
+}
+
+.iris-page-root .composer-textarea {
+  width: 100%;
+  height: calc(42 * var(--u));
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  font-size: calc(15 * var(--u));
+  color: var(--text-white);
+  line-height: 1.4;
+}
+
+.iris-page-root .composer-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.iris-page-root .composer-chips-left {
+  display: flex;
+  align-items: center;
+  gap: calc(6 * var(--u));
+}
+
+.iris-page-root .composer-chip {
+  height: calc(26 * var(--u));
+  padding: 0 calc(9 * var(--u));
+  border-radius: calc(6 * var(--u));
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+  font-size: calc(11.5 * var(--u));
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: calc(4 * var(--u));
+  cursor: pointer;
+}
+
+.iris-page-root .composer-chip.icon-only {
+  width: calc(26 * var(--u));
+  padding: 0;
+  justify-content: center;
+}
+
+.iris-page-root .composer-actions-right {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+}
+
+.iris-page-root .voice-btn {
+  width: calc(30 * var(--u));
+  height: calc(30 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.iris-page-root .send-gradient-btn {
+  width: calc(32 * var(--u));
+  height: calc(32 * var(--u));
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2F6BFF 0%, #5A4CF5 100%);
+  border: none;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(47, 107, 255, 0.45);
+}
+
+.iris-page-root .quick-actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(12 * var(--u));
+  width: 100%;
+  margin-top: calc(16 * var(--u));
+}
+
+.iris-page-root .quick-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-hairline);
+  border-radius: calc(12 * var(--u));
+  padding: calc(14 * var(--u)) calc(16 * var(--u));
+  display: flex;
+  align-items: center;
+  gap: calc(12 * var(--u));
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.iris-page-root .quick-card:hover {
+  background: var(--surface-2);
+  transform: translateY(calc(-2 * var(--u)));
+}
+
+.iris-page-root .card-icon-wrap {
+  width: calc(36 * var(--u));
+  height: calc(36 * var(--u));
+  border-radius: calc(9 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iris-page-root .card-icon-blue {
+  background: rgba(47, 107, 255, 0.15);
+  color: #2F6BFF;
+  border: 1px solid rgba(47, 107, 255, 0.3);
+}
+
+.iris-page-root .card-icon-violet {
+  background: rgba(90, 76, 245, 0.15);
+  color: #5A4CF5;
+  border: 1px solid rgba(90, 76, 245, 0.3);
+}
+
+.iris-page-root .card-icon-indigo {
+  background: rgba(74, 91, 255, 0.15);
+  color: #4A5BFF;
+  border: 1px solid rgba(74, 91, 255, 0.3);
+}
+
+.iris-page-root .card-content {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--u));
+  overflow: hidden;
+}
+
+.iris-page-root .card-title {
+  font-size: calc(13 * var(--u));
+  font-weight: 600;
+  color: var(--text-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.iris-page-root .card-subtitle {
+  font-size: calc(11.5 * var(--u));
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.iris-page-root .recent-conversations-block {
+  width: 100%;
+  margin-top: calc(28 * var(--u));
+  display: flex;
+  flex-direction: column;
+}
+
+.iris-page-root .recent-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: calc(12 * var(--u));
+}
+
+.iris-page-root .recent-title {
+  font-size: calc(12 * var(--u));
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.iris-page-root .see-more-link {
+  font-size: calc(12 * var(--u));
+  font-weight: 500;
+  color: var(--accent-blue);
+  cursor: pointer;
+}
+
+.iris-page-root .tree-container {
+  position: relative;
+  width: 100%;
+  padding-left: calc(18 * var(--u));
+  display: flex;
+  flex-direction: column;
+  gap: calc(14 * var(--u));
+  mask-image: linear-gradient(180deg, #000 0%, #000 68%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 68%, transparent 100%);
+}
+
+.iris-page-root .tree-container::before {
+  content: '';
+  position: absolute;
+  left: calc(6 * var(--u));
+  top: calc(8 * var(--u));
+  bottom: calc(10 * var(--u));
+  width: 1.5px;
+  background: linear-gradient(180deg, rgba(47, 107, 255, 0.4) 0%, rgba(90, 76, 245, 0.25) 50%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+.iris-page-root .tree-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(6 * var(--u)) calc(12 * var(--u));
+  border-radius: calc(8 * var(--u));
+  cursor: pointer;
+}
+
+.iris-page-root .tree-node-dot {
+  position: absolute;
+  left: calc(-15 * var(--u));
+  top: 50%;
+  transform: translateY(-50%);
+  width: calc(7 * var(--u));
+  height: calc(7 * var(--u));
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 1.5px solid var(--accent-blue);
+}
+
+.iris-page-root .tree-question-text {
+  font-size: calc(13.5 * var(--u));
+  color: #D1D5DB;
+}
+
+.iris-page-root .tree-time-tag {
+  font-size: calc(11.5 * var(--u));
+  color: var(--text-muted);
+}

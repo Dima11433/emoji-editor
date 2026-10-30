@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI Assistant — Glass Iris Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       RESET & ROOT SCALE UNITS
+       1440 x 1008 reference artboard.
+       --u: min(100vw / 1440, 100dvh / 1008);
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    :root {
+      --u: min(100vw / 1440, 100dvh / 1008);
+      --page-bg: #0E0E0E;
+      --surface-1: #151515;
+      --surface-2: #191919;
+      --surface-3: #1D1D1D;
+      --text-white: #FFFFFF;
+      --text-secondary: #8C8C8C;
+      --text-muted: #6E6E6E;
+      --accent-blue: #2F6BFF;
+      --accent-indigo: #4A5BFF;
+      --accent-violet: #5A4CF5;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-hairline: rgba(255, 255, 255, 0.05);
+      --glow-blue: rgba(64, 110, 255, 0.78);
+      --glow-violet: rgba(124, 72, 240, 0.42);
+      --glow-cyan: rgba(0, 210, 255, 0.20);
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--page-bg);
+      color: var(--text-white);
+      font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ==========================================================================
+       ATMOSPHERIC TOP LIGHTING GLOW
+       Central blue glow, violet right lobe, faint cyan left lobe
+       ========================================================================== */
+    .top-glow-system {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(520 * var(--u));
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .glow-center-blue {
+      position: absolute;
+      top: calc(-160 * var(--u));
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(720 * var(--u));
+      height: calc(500 * var(--u));
+      background: radial-gradient(ellipse at center, rgba(64, 110, 255, 0.78) 0%, rgba(47, 107, 255, 0.38) 42%, transparent 72%);
+      filter: blur(calc(60 * var(--u)));
+      opacity: 0.95;
+    }
+
+    .glow-right-violet {
+      position: absolute;
+      top: calc(-120 * var(--u));
+      left: calc(50% + 190 * var(--u));
+      width: calc(500 * var(--u));
+      height: calc(440 * var(--u));
+      background: radial-gradient(ellipse at center, rgba(124, 72, 240, 0.42) 0%, rgba(90, 76, 245, 0.18) 46%, transparent 74%);
+      filter: blur(calc(70 * var(--u)));
+      opacity: 0.9;
+    }
+
+    .glow-left-cyan {
+      position: absolute;
+      top: calc(-110 * var(--u));
+      left: calc(50% - 250 * var(--u));
+      width: calc(420 * var(--u));
+      height: calc(360 * var(--u));
+      background: radial-gradient(ellipse at center, rgba(0, 210, 255, 0.22) 0%, rgba(0, 180, 230, 0.08) 48%, transparent 75%);
+      filter: blur(calc(65 * var(--u)));
+      opacity: 0.85;
+    }
+
+    /* ==========================================================================
+       APP SHELL: LEFT RAIL + MAIN VIEWPORT
+       Stretches to fill any spare space; never letterboxes
+       ========================================================================== */
+    .app-shell {
+      position: relative;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    /* --- LEFT RAIL (48u) --- */
+    .left-rail {
+      width: calc(48 * var(--u));
+      height: 100%;
+      background: #111111;
+      border-right: 1px solid var(--border-hairline);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: calc(14 * var(--u)) 0;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .rail-logo-tile {
+      width: calc(32 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: calc(8 * var(--u));
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-bottom: calc(20 * var(--u));
+      transition: transform 0.18s ease;
+      box-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(255, 255, 255, 0.2);
+    }
+
+    .rail-logo-tile:hover {
+      transform: scale(1.06);
+    }
+
+    .rail-logo-svg {
+      width: calc(18 * var(--u));
+      height: calc(18 * var(--u));
+      fill: #0E0E0E;
+    }
+
+    .rail-group {
+      display: flex;
+      flex-direction: column;
+      gap: calc(10 * var(--u));
+      width: 100%;
+      align-items: center;
+    }
+
+    .rail-tile {
+      width: calc(32 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: calc(8 * var(--u));
+      background: transparent;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.16s ease;
+      position: relative;
+    }
+
+    .rail-tile:hover {
+      background: var(--surface-2);
+      color: var(--text-white);
+      border-color: var(--border-hairline);
+    }
+
+    .rail-tile.active {
+      background: #1D1D1D;
+      color: var(--text-white);
+      border-color: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.4);
+    }
+
+    .rail-tile.active::before {
+      content: '';
+      position: absolute;
+      left: calc(-8 * var(--u));
+      top: 50%;
+      transform: translateY(-50%);
+      width: calc(3 * var(--u));
+      height: calc(14 * var(--u));
+      background: var(--accent-blue);
+      border-radius: calc(2 * var(--u));
+      box-shadow: 0 0 calc(8 * var(--u)) var(--accent-blue);
+    }
+
+    .rail-tile svg {
+      width: calc(16 * var(--u));
+      height: calc(16 * var(--u));
+      stroke-width: 1.8;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    .rail-bottom {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: calc(10 * var(--u));
+      align-items: center;
+    }
+
+    .rail-user-tile {
+      width: calc(32 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2F6BFF, #5A4CF5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: calc(12 * var(--u));
+      cursor: pointer;
+    }
+
+    /* --- MAIN VIEWPORT --- */
+    .main-viewport {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Custom sleek scrollbar */
+    .main-viewport::-webkit-scrollbar {
+      width: calc(6 * var(--u));
+    }
+    .main-viewport::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .main-viewport::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: calc(3 * var(--u));
+    }
+
+    /* --- TOP BAR --- */
+    .top-bar {
+      height: calc(56 * var(--u));
+      padding: 0 calc(28 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-hairline);
+      background: rgba(14, 14, 14, 0.6);
+      backdrop-filter: blur(calc(16 * var(--u)));
+      -webkit-backdrop-filter: blur(calc(16 * var(--u)));
+      flex-shrink: 0;
+      z-index: 5;
+    }
+
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: calc(12 * var(--u));
+    }
+
+    .nav-arrow-tile {
+      width: calc(28 * var(--u));
+      height: calc(28 * var(--u));
+      border-radius: calc(6 * var(--u));
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .nav-arrow-tile:hover {
+      background: var(--surface-2);
+      color: var(--text-white);
+      border-color: var(--border-subtle);
+    }
+
+    .nav-arrow-tile svg {
+      width: calc(14 * var(--u));
+      height: calc(14 * var(--u));
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: calc(8 * var(--u));
+      font-size: calc(13 * var(--u));
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .breadcrumb-item {
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.14s;
+    }
+
+    .breadcrumb-item:hover {
+      color: var(--text-white);
+    }
+
+    .breadcrumb-separator {
+      color: var(--text-muted);
+      font-size: calc(11 * var(--u));
+    }
+
+    .breadcrumb-current {
+      color: var(--text-white);
+      font-weight: 600;
+    }
+
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: calc(12 * var(--u));
+    }
+
+    .glass-search-box {
+      width: calc(220 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: calc(8 * var(--u));
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border-hairline);
+      backdrop-filter: blur(calc(12 * var(--u)));
+      -webkit-backdrop-filter: blur(calc(12 * var(--u)));
+      display: flex;
+      align-items: center;
+      padding: 0 calc(10 * var(--u));
+      gap: calc(8 * var(--u));
+      transition: all 0.16s ease;
+    }
+
+    .glass-search-box:focus-within {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(47, 107, 255, 0.4);
+      box-shadow: 0 0 calc(12 * var(--u)) rgba(47, 107, 255, 0.2);
+    }
+
+    .search-icon {
+      width: calc(13 * var(--u));
+      height: calc(13 * var(--u));
+      stroke: #8C8C8C;
+      stroke-width: 2;
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #9cb1d6;
+      font-family: inherit;
+      font-size: calc(12 * var(--u));
+      width: 100%;
+    }
+
+    .search-input::placeholder {
+      color: #6E7D95;
+    }
+
+    .top-icon-btn {
+      width: calc(32 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: calc(8 * var(--u));
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.14s ease;
+    }
+
+    .top-icon-btn:hover {
+      background: var(--surface-2);
+      color: var(--text-white);
+      border-color: var(--border-subtle);
+    }
+
+    .top-icon-btn svg {
+      width: calc(15 * var(--u));
+      height: calc(15 * var(--u));
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+    }
+
+    .unread-dot {
+      position: absolute;
+      top: calc(7 * var(--u));
+      right: calc(7 * var(--u));
+      width: calc(5 * var(--u));
+      height: calc(5 * var(--u));
+      background: var(--accent-blue);
+      border-radius: 50%;
+      box-shadow: 0 0 calc(6 * var(--u)) var(--accent-blue);
+    }
+
+    .top-avatar-tile {
+      width: calc(32 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: calc(8 * var(--u));
+      background: #1F2433;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .top-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* --- SUB BAR (UNDER TOP BAR) --- */
+    .sub-bar {
+      height: calc(48 * var(--u));
+      padding: 0 calc(28 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 4;
+    }
+
+    .segmented-toggle {
+      display: flex;
+      background: #141414;
+      border: 1px solid var(--border-hairline);
+      border-radius: calc(8 * var(--u));
+      padding: calc(2 * var(--u));
+      gap: calc(2 * var(--u));
+    }
+
+    .toggle-segment {
+      padding: calc(6 * var(--u)) calc(14 * var(--u));
+      border-radius: calc(6 * var(--u));
+      font-size: calc(12 * var(--u));
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .toggle-segment.active {
+      background: #FFFFFF;
+      color: #0E0E0E;
+      font-weight: 600;
+      box-shadow: 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.5);
+    }
+
+    .status-pill-glass {
+      height: calc(30 * var(--u));
+      border-radius: calc(999 * var(--u));
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border-hairline);
+      backdrop-filter: blur(calc(12 * var(--u)));
+      -webkit-backdrop-filter: blur(calc(12 * var(--u)));
+      display: flex;
+      align-items: center;
+      padding: 0 calc(12 * var(--u));
+      gap: calc(8 * var(--u));
+    }
+
+    .status-pulse-dot {
+      width: calc(6 * var(--u));
+      height: calc(6 * var(--u));
+      border-radius: 50%;
+      background: #2F6BFF;
+      box-shadow: 0 0 calc(8 * var(--u)) #2F6BFF;
+      position: relative;
+    }
+
+    .status-pulse-dot::after {
+      content: '';
+      position: absolute;
+      inset: calc(-3 * var(--u));
+      border-radius: 50%;
+      border: 1px solid #2F6BFF;
+      opacity: 0.5;
+      animation: pulseRipple 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+    }
+
+    @keyframes pulseRipple {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .status-pill-text {
+      font-size: calc(12 * var(--u));
+      font-weight: 500;
+      color: #CBD5E1;
+    }
+
+    .status-count-badge {
+      font-size: calc(11 * var(--u));
+      font-weight: 700;
+      color: #FFFFFF;
+      background: rgba(47, 107, 255, 0.25);
+      border: 1px solid rgba(47, 107, 255, 0.4);
+      padding: calc(1 * var(--u)) calc(7 * var(--u));
+      border-radius: calc(999 * var(--u));
+    }
+
+    /* ==========================================================================
+       HERO (CENTRED COLUMN, 708u WIDE)
+       ========================================================================== */
+    .hero-container {
+      width: calc(708 * var(--u));
+      max-width: calc(100% - calc(48 * var(--u)));
+      margin: calc(10 * var(--u)) auto calc(40 * var(--u)) auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* --- LIVING GLASS ORB LAYER ---
+       145u square layer with -30.5u margin (effective height is 84u!).
+       Radial mask: solid to 61%, clear at 76% to melt black into page.
+    */
+    .orb-stage-layer {
+      width: calc(145 * var(--u));
+      height: calc(145 * var(--u));
+      margin-top: calc(-30.5 * var(--u));
+      margin-bottom: calc(-30.5 * var(--u));
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      mask-image: radial-gradient(circle at center, #000000 0%, #000000 61%, transparent 76%);
+      -webkit-mask-image: radial-gradient(circle at center, #000000 0%, #000000 61%, transparent 76%);
+      overflow: hidden;
+      border-radius: 50%;
+      flex-shrink: 0;
+      will-change: transform;
+    }
+
+    .orb-still-plate {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 45% 40%, rgba(124, 72, 240, 0.45) 0%, rgba(47, 107, 255, 0.55) 30%, #090B14 70%);
+      box-shadow: inset 0 0 calc(20 * var(--u)) rgba(255, 255, 255, 0.18),
+                  inset 0 0 calc(40 * var(--u)) rgba(47, 107, 255, 0.35);
+      z-index: 1;
+    }
+
+    .orb-canvas-core {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      z-index: 2;
+    }
+
+    .orb-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+      z-index: 3;
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
+    .orb-video.loaded {
+      opacity: 1;
+    }
+
+    .orb-glass-specular {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.08) 25%, transparent 50%),
+                  radial-gradient(circle at 65% 75%, rgba(90, 76, 245, 0.35) 0%, transparent 45%);
+      box-shadow: inset 0 calc(1.5 * var(--u)) calc(3 * var(--u)) rgba(255, 255, 255, 0.6),
+                  inset 0 calc(-1.5 * var(--u)) calc(3 * var(--u)) rgba(47, 107, 255, 0.4);
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    /* --- HERO TYPOGRAPHY --- */
+    .hero-text-block {
+      text-align: center;
+      margin-top: calc(18 * var(--u));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hero-greeting {
+      font-size: calc(17 * var(--u));
+      font-weight: 400;
+      color: var(--text-secondary);
+      margin-bottom: calc(8 * var(--u));
+      letter-spacing: -0.01em;
+    }
+
+    .hero-headline {
+      font-size: calc(30 * var(--u));
+      font-weight: 500;
+      color: var(--text-white);
+      text-transform: uppercase;
+      letter-spacing: calc(1.2 * var(--u));
+      line-height: 1.15;
+      margin-bottom: calc(10 * var(--u));
+      display: flex;
+      gap: calc(8 * var(--u));
+      justify-content: center;
+    }
+
+    .headline-word-mask {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: bottom;
+    }
+
+    .headline-word-inner {
+      display: inline-block;
+      will-change: transform;
+    }
+
+    .hero-subline {
+      font-size: calc(14 * var(--u));
+      font-weight: 400;
+      color: var(--text-secondary);
+      max-width: calc(480 * var(--u));
+      line-height: 1.45;
+    }
+
+    /* --- COMPOSER (114u tall, #151515, 14u radius, 1.2u gradient hairline border) --- */
+    .composer-wrap {
+      width: 100%;
+      height: calc(114 * var(--u));
+      margin-top: calc(26 * var(--u));
+      border-radius: calc(14 * var(--u));
+      position: relative;
+      background: var(--surface-1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: calc(14 * var(--u)) calc(16 * var(--u));
+      box-shadow: 0 calc(12 * var(--u)) calc(32 * var(--u)) rgba(0, 0, 0, 0.6);
+      transition: all 0.2s ease;
+    }
+
+    /* 1.2u gradient hairline border running blue → indigo → violet → blue */
+    .composer-wrap::before {
+      content: '';
+      position: absolute;
+      inset: calc(-1.2 * var(--u));
+      border-radius: calc(15.2 * var(--u));
+      background: linear-gradient(135deg, #2F6BFF 0%, #4A5BFF 33%, #5A4CF5 66%, #2F6BFF 100%);
+      z-index: -1;
+      opacity: 0.75;
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+
+    .composer-wrap:focus-within::before {
+      opacity: 1;
+      filter: drop-shadow(0 0 calc(10 * var(--u)) rgba(47, 107, 255, 0.35));
+    }
+
+    .composer-input-row {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .composer-textarea {
+      width: 100%;
+      height: calc(42 * var(--u));
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: inherit;
+      font-size: calc(15 * var(--u));
+      color: var(--text-white);
+      line-height: 1.4;
+    }
+
+    .composer-textarea::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .composer-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .composer-chips-left {
+      display: flex;
+      align-items: center;
+      gap: calc(6 * var(--u));
+    }
+
+    .composer-chip {
+      height: calc(26 * var(--u));
+      padding: 0 calc(9 * var(--u));
+      border-radius: calc(6 * var(--u));
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: calc(11.5 * var(--u));
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: calc(4 * var(--u));
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .composer-chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-white);
+      border-color: var(--border-subtle);
+    }
+
+    .composer-chip.icon-only {
+      width: calc(26 * var(--u));
+      padding: 0;
+      justify-content: center;
+    }
+
+    .composer-chip svg {
+      width: calc(12 * var(--u));
+      height: calc(12 * var(--u));
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .composer-actions-right {
+      display: flex;
+      align-items: center;
+      gap: calc(8 * var(--u));
+    }
+
+    .voice-btn {
+      width: calc(30 * var(--u));
+      height: calc(30 * var(--u));
+      border-radius: calc(8 * var(--u));
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .voice-btn:hover {
+      color: var(--text-white);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .voice-btn svg {
+      width: calc(15 * var(--u));
+      height: calc(15 * var(--u));
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .send-gradient-btn {
+      width: calc(32 * var(--u));
+      height: calc(32 * var(--u));
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2F6BFF 0%, #5A4CF5 100%);
+      border: none;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(47, 107, 255, 0.45);
+      transition: transform 0.14s ease, filter 0.14s ease;
+    }
+
+    .send-gradient-btn:hover {
+      transform: scale(1.06);
+      filter: brightness(1.15);
+    }
+
+    .send-gradient-btn:active {
+      transform: scale(0.96);
+    }
+
+    .send-gradient-btn svg {
+      width: calc(14 * var(--u));
+      height: calc(14 * var(--u));
+      stroke: #FFFFFF;
+      stroke-width: 2.2;
+      fill: none;
+      margin-left: calc(1 * var(--u));
+    }
+
+    /* --- THREE QUICK-ACTION CARDS (Adapted to our Editor/Financial studio) --- */
+    .quick-actions-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: calc(12 * var(--u));
+      width: 100%;
+      margin-top: calc(16 * var(--u));
+    }
+
+    .quick-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      border-radius: calc(12 * var(--u));
+      padding: calc(14 * var(--u)) calc(16 * var(--u));
+      display: flex;
+      align-items: center;
+      gap: calc(12 * var(--u));
+      cursor: pointer;
+      transition: all 0.16s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .quick-card:hover {
+      background: var(--surface-2);
+      border-color: var(--border-subtle);
+      transform: translateY(calc(-2 * var(--u)));
+      box-shadow: 0 calc(8 * var(--u)) calc(20 * var(--u)) rgba(0, 0, 0, 0.4);
+    }
+
+    .card-icon-wrap {
+      width: calc(36 * var(--u));
+      height: calc(36 * var(--u));
+      border-radius: calc(9 * var(--u));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .card-icon-blue {
+      background: rgba(47, 107, 255, 0.15);
+      color: #2F6BFF;
+      border: 1px solid rgba(47, 107, 255, 0.3);
+    }
+
+    .card-icon-violet {
+      background: rgba(90, 76, 245, 0.15);
+      color: #5A4CF5;
+      border: 1px solid rgba(90, 76, 245, 0.3);
+    }
+
+    .card-icon-indigo {
+      background: rgba(74, 91, 255, 0.15);
+      color: #4A5BFF;
+      border: 1px solid rgba(74, 91, 255, 0.3);
+    }
+
+    .card-icon-wrap svg {
+      width: calc(18 * var(--u));
+      height: calc(18 * var(--u));
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: calc(2 * var(--u));
+      overflow: hidden;
+    }
+
+    .card-title {
+      font-size: calc(13 * var(--u));
+      font-weight: 600;
+      color: var(--text-white);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .card-subtitle {
+      font-size: calc(11.5 * var(--u));
+      color: var(--text-secondary);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    /* --- RECENT CONVERSATIONS (TREE LINE) --- */
+    .recent-conversations-block {
+      width: 100%;
+      margin-top: calc(28 * var(--u));
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .recent-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: calc(12 * var(--u));
+      padding-left: calc(6 * var(--u));
+    }
+
+    .recent-title {
+      font-size: calc(12 * var(--u));
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: calc(0.8 * var(--u));
+      color: var(--text-muted);
+    }
+
+    .see-more-link {
+      font-size: calc(12 * var(--u));
+      font-weight: 500;
+      color: var(--accent-blue);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.14s ease;
+    }
+
+    .see-more-link:hover {
+      color: #60A5FA;
+      text-decoration: underline;
+    }
+
+    .tree-container {
+      position: relative;
+      width: 100%;
+      padding-left: calc(18 * var(--u));
+      display: flex;
+      flex-direction: column;
+      gap: calc(14 * var(--u));
+      mask-image: linear-gradient(180deg, #000 0%, #000 68%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 68%, transparent 100%);
+    }
+
+    /* Connecting vertical tree line */
+    .tree-container::before {
+      content: '';
+      position: absolute;
+      left: calc(6 * var(--u));
+      top: calc(8 * var(--u));
+      bottom: calc(10 * var(--u));
+      width: 1.5px;
+      background: linear-gradient(180deg, rgba(47, 107, 255, 0.4) 0%, rgba(90, 76, 245, 0.25) 50%, rgba(255, 255, 255, 0.05) 100%);
+    }
+
+    .tree-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: calc(6 * var(--u)) calc(12 * var(--u));
+      border-radius: calc(8 * var(--u));
+      cursor: pointer;
+      transition: background 0.14s ease;
+    }
+
+    .tree-item:hover {
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    /* Tree node */
+    .tree-node-dot {
+      position: absolute;
+      left: calc(-15 * var(--u));
+      top: 50%;
+      transform: translateY(-50%);
+      width: calc(7 * var(--u));
+      height: calc(7 * var(--u));
+      border-radius: 50%;
+      background: var(--surface-1);
+      border: 1.5px solid var(--accent-blue);
+      box-shadow: 0 0 calc(6 * var(--u)) rgba(47, 107, 255, 0.4);
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+
+    .tree-item:hover .tree-node-dot {
+      transform: translateY(-50%) scale(1.3);
+      border-color: #60A5FA;
+      background: var(--accent-blue);
+    }
+
+    .tree-question-text {
+      font-size: calc(13.5 * var(--u));
+      color: #D1D5DB;
+      font-weight: 400;
+      max-width: calc(520 * var(--u));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tree-item:hover .tree-question-text {
+      color: #FFFFFF;
+    }
+
+    .tree-time-tag {
+      font-size: calc(11.5 * var(--u));
+      color: var(--text-muted);
+      flex-shrink: 0;
+      margin-left: calc(12 * var(--u));
+    }
+
+    /* --- INTERACTIVE AI CHAT RESULT FLYOUT --- */
+    .ai-response-card {
+      width: 100%;
+      background: var(--surface-1);
+      border: 1px solid rgba(47, 107, 255, 0.35);
+      border-radius: calc(14 * var(--u));
+      padding: calc(16 * var(--u));
+      margin-top: calc(16 * var(--u));
+      display: none;
+      flex-direction: column;
+      gap: calc(12 * var(--u));
+      box-shadow: 0 calc(12 * var(--u)) calc(36 * var(--u)) rgba(0, 0, 0, 0.7);
+      animation: flyIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .ai-response-card.show {
+      display: flex;
+    }
+
+    @keyframes flyIn {
+      from { opacity: 0; transform: translateY(calc(12 * var(--u))); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .response-head {
+      display: flex;
+      align-items: center;
+      gap: calc(8 * var(--u));
+      font-size: calc(13 * var(--u));
+      font-weight: 600;
+      color: #38BDF8;
+    }
+
+    .response-body {
+      font-size: calc(13.5 * var(--u));
+      line-height: 1.5;
+      color: #E2E8F0;
+    }
+
+    .response-actions {
+      display: flex;
+      gap: calc(8 * var(--u));
+      margin-top: calc(4 * var(--u));
+    }
+
+    .action-btn-small {
+      padding: calc(6 * var(--u)) calc(12 * var(--u));
+      border-radius: calc(6 * var(--u));
+      background: rgba(47, 107, 255, 0.15);
+      border: 1px solid rgba(47, 107, 255, 0.3);
+      color: #93C5FD;
+      font-size: calc(12 * var(--u));
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: calc(6 * var(--u));
+    }
+
+    .action-btn-small:hover {
+      background: rgba(47, 107, 255, 0.3);
+      color: #FFFFFF;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS (TABLET & PHONE)
+       ========================================================================== */
+    @media (max-width: 900px) {
+      .quick-actions-row {
+        grid-template-columns: 1fr;
+      }
+      .top-bar {
+        padding: 0 calc(16 * var(--u));
+      }
+      .glass-search-box {
+        width: calc(160 * var(--u));
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --u: 1px;
+      }
+      html, body {
+        overflow-y: auto;
+      }
+      .left-rail {
+        display: none;
+      }
+      .top-bar {
+        height: auto;
+        padding: 12px 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .top-bar-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .glass-search-box {
+        flex: 1;
+      }
+      .sub-bar {
+        padding: 0 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        height: auto;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .hero-container {
+        width: 100%;
+        padding: 0 16px;
+        margin-top: 20px;
+      }
+      .hero-headline {
+        font-size: 22px;
+      }
+      .composer-wrap {
+        height: auto;
+        min-height: 120px;
+      }
+      .quick-actions-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .tree-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+      .tree-time-tag {
+        margin-left: 0;
+      }
+    }
+
+    /* ==========================================================================
+       REDUCED MOTION SUPPORT
+       ========================================================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+      .orb-video {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ATMOSPHERIC TOP LIGHTING GLOW -->
+  <div class="top-glow-system">
+    <div class="glow-center-blue"></div>
+    <div class="glow-right-violet"></div>
+    <div class="glow-left-cyan"></div>
+  </div>
+
+  <div class="app-shell">
+
+    <!-- LEFT RAIL (48u) -->
+    <aside class="left-rail">
+      <!-- White Logo Tile -->
+      <div class="rail-logo-tile" id="railLogoBtn" title="MAGNAT Studio">
+        <svg class="rail-logo-svg" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+
+      <!-- Grouped 32u Icon Tiles -->
+      <nav class="rail-group">
+        <!-- 1. Chat Mode / Iris -->
+        <button type="button" class="rail-tile active" id="railTileChat" title="AI Assistant">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+          </svg>
+        </button>
+
+        <!-- 2. Emoji Catalog -->
+        <button type="button" class="rail-tile" id="railTileCatalog" title="Каталог шаблонов">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </button>
+
+        <!-- 3. Web Studio Editor -->
+        <button type="button" class="rail-tile" id="railTileStudio" title="Студия / Редактор">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
+
+        <!-- 4. Packs & Archives -->
+        <button type="button" class="rail-tile" id="railTilePacks" title="Мои паки">
+          <svg viewBox="0 0 24 24">
+            <polyline points="21 8 21 21 3 21 3 8"/>
+            <rect x="1" y="3" width="22" height="5"/>
+            <line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+        </button>
+
+        <!-- 5. VIP & Subscriptions -->
+        <button type="button" class="rail-tile" id="railTileBilling" title="Тарифы и Звёзды">
+          <svg viewBox="0 0 24 24">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+      </nav>
+
+      <!-- Bottom User & Settings Tiles -->
+      <div class="rail-bottom">
+        <div class="rail-user-tile" id="railUserTile" title="Профиль: magnat">
+          M
+        </div>
+        <button type="button" class="rail-tile" id="railSettingsTile" title="Настройки">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEWPORT -->
+    <main class="main-viewport">
+
+      <!-- TOP BAR -->
+      <header class="top-bar">
+        <!-- Left: Back, Forward, Breadcrumbs -->
+        <div class="top-bar-left">
+          <button type="button" class="nav-arrow-tile" id="navBackBtn" title="Back">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <button type="button" class="nav-arrow-tile" id="navForwardBtn" title="Forward">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <nav class="breadcrumbs">
+            <a class="breadcrumb-item" href="./index.html">Home</a>
+            <span class="breadcrumb-separator">›</span>
+            <span class="breadcrumb-current">AI Assistant (MAGNAT Studio)</span>
+          </nav>
+        </div>
+
+        <!-- Right: Glass Search, Bell, Avatar -->
+        <div class="top-bar-right">
+          <div class="glass-search-box">
+            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-input" placeholder="Search Anything..." id="globalSearchInput">
+          </div>
+
+          <button type="button" class="top-icon-btn" id="bellBtn" title="Notifications">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="unread-dot"></span>
+          </button>
+
+          <div class="top-avatar-tile" id="topAvatarBtn" title="Профиль">
+            <div style="font-weight:700; color:#fff; font-size:calc(12 * var(--u));">M</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- UNDER TOP BAR: SUB BAR -->
+      <section class="sub-bar">
+        <!-- Left: Segmented Toggle -->
+        <div class="segmented-toggle">
+          <button type="button" class="toggle-segment active" id="toggleChatMode">Chat Mode</button>
+          <button type="button" class="toggle-segment" id="toggleOverview">Overview</button>
+        </div>
+
+        <!-- Right: Glass Status Pill -->
+        <div class="status-pill-glass">
+          <span class="status-pulse-dot"></span>
+          <span class="status-pill-text">AI Agents Running</span>
+          <span class="status-count-badge" id="agentCountBadge">17</span>
+        </div>
+      </section>
+
+      <!-- HERO SECTION (Centred column, 708u wide) -->
+      <section class="hero-container">
+
+        <!-- LIVING GLASS ORB LAYER (145u square, -30.5u margin = 84u visual space) -->
+        <div class="orb-stage-layer" id="orbStage">
+          <!-- Still Plate -->
+          <div class="orb-still-plate"></div>
+
+          <!-- High-performance procedural Canvas swirl -->
+          <canvas class="orb-canvas-core" id="orbCanvas" width="290" height="290"></canvas>
+
+          <!-- Looping Inline Video (fades in on loadeddata) -->
+          <video class="orb-video" id="orbVideo" loop muted playsinline autoplay src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"></video>
+
+          <!-- Glass Refraction & Specular Glint -->
+          <div class="orb-glass-specular"></div>
+        </div>
+
+        <!-- HERO TYPOGRAPHY -->
+        <div class="hero-text-block">
+          <p class="hero-greeting" id="heroGreeting">Good Morning, magnat</p>
+          <h1 class="hero-headline" id="heroHeadline">
+            <span class="headline-word-mask"><span class="headline-word-inner">WHAT'S</span></span>
+            <span class="headline-word-mask"><span class="headline-word-inner">ON</span></span>
+            <span class="headline-word-mask"><span class="headline-word-inner">YOUR</span></span>
+            <span class="headline-word-mask"><span class="headline-word-inner">MIND?</span></span>
+          </h1>
+          <p class="hero-subline">Get personalized financial insights, smarter recommendations & 60 FPS Telegram animated emojis.</p>
+        </div>
+
+        <!-- COMPOSER (114u tall, #151515, 14u radius, 1.2u gradient hairline border) -->
+        <div class="composer-wrap" id="composerWrap">
+          <div class="composer-input-row">
+            <textarea class="composer-textarea" id="composerInput" placeholder="Ask Anything... (например: собери анимированный пак MAGNAT с золотой плашкой)"></textarea>
+          </div>
+
+          <div class="composer-controls-row">
+            <!-- Left Chips: +, Normal, Deep Think -->
+            <div class="composer-chips-left">
+              <button type="button" class="composer-chip icon-only" id="chipAttachBtn" title="Attach template or logo">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button type="button" class="composer-chip" id="chipModeBtn">
+                <span>Normal</span>
+                <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <button type="button" class="composer-chip" id="chipDeepThinkBtn">
+                <span>Deep Think</span>
+                <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+
+            <!-- Right Controls: Voice & Gradient Send Button -->
+            <div class="composer-actions-right">
+              <button type="button" class="voice-btn" id="voiceBtn" title="Voice Input">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+              <button type="button" class="send-gradient-btn" id="sendBtn" title="Send Request">
+                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI RESPONSE RESULT CARD (Interactive flyout) -->
+        <div class="ai-response-card" id="aiResponseCard">
+          <div class="response-head">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            <span id="responseHeadTitle">AI Iris Assistant • MAGNAT Core</span>
+          </div>
+          <div class="response-body" id="responseBodyText">
+            Готово! Сгенерирован персональный план и настроена сборка 60 FPS эмодзи-пака. Все 284 векторных шаблона валидированы в пределах лимита 64 КБ Telegram.
+          </div>
+          <div class="response-actions">
+            <a href="./index.html?mode=studio" class="action-btn-small" id="openInStudioBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Открыть в Студии
+            </a>
+            <button type="button" class="action-btn-small" id="exportPackBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Экспорт ZIP
+            </button>
+          </div>
+        </div>
+
+        <!-- THREE QUICK-ACTION CARDS -->
+        <div class="quick-actions-row">
+          <!-- Card 1: Smart Budget Plan / Собрать пак MAGNAT -->
+          <div class="quick-card" data-prompt="Собрать персональный финансовый смарт-пак MAGNAT с золотым логотипом">
+            <div class="card-icon-wrap card-icon-blue">
+              <svg viewBox="0 0 24 24">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <span class="card-title">Smart Budget Plan</span>
+              <span class="card-subtitle">Create My Budget</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Set a Saving Goal / Золотая плашка -->
+          <div class="quick-card" data-prompt="Сгенерировать 3D плашку с градиентом #2F6BFF для Telegram эмодзи">
+            <div class="card-icon-wrap card-icon-violet">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <span class="card-title">Set a Saving Goal</span>
+              <span class="card-subtitle">Set a Goal</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Track My Expenses / Экспорт в @Stickers -->
+          <div class="quick-card" data-prompt="Подготовить архив .tgs файлов для заливки в официальный бот @Stickers">
+            <div class="card-icon-wrap card-icon-indigo">
+              <svg viewBox="0 0 24 24">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <span class="card-title">Track My Expenses</span>
+              <span class="card-subtitle">Monitor Spending</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECENT CONVERSATIONS (TREE LINE) -->
+        <div class="recent-conversations-block">
+          <div class="recent-header-row">
+            <span class="recent-title">Recent Conversations</span>
+            <a class="see-more-link" id="seeMoreBtn">See More →</a>
+          </div>
+
+          <div class="tree-container">
+            <!-- Item 1 -->
+            <div class="tree-item" data-query="How much did I spend on dining out this month?">
+              <span class="tree-node-dot"></span>
+              <span class="tree-question-text">How much did I spend on dining out this month?</span>
+              <span class="tree-time-tag">10m ago</span>
+            </div>
+
+            <!-- Item 2 -->
+            <div class="tree-item" data-query="Can I afford a weekend trip to Lisbon next week?">
+              <span class="tree-node-dot"></span>
+              <span class="tree-question-text">Can I afford a weekend trip to Lisbon next week?</span>
+              <span class="tree-time-tag">2h ago</span>
+            </div>
+
+            <!-- Item 3 -->
+            <div class="tree-item" data-query="Set an automated rule to save 15% of upcoming payouts">
+              <span class="tree-node-dot"></span>
+              <span class="tree-question-text">Set an automated rule to save 15% of upcoming payouts</span>
+              <span class="tree-time-tag">Yesterday</span>
+            </div>
+
+            <!-- Item 4 -->
+            <div class="tree-item" data-query="Optimize recurring subscription costs across all services">
+              <span class="tree-node-dot"></span>
+              <span class="tree-question-text">Optimize recurring subscription costs across all services</span>
+              <span class="tree-time-tag">3 days ago</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- VANILLA JAVASCRIPT: ENTRANCE MOTION & PROCEDURAL LIVING ORB -->
+  <script>
+    // --- 1. PROCEDURAL LIVING GLASS ORB (SWIRLING BLUE-VIOLET CORE) ---
+    const canvas = document.getElementById('orbCanvas');
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let t = 0;
+
+    function renderOrb() {
+      t += 0.024;
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Deep glass spherical gradient
+      const baseGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, w * 0.48);
+      baseGrad.addColorStop(0, '#100e26');
+      baseGrad.addColorStop(0.5, '#070a1a');
+      baseGrad.addColorStop(1, '#000000');
+      ctx.fillStyle = baseGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.48, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Swirling plasma filaments (blue, indigo, violet)
+      const layers = 5;
+      for (let i = 0; i < layers; i++) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(t * (0.35 + i * 0.12) * (i % 2 === 0 ? 1 : -1));
+
+        const radius = (w * 0.38) * (0.4 + 0.6 * Math.sin(t * 0.8 + i));
+        const grad = ctx.createRadialGradient(
+          Math.sin(t + i) * 20, Math.cos(t + i) * 20, 2,
+          0, 0, radius
+        );
+
+        if (i % 3 === 0) {
+          grad.addColorStop(0, 'rgba(47, 107, 255, 0.9)');
+          grad.addColorStop(0.5, 'rgba(90, 76, 245, 0.4)');
+          grad.addColorStop(1, 'transparent');
+        } else if (i % 3 === 1) {
+          grad.addColorStop(0, 'rgba(0, 210, 255, 0.8)');
+          grad.addColorStop(0.6, 'rgba(47, 107, 255, 0.3)');
+          grad.addColorStop(1, 'transparent');
+        } else {
+          grad.addColorStop(0, 'rgba(124, 72, 240, 0.85)');
+          grad.addColorStop(0.5, 'rgba(47, 107, 255, 0.4)');
+          grad.addColorStop(1, 'transparent');
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(
+          Math.sin(t + i) * 14,
+          Math.cos(t * 0.7 + i) * 14,
+          radius,
+          radius * 0.72,
+          t * 0.5 + i,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Bright inner core pulse
+      const pulseSize = (w * 0.18) + Math.sin(t * 1.8) * 8;
+      const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseSize);
+      coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      coreGrad.addColorStop(0.25, 'rgba(64, 110, 255, 0.85)');
+      coreGrad.addColorStop(0.65, 'rgba(124, 72, 240, 0.4)');
+      coreGrad.addColorStop(1, 'transparent');
+
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pulseSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glass caustics ring
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.46, 0, Math.PI * 2);
+      ctx.stroke();
+
+      animationFrameId = requestAnimationFrame(renderOrb);
+    }
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      renderOrb();
+    }
+
+    // Video fade in on loadeddata
+    const orbVideo = document.getElementById('orbVideo');
+    if (orbVideo) {
+      orbVideo.addEventListener('loadeddata', () => {
+        orbVideo.classList.add('loaded');
+      });
+    }
+
+    // --- 2. WEB ANIMATIONS TIMELINE ENTRANCE MOTION ---
+    function runEntranceAnimations() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      // A. Rail tiles rise in
+      const railTiles = document.querySelectorAll('.rail-tile, .rail-logo-tile, .rail-user-tile');
+      railTiles.forEach((tile, index) => {
+        tile.animate([
+          { opacity: 0, transform: 'translateY(16px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], {
+          duration: 450,
+          delay: 40 * index,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      });
+
+      // B. Top bar items fade in
+      const topBar = document.querySelector('.top-bar');
+      if (topBar) {
+        topBar.animate([
+          { opacity: 0, transform: 'translateY(-12px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], {
+          duration: 500,
+          delay: 80,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      }
+
+      // C. Orb opens with a circular clip and scales from 0.92 to 1
+      const orbStage = document.getElementById('orbStage');
+      if (orbStage) {
+        orbStage.animate([
+          { opacity: 0, transform: 'scale(0.92)', clipPath: 'circle(0% at 50% 50%)' },
+          { opacity: 1, transform: 'scale(1)', clipPath: 'circle(100% at 50% 50%)' }
+        ], {
+          duration: 750,
+          delay: 150,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      }
+
+      // D. Greeting appears
+      const greeting = document.getElementById('heroGreeting');
+      if (greeting) {
+        greeting.animate([
+          { opacity: 0, transform: 'translateY(8px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], {
+          duration: 400,
+          delay: 300,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      }
+
+      // E. Headline words rise out of masks
+      const wordInners = document.querySelectorAll('.headline-word-inner');
+      wordInners.forEach((word, index) => {
+        word.animate([
+          { transform: 'translateY(110%)' },
+          { transform: 'translateY(0)' }
+        ], {
+          duration: 550,
+          delay: 360 + index * 55,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      });
+
+      // F. Composer, subline & quick cards settle in
+      const composer = document.getElementById('composerWrap');
+      const cards = document.querySelectorAll('.quick-card');
+      const treeBlock = document.querySelector('.recent-conversations-block');
+
+      if (composer) {
+        composer.animate([
+          { opacity: 0, transform: 'translateY(18px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], {
+          duration: 500,
+          delay: 550,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      }
+
+      cards.forEach((card, index) => {
+        card.animate([
+          { opacity: 0, transform: 'translateY(14px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], {
+          duration: 450,
+          delay: 650 + index * 60,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      });
+
+      if (treeBlock) {
+        treeBlock.animate([
+          { opacity: 0, transform: 'translateY(16px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], {
+          duration: 500,
+          delay: 850,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          fill: 'forwards'
+        });
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', runEntranceAnimations);
+
+    // --- 3. INTERACTION LOGIC (PROMPTS & CHAT) ---
+    const composerInput = document.getElementById('composerInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const responseCard = document.getElementById('aiResponseCard');
+    const responseHeadTitle = document.getElementById('responseHeadTitle');
+    const responseBodyText = document.getElementById('responseBodyText');
+
+    function handleSendPrompt(text) {
+      const prompt = text || composerInput.value.trim();
+      if (!prompt) return;
+
+      responseCard.classList.remove('show');
+      void responseCard.offsetWidth; // trigger reflow
+
+      responseHeadTitle.textContent = 'Iris AI • MAGNAT Generator';
+      responseBodyText.innerHTML = `Запрос обработан: <strong>«${prompt}»</strong>.<br>Подготовлен векторный пакет из 30 анимированных эмодзи (60 FPS, Lottie/TGS). Фирменный брендинг, золотая пластина и лимиты Telegram успешно верифицированы.`;
+      responseCard.classList.add('show');
+      composerInput.value = '';
+    }
+
+    sendBtn.addEventListener('click', () => handleSendPrompt());
+    composerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendPrompt();
+      }
+    });
+
+    // Quick action cards click
+    document.querySelectorAll('.quick-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const p = card.getAttribute('data-prompt');
+        handleSendPrompt(p);
+      });
+    });
+
+    // Recent items click
+    document.querySelectorAll('.tree-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const q = item.getAttribute('data-query');
+        handleSendPrompt(q);
+      });
+    });
+
+    // Mode toggles
+    const toggleChat = document.getElementById('toggleChatMode');
+    const toggleOverview = document.getElementById('toggleOverview');
+
+    toggleChat.addEventListener('click', () => {
+      toggleChat.classList.add('active');
+      toggleOverview.classList.remove('active');
+    });
+
+    toggleOverview.addEventListener('click', () => {
+      toggleOverview.classList.add('active');
+      toggleChat.classList.remove('active');
+      window.location.href = './index.html';
+    });
+
+    // Rail navigation
+    document.getElementById('railTileCatalog').addEventListener('click', () => {
+      window.location.href = './index.html?view=tma_catalog';
+    });
+    document.getElementById('railTileStudio').addEventListener('click', () => {
+      window.location.href = './index.html?view=studio';
+    });
+    document.getElementById('railTilePacks').addEventListener('click', () => {
+      window.location.href = './index.html?view=tma_packs';
+    });
+    document.getElementById('railTileBilling').addEventListener('click', () => {
+      window.location.href = './index.html?view=tma_profile';
+    });
+    document.getElementById('railLogoBtn').addEventListener('click', () => {
+      window.location.href = './index.html';
+    });
+  </script>
+</body>
+</html>

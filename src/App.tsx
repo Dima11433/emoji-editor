@@ -31,6 +31,7 @@ import { SubscriptionModal } from './components/SubscriptionModal';
 import { TmaCatalogView } from './components/TmaCatalogView';
 import { TmaProfileView } from './components/TmaProfileView';
 import { TmaPacksView } from './components/TmaPacksView';
+import { IrisAssistantView } from './components/IrisAssistantView';
 import {
   getSubscription,
   SUB_CHANGE_EVENT,
@@ -242,13 +243,17 @@ export default function App() {
   const fileName = primarySticker.name;
   const selectedCount = selectedStickers.length;
 
-  const [mainView, setMainView] = useState<'studio' | 'tma_catalog' | 'tma_profile' | 'tma_packs'>(() => {
+  const [mainView, setMainView] = useState<'studio' | 'tma_catalog' | 'tma_profile' | 'tma_packs' | 'iris_assistant'>(() => {
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'iris' || params.get('iris') === '1') {
+        return 'iris_assistant';
+      }
       if (isTelegramWebApp() || window.innerWidth < 900) {
         return 'tma_catalog';
       }
     }
-    return 'studio';
+    return 'iris_assistant';
   });
 
   const [sub, setSub] = useState<SubscriptionState>(getSubscription);
@@ -1284,6 +1289,34 @@ export default function App() {
     );
   }
 
+  if (mainView === 'iris_assistant') {
+    return (
+      <>
+        <IrisAssistantView
+          subscription={sub}
+          telegramUser={tgUser}
+          onOpenStudio={() => {
+            setMainView('studio');
+            haptic('select');
+          }}
+          onOpenCatalog={() => {
+            setMainView('tma_catalog');
+            haptic('select');
+          }}
+          onOpenProfile={() => {
+            setMainView('tma_profile');
+            haptic('select');
+          }}
+          onOpenPacks={() => {
+            setMainView('tma_packs');
+            haptic('select');
+          }}
+        />
+        {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
+      </>
+    );
+  }
+
   return (
     <div className={`tier-app ${inTma ? 'in-tma' : ''}`}>
       {/* TOP NAVBAR (Screenshot 2 Replica) */}
@@ -1307,6 +1340,18 @@ export default function App() {
           >
             MAGNAT
           </span>
+          <button
+            type="button"
+            className="tier-nav-btn"
+            style={{ background: 'linear-gradient(135deg, rgba(47,107,255,0.25), rgba(90,76,245,0.25))', borderColor: 'rgba(47,107,255,0.4)', color: '#93C5FD' }}
+            onClick={() => {
+              setMainView('iris_assistant');
+              haptic('select');
+            }}
+            title="Glass Iris AI Assistant Dashboard"
+          >
+            <Sparkles size={14} color="#60A5FA" /> AI Iris
+          </button>
           <button
             type="button"
             className="tier-nav-btn"
