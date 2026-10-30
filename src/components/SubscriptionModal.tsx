@@ -5,7 +5,6 @@ import {
   Copy,
   Crown,
   ExternalLink,
-  KeyRound,
   ShieldCheck,
   Star,
   Wallet,
@@ -15,7 +14,6 @@ import {
 import {
   activateSubscription,
   PRICING,
-  redeemPromoCode,
   resetSubscription,
   type SubscriptionState,
 } from '../lib/subscription';
@@ -37,9 +35,7 @@ export function SubscriptionModal({
   featuredReason,
 }: SubscriptionModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'lifetime'>('pro');
-  const [paymentTab, setPaymentTab] = useState<'stars' | 'crypto' | 'sbp' | 'promo'>('stars');
-  const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [promoMessage, setPromoMessage] = useState<{ text: string; bad?: boolean } | null>(null);
+  const [paymentTab, setPaymentTab] = useState<'stars' | 'crypto' | 'sbp'>('stars');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -48,7 +44,6 @@ export function SubscriptionModal({
   const inTg = isTelegramWebApp();
   const currentPricing = PRICING[selectedPlan];
 
-  // TON and USDT payment demo/direct recipient addresses (can be configured)
   const TON_WALLET = 'UQDFN_EXAMPLE_TON_MAGNAT_WALLET_ADDRESS_PRO_2026';
   const USDT_TRC20 = 'TFEXAMPLE_USDT_TRC20_MAGNAT_STUDIO_RECEIVE';
   const SBP_PHONE = '+7 (900) 000-00-00 (Тинькофф / Сбер)';
@@ -60,64 +55,61 @@ export function SubscriptionModal({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const handleApplyPromo = () => {
-    if (!promoCodeInput.trim()) return;
-    const res = redeemPromoCode(promoCodeInput);
-    if (res.success && res.state) {
-      haptic('success');
-      setPromoMessage({ text: res.message, bad: false });
-      onSubscriptionChange(res.state);
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-    } else {
-      haptic('error');
-      setPromoMessage({ text: res.message, bad: true });
-    }
-  };
-
   const handlePayStars = async () => {
     haptic('medium');
     setIsProcessing(true);
 
-    const tg = getTelegramWebApp();
-    if (tg?.openInvoice) {
-      // In real production with a bot token, you'd fetch an invoice link from your backend bot:
-      // const res = await fetch('/api/create-stars-invoice', { method: 'POST', body: JSON.stringify({ plan: selectedPlan }) });
-      // const { invoiceLink } = await res.json();
-      // tg.openInvoice(invoiceLink, (status) => { if (status === 'paid') ... });
-      //
-      // For immediate user enjoyment & autonomous flow:
-      tg.showConfirm(
-        `Оплатить ${currentPricing.stars} ⭐️ Telegram Stars за тариф «${currentPricing.title}»?`,
-        (confirmed) => {
-          setIsProcessing(false);
-          if (confirmed) {
-            haptic('success');
-            const next = activateSubscription(selectedPlan, 'month', 'TELEGRAM_STARS');
-            onSubscriptionChange(next);
-            tg.showAlert('🎉 Оплата Telegram Stars прошла успешно! Тариф активирован.');
-            onClose();
-          }
-        },
-      );
-    } else {
-      // Standalone web simulation
-      setTimeout(() => {
-        setIsProcessing(false);
-        haptic('success');
-        const next = activateSubscription(selectedPlan, 'month', 'WEB_STARS_PAY');
-        onSubscriptionChange(next);
-        onClose();
-      }, 800);
-    }
-  };
+    try {
+      const res = await fetch('/api/create-stars-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: currentPricing.stars,
+          title: `MAGNAT ${currentPricing.title}`.slice(0, 32),
+          description: `Оплата тарифа «${currentPricing.title}» в MAGNAT Emoji Studio`,
+          payload: `plan_${selectedPlan}_${Date.now()}`,
+        }),
+      });
+      const data = await res.json();
+      const tg = getTelegramWebApp();
 
-  const handleDirectActivateTest = () => {
-    haptic('medium');
-    const next = activateSubscription(selectedPlan, 'month', 'DIRECT_DEMO');
-    onSubscriptionChange(next);
-    onClose();
+      if (data.ok && data.invoiceLink) {
+        if (tg?.openInvoice) {
+          tg.openInvoice(data.invoiceLink, (status: string) => {
+            setIsProcessing(false);
+            if (status === 'paid') {
+              haptic('success');
+              const next = activateSubscription(selectedPlan, 'month', 'TELEGRAM_STARS');
+              onSubscriptionChange(next);
+              tg.showAlert('🎉 Оплата Stars успешно завершена! Тариф активирован.');
+              onClose();
+            } else if (status === 'cancelled') {
+              haptic('warning');
+            } else if (status === 'failed') {
+              haptic('error');
+              tg?.showAlert?.('Оплата звёздами не была завершена.');
+            }
+          });
+          return;
+        } else {
+          window.open(data.invoiceLink, '_blank');
+          setIsProcessing(false);
+          const msg = 'Счёт на оплату Stars сформирован. Оплатите его в Telegram для активации.';
+          tg?.showAlert ? tg.showAlert(msg) : alert(msg);
+          return;
+        }
+      } else {
+        const msg = data.error || 'Не удалось сформировать счёт Telegram Stars';
+        tg?.showAlert ? tg.showAlert(msg) : alert(msg);
+      }
+    } catch (err) {
+      console.warn('Stars invoice API error:', err);
+      const tg = getTelegramWebApp();
+      const msg = 'Не удалось подключиться к серверу оплаты Telegram Stars.';
+      tg?.showAlert ? tg.showAlert(msg) : alert(msg);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleResetToFree = () => {
@@ -263,17 +255,6 @@ export function SubscriptionModal({
               <Zap size={14} />
               СБП / Карты РФ
             </button>
-            <button
-              type="button"
-              className={`sub-tab-btn ${paymentTab === 'promo' ? 'active' : ''}`}
-              onClick={() => {
-                setPaymentTab('promo');
-                haptic('select');
-              }}
-            >
-              <KeyRound size={14} />
-              Промокод
-            </button>
           </div>
 
           {/* TAB 1: TELEGRAM STARS */}
@@ -283,7 +264,7 @@ export function SubscriptionModal({
                 <div className="sub-stars-icon-large">⭐️</div>
                 <div className="sub-stars-text">
                   <strong>Быстрая оплата звёздами Telegram</strong>
-                  <p>Оплата в 1 клик с баланса Telegram без ввода данных банковских карт.</p>
+                  <p>Оплата с баланса Telegram без ввода данных банковских карт. Баланс начисляется только после успешного платежа.</p>
                 </div>
               </div>
               <button
@@ -293,10 +274,10 @@ export function SubscriptionModal({
                 onClick={handlePayStars}
               >
                 <Star size={18} fill="#ffffff" color="#ffffff" />
-                Оплатить {currentPricing.stars} Stars ({currentPricing.rub} ₽)
+                {isProcessing ? 'Создание счёта...' : `Оплатить ${currentPricing.stars} Stars (${currentPricing.rub} ₽)`}
               </button>
               <div className="sub-security-note">
-                <ShieldCheck size={13} /> Мгновенная активация сразу после подтверждения
+                <ShieldCheck size={13} /> Официальный безопасный платёж Telegram
               </div>
             </div>
           )}
@@ -346,9 +327,14 @@ export function SubscriptionModal({
                   >
                     <ExternalLink size={14} /> Открыть в Tonkeeper / Wallet
                   </a>
-                  <button type="button" className="sub-btn-confirm" onClick={handleDirectActivateTest}>
-                    Я перевёл (активировать)
-                  </button>
+                  <a
+                    href="https://t.me/magnat_emoji_bot"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="sub-btn-confirm"
+                  >
+                    Подтвердить в боте
+                  </a>
                 </div>
               </div>
             </div>
@@ -378,39 +364,16 @@ export function SubscriptionModal({
                   </div>
                 </div>
                 <div style={{ marginTop: 12 }}>
-                  <button type="button" className="sub-primary-pay-btn" onClick={handleDirectActivateTest}>
-                    Подтвердить оплату {currentPricing.rub} ₽
-                  </button>
+                  <a
+                    href="https://t.me/magnat_emoji_bot"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="sub-primary-pay-btn"
+                    style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    Отправить чек в бота @magnat_emoji_bot
+                  </a>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: PROMO CODE */}
-          {paymentTab === 'promo' && (
-            <div className="sub-tab-content">
-              <div className="sub-promo-box">
-                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#94a3b8' }}>
-                  Есть промокод автора или пригласительный ключ? Введите его ниже:
-                </p>
-                <div className="sub-promo-input-row">
-                  <input
-                    type="text"
-                    className="sub-promo-input"
-                    placeholder="Введите ваш промокод..."
-                    value={promoCodeInput}
-                    onChange={(e) => setPromoCodeInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
-                  />
-                  <button type="button" className="sub-promo-submit-btn" onClick={handleApplyPromo}>
-                    Применить
-                  </button>
-                </div>
-                {promoMessage && (
-                  <div className={`sub-promo-feedback ${promoMessage.bad ? 'bad' : 'good'}`}>
-                    {promoMessage.text}
-                  </div>
-                )}
               </div>
             </div>
           )}

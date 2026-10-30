@@ -188,6 +188,8 @@ export function TmaProfileView({
         } else {
           window.open(data.invoiceLink, '_blank');
           setIsProcessingPayment(false);
+          const msg = 'Счёт на оплату Stars сформирован. Оплатите его в Telegram для начисления баланса.';
+          tg?.showAlert ? tg.showAlert(msg) : alert(msg);
           return;
         }
       } else {

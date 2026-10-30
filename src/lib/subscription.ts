@@ -20,7 +20,7 @@ export interface SubscriptionState {
   userId?: number | string;
 }
 
-const STORAGE_KEY = 'magnat_subscription_state_v3';
+const STORAGE_KEY = 'magnat_subscription_state_v4';
 export const SUB_CHANGE_EVENT = 'magnat:sub_changed';
 
 /** Free tier allowed template IDs */
@@ -186,7 +186,7 @@ export const PRICING = {
 const DEFAULT_STATE: SubscriptionState = {
   plan: 'free',
   isPro: false,
-  generationsBalance: 1, // 1 free trial generation
+  generationsBalance: 5, // 5 free trial generations
   billingPeriod: 'month',
   activatedAt: null,
   expiresAt: null,
@@ -197,9 +197,21 @@ const DEFAULT_STATE: SubscriptionState = {
 export function getSubscription(): SubscriptionState {
   if (typeof window === 'undefined') return { ...DEFAULT_STATE };
   try {
+    // Purge outdated storage keys from legacy test builds
+    try {
+      localStorage.removeItem('magnat_subscription_state_v1');
+      localStorage.removeItem('magnat_subscription_state_v2');
+      localStorage.removeItem('magnat_subscription_state_v3');
+    } catch {}
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_STATE };
     const data: SubscriptionState = JSON.parse(raw);
+
+    // Sanitize any corrupt or inflated balance from previous manual testing
+    if (data.generationsBalance > 500 && data.plan !== 'max' && data.plan !== 'lifetime') {
+      data.generationsBalance = 5;
+    }
 
     // Expiration check
     if (data.plan !== 'free' && data.plan !== 'lifetime' && data.expiresAt && Date.now() > data.expiresAt) {
