@@ -5,7 +5,6 @@ import {
   Check,
   Download,
   FolderOpen,
-  Image as ImageIcon,
   LayoutGrid,
   MessageSquare,
   Pause,
@@ -772,51 +771,6 @@ export function IrisAssistantView({
                       <Download size={13} />
                       <span>Скачать .tgs</span>
                     </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* THREE QUICK-ACTION CARDS (Strict 3-column grid, zero overlap) */}
-              <div className="quick-actions-row">
-                <div
-                  className="quick-card"
-                  onClick={() => setActiveTab('catalog')}
-                  title="Открыть все 284 шаблона"
-                >
-                  <div className="card-icon-wrap card-icon-blue">
-                    <LayoutGrid size={16} />
-                  </div>
-                  <div className="card-content">
-                    <div className="card-title">284 готовых шаблона</div>
-                    <div className="card-subtitle">Персонажи, подарки, любовь, 3D значки</div>
-                  </div>
-                </div>
-
-                <div
-                  className="quick-card"
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Загрузить логотип"
-                >
-                  <div className="card-icon-wrap card-icon-violet">
-                    <ImageIcon size={16} />
-                  </div>
-                  <div className="card-content">
-                    <div className="card-title">Векторный брендинг</div>
-                    <div className="card-subtitle">Загрузка логотипа прямо в слои</div>
-                  </div>
-                </div>
-
-                <div
-                  className="quick-card"
-                  onClick={onDownloadZip}
-                  title="Скачать ZIP архив пака"
-                >
-                  <div className="card-icon-wrap card-icon-indigo">
-                    <FolderOpen size={16} />
-                  </div>
-                  <div className="card-content">
-                    <div className="card-title">Экспорт в @Stickers</div>
-                    <div className="card-subtitle">Готовый .zip архив эмодзи и стикеров</div>
                   </div>
                 </div>
               </div>
