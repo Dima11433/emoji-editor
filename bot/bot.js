@@ -17,24 +17,193 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '9138718385:AAGs-H7KUADtf2_Q
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://emoji-editor-ten.vercel.app';
 const PORT = process.env.PORT || 3200;
 
+// Telegram Custom Emoji ID mapping from verified pack @ggg468q (Magnat_Projects_by_TgEmodziBot)
+const PREMIUM_EMOJI_IDS = {
+  '👤': '5348518843813770483',
+  '🧾': '5348537930648431597',
+  '💳': '5345814332972246451',
+  '👥': '5345998604249115557',
+  '🏷': '5348264306871939588',
+  '🏷️': '5348264306871939588',
+  '🏠': '5348274065037638049',
+  '🛍': '5348114996628862520',
+  '🛒': '5348114996628862520',
+  '👑': '5348546503403152341',
+  '⚡': '5346173125950220554',
+  '⚡️': '5346173125950220554',
+  '📱': '5348095484592434593',
+  '🎨': '5345837014694539700',
+  '🎬': '5345831225078625934',
+  '💎': '5348270779387653031',
+  '📩': '5348173442543823022',
+  '✉️': '5348173442543823022',
+  '✉': '5348173442543823022',
+  '🔄': '5348047763210809216',
+  '📁': '5348415511195593345',
+  '📂': '5348415511195593345',
+  '📄': '5348499945957666265',
+  '🔐': '5346069209216494408',
+  '🔒': '5346069209216494408',
+  '🔓': '5346069209216494408',
+  '✅': '5348031644198547469',
+  '✔️': '5348031644198547469',
+  '✔': '5348031644198547469',
+  '❌': '5346291379284783222',
+  '🗑': '5345964235920815032',
+  '🗑️': '5345964235920815032',
+  '⬅️': '5348427184916702612',
+  '⬅': '5348427184916702612',
+  '◀️': '5348427184916702612',
+  '◀': '5348427184916702612',
+  '🔙': '5348427184916702612',
+  '➡️': '5348076518016853385',
+  '➡': '5348076518016853385',
+  '▶️': '5348076518016853385',
+  '▶': '5348076518016853385',
+  '➕': '5346175084455306034',
+  '➖': '5345780535874596347',
+  '💰': '5348373162818055391',
+  '💵': '5348373162818055391',
+  '💸': '5348373162818055391',
+  '📢': '5348552112630440282',
+  '📣': '5348552112630440282',
+  '🔗': '5348394358481659680',
+  '🤝': '5348274266901096191',
+  '🎁': '5345864369341245455',
+  '⏳': '5345848413537742001',
+  '⚠️': '5346201270870911149',
+  '⚠': '5346201270870911149',
+  '❗️': '5345792072156752991',
+  '❗': '5345792072156752991',
+  '✏️': '5345837014694539700',
+  '✏': '5345837014694539700',
+  '✍️': '5345837014694539700',
+  '✍': '5345837014694539700',
+  '🔍': '5346127719555967816',
+  '🔎': '5346127719555967816',
+  '⚙️': '5345883542075254736',
+  '⚙': '5345883542075254736',
+  '🛠': '5345883542075254736',
+  '🛠️': '5345883542075254736',
+  '🌐': '5348394358481659680',
+  '🛡': '5345898338237588903',
+  '🛡️': '5345898338237588903',
+  '⛔️': '5345780535874596347',
+  '⛔': '5345780535874596347',
+  '🛑': '5345780535874596347',
+  '🚫': '5345780535874596347',
+  '💬': '5345891380390571206',
+  '🎉': '5345805262001318118',
+  '⭐': '5345938710930174214',
+  '⭐️': '5345938710930174214',
+  '🌟': '5345938710930174214',
+  '✨': '5345938710930174214',
+  '🏆': '5345824258641669124',
+  '🔥': '5345958046872939339',
+  '💯': '5345805262001318118',
+  '🔝': '5348475825421330256',
+  '🆕': '5348301119036633590',
+  '📅': '5348041522623325063',
+  '⏰': '5348297872041358291',
+  '⏱': '5348297872041358291',
+  '⏱️': '5348297872041358291',
+  '❓': '5348556347468198125',
+  '👋': '5348274266901096191',
+  '👍': '5348502149275887319',
+  '👎': '5346291379284783222',
+  '💼': '5348415511195593345',
+  '👛': '5345814332972246451',
+  '🚀': '5345919916153280274',
+  '💡': '5348167167596608202',
+  '📖': '5348348209058065192',
+  '📚': '5348348209058065192',
+  '📜': '5348537930648431597',
+  '📦': '5348415511195593345',
+  '📈': '5348394938302245147',
+  '📊': '5348394938302245147',
+  '📋': '5348537930648431597',
+  '📎': '5348394358481659680',
+  '📝': '5345837014694539700',
+  'ℹ️': '5348348209058065192',
+  'ℹ': '5348348209058065192',
+  '🆔': '5348518843813770483',
+  '🤖': '5348502149275887319',
+  '💻': '5348502149275887319',
+  '🎯': '5348475825421330256',
+};
+
+// Sorted pattern for text substitution
+const _EMOJI_PATTERN = new RegExp(
+  Object.keys(PREMIUM_EMOJI_IDS)
+    .sort((a, b) => b.length - a.length)
+    .map((e) => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|'),
+  'g'
+);
+
+// Pattern for leading button icon
+const _BUTTON_ICON_PATTERN = new RegExp(
+  '^(' +
+    Object.keys(PREMIUM_EMOJI_IDS)
+      .sort((a, b) => b.length - a.length)
+      .map((e) => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|') +
+    ')\\s*'
+);
+
+function premiumize(text) {
+  if (!text || typeof text !== 'string') return text;
+  // Protect existing <tg-emoji> blocks from nested replacements
+  const parts = text.split(/(<tg-emoji[^>]*>.*?<\/tg-emoji>)/s);
+  for (let i = 0; i < parts.length; i += 2) {
+    parts[i] = parts[i].replace(_EMOJI_PATTERN, (match) => {
+      const id = PREMIUM_EMOJI_IDS[match];
+      return id ? `<tg-emoji emoji-id="${id}">${match}</tg-emoji>` : match;
+    });
+  }
+  return parts.join('');
+}
+
+function premiumizeButtons(keyboard) {
+  if (!keyboard || !Array.isArray(keyboard)) return;
+  for (const row of keyboard) {
+    if (!Array.isArray(row)) continue;
+    for (const btn of row) {
+      if (!btn || !btn.text) continue;
+      if (btn.icon_custom_emoji_id) continue;
+      const match = btn.text.match(_BUTTON_ICON_PATTERN);
+      if (match) {
+        const emoji = match[1];
+        const id = PREMIUM_EMOJI_IDS[emoji];
+        if (id) {
+          btn.icon_custom_emoji_id = id;
+          const cleanText = btn.text.replace(_BUTTON_ICON_PATTERN, '').trim();
+          btn.text = cleanText || btn.text;
+        }
+      }
+    }
+  }
+}
+
 // Premium Custom Emoji Helper (HTML mode)
-// Uses verified crown emoji with clean Unicode fallback for 100% reliable delivery
 const P = {
-  crown: '<tg-emoji emoji-id="5368324170671202286">👑</tg-emoji>',
-  star: '⭐️',
-  sparkles: '✨',
-  fire: '🔥',
-  palette: '🎨',
-  rocket: '🚀',
-  diamond: '💎',
-  lightning: '⚡️',
-  chart: '📊',
-  users: '👥',
-  gift: '🎁',
-  gear: '⚙️',
-  broadcast: '📢',
-  shield: '🛡',
-  check: '✅',
+  crown: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['👑']}">👑</tg-emoji>`,
+  star: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['⭐']}">⭐️</tg-emoji>`,
+  sparkles: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['✨']}">✨</tg-emoji>`,
+  fire: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['🔥']}">🔥</tg-emoji>`,
+  palette: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['🎨']}">🎨</tg-emoji>`,
+  rocket: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['🚀']}">🚀</tg-emoji>`,
+  diamond: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['💎']}">💎</tg-emoji>`,
+  lightning: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['⚡']}">⚡️</tg-emoji>`,
+  chart: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['📊']}">📊</tg-emoji>`,
+  users: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['👥']}">👥</tg-emoji>`,
+  gift: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['🎁']}">🎁</tg-emoji>`,
+  gear: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['⚙']}">⚙️</tg-emoji>`,
+  broadcast: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['📢']}">📢</tg-emoji>`,
+  shield: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['🛡']}">🛡</tg-emoji>`,
+  check: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['✅']}">✅</tg-emoji>`,
+  cross: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['❌']}">❌</tg-emoji>`,
+  wave: `<tg-emoji emoji-id="${PREMIUM_EMOJI_IDS['👋']}">👋</tg-emoji>`,
 };
 
 // State store for admin interactive prompts (find user, broadcast message, etc.)
@@ -45,7 +214,26 @@ const adminSessions = {};
  */
 function api(method, data = {}) {
   return new Promise((resolve, reject) => {
-    const payload = JSON.stringify(data);
+    // Clone data to avoid mutating caller references
+    const outboundData = { ...data };
+
+    // Apply premium custom emoji to text and caption
+    if (outboundData.text && (outboundData.parse_mode === 'HTML' || !outboundData.parse_mode)) {
+      outboundData.parse_mode = 'HTML';
+      outboundData.text = premiumize(outboundData.text);
+    }
+    if (outboundData.caption && (outboundData.parse_mode === 'HTML' || !outboundData.parse_mode)) {
+      outboundData.parse_mode = 'HTML';
+      outboundData.caption = premiumize(outboundData.caption);
+    }
+
+    // Apply premium custom emoji icons to inline keyboard buttons
+    if (outboundData.reply_markup && outboundData.reply_markup.inline_keyboard) {
+      outboundData.reply_markup = JSON.parse(JSON.stringify(outboundData.reply_markup));
+      premiumizeButtons(outboundData.reply_markup.inline_keyboard);
+    }
+
+    const payload = JSON.stringify(outboundData);
     const req = https.request(
       `https://api.telegram.org/bot${BOT_TOKEN}/${method}`,
       {
@@ -65,16 +253,30 @@ function api(method, data = {}) {
               console.warn(`[Telegram API Error] ${method}: ${parsed.description}`);
               // Fallback: If Telegram complains about DOCUMENT_INVALID or entity parsing, strip tg-emoji
               if (
-                data.text &&
-                (data.text.includes('<tg-emoji') || data.parse_mode === 'HTML') &&
+                (outboundData.text || outboundData.caption || outboundData.reply_markup) &&
                 (parsed.description.includes('DOCUMENT_INVALID') ||
                   parsed.description.includes("can't parse entities"))
               ) {
                 console.warn(`[Fallback] Retrying ${method} without custom emoji tags...`);
                 const cleanData = { ...data };
-                cleanData.text = cleanData.text
-                  .replace(/<tg-emoji[^>]*>/g, '')
-                  .replace(/<\/tg-emoji>/g, '');
+                if (cleanData.text) {
+                  cleanData.text = cleanData.text
+                    .replace(/<tg-emoji[^>]*>/g, '')
+                    .replace(/<\/tg-emoji>/g, '');
+                }
+                if (cleanData.caption) {
+                  cleanData.caption = cleanData.caption
+                    .replace(/<tg-emoji[^>]*>/g, '')
+                    .replace(/<\/tg-emoji>/g, '');
+                }
+                if (cleanData.reply_markup && cleanData.reply_markup.inline_keyboard) {
+                  cleanData.reply_markup = JSON.parse(JSON.stringify(cleanData.reply_markup));
+                  for (const row of cleanData.reply_markup.inline_keyboard) {
+                    for (const btn of row) {
+                      delete btn.icon_custom_emoji_id;
+                    }
+                  }
+                }
                 try {
                   const retryRes = await api(method, cleanData);
                   return resolve(retryRes);

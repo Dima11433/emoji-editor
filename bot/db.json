@@ -3,7 +3,24 @@
     "6667583896",
     "1380263054"
   ],
-  "users": {},
+  "users": {
+    "6667583896": {
+      "id": 6667583896,
+      "username": "ggg468q",
+      "first_name": "MAGNAT",
+      "last_name": null,
+      "language_code": "ru",
+      "is_premium": true,
+      "plan": "free",
+      "plan_expires": null,
+      "generations": 5,
+      "total_spent_stars": 0,
+      "total_spent_rub": 0,
+      "joined_at": "2026-10-30T15:03:22.211Z",
+      "last_active": "2026-10-30T15:10:03.396Z",
+      "is_banned": false
+    }
+  },
   "promos": {
     "MAGNAT2026": {
       "code": "MAGNAT2026",
@@ -32,7 +49,7 @@
     }
   },
   "stats": {
-    "total_launches": 0,
+    "total_launches": 1,
     "total_generations_used": 0,
     "total_stars_earned": 0,
     "total_rub_earned": 0,
