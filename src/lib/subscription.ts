@@ -73,7 +73,7 @@ export const TIER_PLANS: Record<Exclude<PlanId, 'free'>, PlanConfig> = {
     badges: [
       '150 эмодзи в паке',
       '120 стикеров в паке',
-      '284 шаблона',
+      '335 шаблонов',
       '1 сохранённый стиль',
       'свой логотип',
       'весь веб-редактор',
@@ -93,7 +93,7 @@ export const TIER_PLANS: Record<Exclude<PlanId, 'free'>, PlanConfig> = {
     badges: [
       '200 эмодзи в паке',
       '120 стикеров в паке',
-      '284 шаблона',
+      '335 шаблонов',
       '5 сохранённых стилей',
       'свой логотип',
       'весь веб-редактор',
@@ -108,13 +108,13 @@ export const TIER_PLANS: Record<Exclude<PlanId, 'free'>, PlanConfig> = {
     highlight: 'без месячного лимита ✨',
     prices: {
       month: { rub: 700, stars: 500, label: '700 ₽ в месяц' },
-      '3months': { rub: 1785, stars: 1280, label: '1785 ₽ за 3 месяца' },
+      '3months': { rub: 1780, stars: 1280, label: '1780 ₽ за 3 месяца' },
       year: { rub: 5880, stars: 4200, label: '5880 ₽ за год' },
     },
     badges: [
       '200 эмодзи в паке',
       '120 стикеров в паке',
-      '284 шаблона',
+      '335 шаблонов',
       '∞ сохранённых стилей',
       'свой логотип',
       'весь веб-редактор',
@@ -125,7 +125,7 @@ export const TIER_PLANS: Record<Exclude<PlanId, 'free'>, PlanConfig> = {
   editor: {
     id: 'editor',
     name: 'Редактор',
-    subtitle: 'весь веб-редактор editor',
+    subtitle: 'весь веб-редактор editor.tierapp.top',
     highlight: 'веб-редактор ✨',
     prices: {
       month: { rub: 200, stars: 150, label: '200 ₽ в месяц' },

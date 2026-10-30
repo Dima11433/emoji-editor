@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import {
-  ArrowLeft,
   Check,
   ChevronRight,
   Copy,
   CreditCard,
+  FileText,
   KeyRound,
+  Layers,
   LayoutGrid,
   Minus,
+  Pencil,
   Plus,
+  Send,
+  Smile,
   Sparkles,
+  Square,
   Star,
   Trash2,
   User,
@@ -35,6 +40,36 @@ interface TmaProfileViewProps {
   onSubscriptionChange: (next: SubscriptionState) => void;
   onBackToCatalog: () => void;
   onOpenPacks: () => void;
+}
+
+function renderBadgeChip(text: string, idx: number) {
+  let icon = null;
+  if (text.includes('эмодзи в паке')) {
+    icon = <LayoutGrid size={11} className="tma-chip-icon" />;
+  } else if (text.includes('стикеров в паке')) {
+    icon = <Square size={11} className="tma-chip-icon" />;
+  } else if (text.includes('шаблонов') || text.includes('шаблоны')) {
+    icon = <Layers size={11} className="tma-chip-icon" />;
+  } else if (text.includes('стилей') || text.includes('стиль')) {
+    icon = <Pencil size={11} className="tma-chip-icon" />;
+  } else if (text.includes('свой логотип')) {
+    icon = <Smile size={11} className="tma-chip-icon" />;
+  } else if (text.includes('веб-редактор') || text.includes('редактор каждого')) {
+    icon = <Pencil size={11} className="tma-chip-icon" />;
+  } else if (text.includes('сборка') || text.includes('эффекты')) {
+    icon = <Zap size={11} className="tma-chip-icon" />;
+  } else if (text.includes('экспорт') || text.includes('telegram')) {
+    icon = <Send size={11} className="tma-chip-icon" />;
+  } else if (text.includes('брифы')) {
+    icon = <FileText size={11} className="tma-chip-icon" />;
+  }
+
+  return (
+    <span key={idx} className="tma-badge-chip">
+      {icon}
+      <span>{text}</span>
+    </span>
+  );
 }
 
 export function TmaProfileView({
@@ -141,10 +176,15 @@ export function TmaProfileView({
     <div className="tma-view-container tma-profile-view">
       {/* TOP HEADER (Matching Screenshot 2) */}
       <div className="tma-top-bar">
-        <button type="button" className="tma-nav-back-btn" onClick={onBackToCatalog}>
-          <ArrowLeft size={18} />
-          <span>tier</span>
-        </button>
+        <div className="tma-avatar-wrap" onClick={onBackToCatalog} title="Каталог">
+          {telegramUser?.photo_url ? (
+            <img src={telegramUser.photo_url} alt="User" className="tma-user-avatar" />
+          ) : (
+            <div className="tma-user-avatar-placeholder">
+              {telegramUser?.first_name ? telegramUser.first_name[0].toUpperCase() : 'M'}
+            </div>
+          )}
+        </div>
 
         <div className="tma-balance-pill">
           <Sparkles size={14} color="#ffd700" />
@@ -291,7 +331,7 @@ export function TmaProfileView({
                   {TIER_PLANS.pro.prices[periodKey].rub} ₽
                 </span>
                 <span className="tma-plan-price-sub">
-                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 мес' : 'за год'}
+                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 месяца' : 'за год'}
                 </span>
               </div>
             </div>
@@ -299,11 +339,7 @@ export function TmaProfileView({
             <div className="tma-plan-highlight">{TIER_PLANS.pro.highlight}</div>
 
             <div className="tma-plan-badges-wrap">
-              {TIER_PLANS.pro.badges.map((b, idx) => (
-                <span key={idx} className="tma-badge-chip">
-                  {b}
-                </span>
-              ))}
+              {TIER_PLANS.pro.badges.map((b, idx) => renderBadgeChip(b, idx))}
             </div>
           </div>
 
@@ -325,7 +361,7 @@ export function TmaProfileView({
                   {TIER_PLANS.pro_plus.prices[periodKey].rub} ₽
                 </span>
                 <span className="tma-plan-price-sub">
-                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 мес' : 'за год'}
+                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 месяца' : 'за год'}
                 </span>
               </div>
             </div>
@@ -333,11 +369,7 @@ export function TmaProfileView({
             <div className="tma-plan-highlight">{TIER_PLANS.pro_plus.highlight}</div>
 
             <div className="tma-plan-badges-wrap">
-              {TIER_PLANS.pro_plus.badges.map((b, idx) => (
-                <span key={idx} className="tma-badge-chip">
-                  {b}
-                </span>
-              ))}
+              {TIER_PLANS.pro_plus.badges.map((b, idx) => renderBadgeChip(b, idx))}
             </div>
           </div>
 
@@ -359,7 +391,7 @@ export function TmaProfileView({
                   {TIER_PLANS.max.prices[periodKey].rub} ₽
                 </span>
                 <span className="tma-plan-price-sub">
-                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 мес' : 'за год'}
+                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 месяца' : 'за год'}
                 </span>
               </div>
             </div>
@@ -367,11 +399,7 @@ export function TmaProfileView({
             <div className="tma-plan-highlight">{TIER_PLANS.max.highlight}</div>
 
             <div className="tma-plan-badges-wrap">
-              {TIER_PLANS.max.badges.map((b, idx) => (
-                <span key={idx} className="tma-badge-chip">
-                  {b}
-                </span>
-              ))}
+              {TIER_PLANS.max.badges.map((b, idx) => renderBadgeChip(b, idx))}
             </div>
           </div>
 
@@ -390,7 +418,7 @@ export function TmaProfileView({
                   {TIER_PLANS.editor.prices[periodKey].rub} ₽
                 </span>
                 <span className="tma-plan-price-sub">
-                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 мес' : 'за год'}
+                  {periodKey === 'month' ? 'в месяц' : periodKey === '3months' ? 'за 3 месяца' : 'за год'}
                 </span>
               </div>
             </div>
@@ -398,11 +426,7 @@ export function TmaProfileView({
             <div className="tma-plan-highlight">{TIER_PLANS.editor.highlight}</div>
 
             <div className="tma-plan-badges-wrap">
-              {TIER_PLANS.editor.badges.map((b, idx) => (
-                <span key={idx} className="tma-badge-chip">
-                  {b}
-                </span>
-              ))}
+              {TIER_PLANS.editor.badges.map((b, idx) => renderBadgeChip(b, idx))}
             </div>
           </div>
         </div>
