@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Check,
   ChevronDown,
+  Crown,
   Info,
   Search,
+  Sparkles,
   X,
 } from 'lucide-react';
 import {
@@ -13,6 +15,8 @@ import {
   type TemplateCategory,
 } from '../lib/templates';
 import type { LottieDoc } from '../lib/lottie';
+import { isTemplateLocked } from '../lib/subscription';
+import { haptic } from '../lib/telegram';
 import { LazyThumb } from './LazyThumb';
 
 interface TemplatesModalProps {
@@ -22,6 +26,8 @@ interface TemplatesModalProps {
   onOpenMultiForEdit: (items: CatalogItem[]) => void;
   onAddBatchToPack: (items: CatalogItem[]) => void;
   defaultAddToPack?: boolean;
+  isPro?: boolean;
+  onOpenSubscription?: (reason?: string) => void;
 }
 
 type WhaleFilter = 'no_whale' | 'all' | 'with_whale';
@@ -47,6 +53,8 @@ export function TemplatesModal({
   onSelect,
   onOpenMultiForEdit,
   defaultAddToPack = false,
+  isPro = false,
+  onOpenSubscription,
 }: TemplatesModalProps) {
   const [category, setCategory] = useState<'all' | TemplateCategory | 'finance'>('shablony1');
   const [search, setSearch] = useState('');
@@ -128,12 +136,28 @@ export function TemplatesModal({
 
   const pickedSet = new Set(pickedIds);
 
-  const togglePicked = (id: string) => {
-    setPickedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const togglePicked = (item: CatalogItem) => {
+    const locked = isTemplateLocked(item, isPro);
+    if (locked) {
+      haptic('warning');
+      onOpenSubscription?.(`Шаблон «${item.name}» доступен в тарифе MAGNAT PRO. Разблокируйте все 284 шаблона!`);
+      return;
+    }
+
+    haptic('select');
+    setPickedIds((prev) =>
+      prev.includes(item.id) ? prev.filter((x) => x !== item.id) : [...prev, item.id],
+    );
   };
 
   const handleSelectAll = () => {
-    const allFilteredIds = filtered.map((f) => f.id);
+    haptic('select');
+    const available = filtered.filter((f) => !isTemplateLocked(f, isPro));
+    if (!isPro && filtered.length > available.length) {
+      onOpenSubscription?.('Массовый выбор и редактирование всех 284 шаблонов доступно в тарифе MAGNAT PRO.');
+      return;
+    }
+    const allFilteredIds = available.map((f) => f.id);
     const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => pickedSet.has(id));
     if (allSelected) {
       setPickedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
@@ -143,6 +167,11 @@ export function TemplatesModal({
   };
 
   const pickItem = async (item: CatalogItem, toPack: boolean) => {
+    if (isTemplateLocked(item, isPro)) {
+      haptic('warning');
+      onOpenSubscription?.(`Шаблон «${item.name}» доступен в тарифе MAGNAT PRO. Разблокируйте все 284 шаблона!`);
+      return;
+    }
     if (loadingId) return;
     setLoadingId(item.id);
     try {
@@ -162,11 +191,19 @@ export function TemplatesModal({
     if (pickedIds.length === 1) {
       const target = CATALOG.find((c) => c.id === pickedIds[0]);
       if (target) {
+        if (isTemplateLocked(target, isPro)) {
+          onOpenSubscription?.(`Шаблон «${target.name}» доступен в тарифе MAGNAT PRO.`);
+          return;
+        }
         await pickItem(target, defaultAddToPack);
         onClose();
         return;
       }
     } else if (pickedIds.length > 1) {
+      if (!isPro) {
+        onOpenSubscription?.('Мульти-редактирование нескольких шаблонов одновременно доступно в тарифе MAGNAT PRO.');
+        return;
+      }
       const items = resolvePickedItems();
       onOpenMultiForEdit(items);
       onClose();
@@ -174,7 +211,8 @@ export function TemplatesModal({
     }
 
     if (filtered.length > 0) {
-      await pickItem(filtered[0], defaultAddToPack);
+      const firstAvailable = filtered.find((f) => !isTemplateLocked(f, isPro)) || filtered[0];
+      await pickItem(firstAvailable, defaultAddToPack);
       onClose();
     } else {
       onClose();
@@ -189,14 +227,21 @@ export function TemplatesModal({
       <div className="tier-modal-window" onClick={(e) => e.stopPropagation()}>
         {/* TOP HEADER */}
         <div className="tier-modal-header">
-          <div className="tier-modal-title">шаблоны MAGNAT</div>
+          <div className="tier-modal-title">
+            <span>шаблоны MAGNAT</span>
+            {isPro ? (
+              <span className="tier-title-pro-badge">👑 PRO UNLOCKED</span>
+            ) : (
+              <span className="tier-title-free-badge">18 Free / 284 всего</span>
+            )}
+          </div>
 
           <div className="tier-modal-controls">
             {/* Whale filter dropdown */}
             <div className="tier-dropdown-wrap">
               <button
                 type="button"
-                className="tier-btn-dropdown"
+                className="tier-dropdown-trigger"
                 onClick={() => setShowWhaleDropdown((v) => !v)}
               >
                 <span>{whaleLabel}</span>
@@ -285,6 +330,27 @@ export function TemplatesModal({
           </div>
         </div>
 
+        {/* PRO BANNER IF FREE USER */}
+        {!isPro && (
+          <div
+            className="tier-pro-promo-bar"
+            onClick={() => {
+              haptic('medium');
+              onOpenSubscription?.('Разблокируйте все 284 шаблона, мульти-редактирование и экспорт в Telegram');
+            }}
+          >
+            <div className="tier-pro-promo-left">
+              <Crown size={15} color="#ffd700" />
+              <span>
+                Откройте все <strong>284 VIP шаблона</strong> MAGNAT, персонажи, подарки и мульти-редактирование
+              </span>
+            </div>
+            <button type="button" className="tier-pro-promo-btn">
+              <Sparkles size={13} /> Получить PRO
+            </button>
+          </div>
+        )}
+
         {/* SEARCH BAR */}
         <div className="tier-modal-search-row">
           <div className="tier-modal-search-box">
@@ -292,7 +358,7 @@ export function TemplatesModal({
             <input
               type="text"
               className="tier-search-input"
-              placeholder="поиск по номеру"
+              placeholder="поиск по номеру или названию"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -334,26 +400,34 @@ export function TemplatesModal({
           {filtered.map((item) => {
             const isPicked = pickedSet.has(item.id);
             const isBusy = loadingId === item.id;
+            const locked = isTemplateLocked(item, isPro);
+
             return (
               <div
                 key={item.id}
-                className={`tier-card ${isPicked ? 'picked' : ''} ${isBusy ? 'busy' : ''}`}
-                onClick={() => togglePicked(item.id)}
+                className={`tier-card ${isPicked ? 'picked' : ''} ${isBusy ? 'busy' : ''} ${locked ? 'locked' : ''}`}
+                onClick={() => togglePicked(item)}
                 onDoubleClick={() => {
                   pickItem(item, defaultAddToPack);
-                  onClose();
+                  if (!locked) onClose();
                 }}
-                title={`#${item.num} ${item.name}`}
+                title={locked ? `#${item.num} ${item.name} (Требуется PRO)` : `#${item.num} ${item.name}`}
               >
                 {/* Sticker preview */}
                 <div className="tier-card-thumb">
                   <LazyThumb item={item} />
                 </div>
 
-                {/* Top-right selection ring */}
-                <div className={`tier-card-check ${isPicked ? 'checked' : ''}`}>
-                  {isPicked ? <Check size={12} strokeWidth={3} /> : null}
-                </div>
+                {/* Top-right selection or lock badge */}
+                {locked ? (
+                  <div className="tier-card-lock-badge" title="Доступно в MAGNAT PRO">
+                    <Crown size={10} color="#ffd700" />
+                  </div>
+                ) : (
+                  <div className={`tier-card-check ${isPicked ? 'checked' : ''}`}>
+                    {isPicked ? <Check size={12} strokeWidth={3} /> : null}
+                  </div>
+                )}
 
                 {/* Bottom-left number */}
                 <div className="tier-card-num">#{item.num}</div>
@@ -400,6 +474,10 @@ export function TemplatesModal({
                 <div className="tier-brief-item">
                   <strong>🏷️ Двойной бренд-слот:</strong>
                   <span>Центральный никнейм (`TextGroup`) + текст на нижней плашке (`USERNAME`). Возможность отключения плашки.</span>
+                </div>
+                <div className="tier-brief-item">
+                  <strong>⭐️ Монетизация:</strong>
+                  <span>Полный доступ ко всем 284 шаблонам и мульти-редактированию доступен по подписке MAGNAT PRO.</span>
                 </div>
               </div>
 

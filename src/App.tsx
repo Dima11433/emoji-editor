@@ -13,6 +13,7 @@ import {
   Square,
   Type,
   Undo2,
+  Crown,
 } from 'lucide-react';
 import type { Font } from 'opentype.js';
 import { BrandPanel } from './components/BrandPanel';
@@ -25,6 +26,19 @@ import { PalettePanel, type BulkColorOp } from './components/PalettePanel';
 import { Preview, type PreviewSticker } from './components/Preview';
 import { TelegramModal } from './components/TelegramModal';
 import { TemplatesModal } from './components/TemplatesModal';
+import { SubscriptionModal } from './components/SubscriptionModal';
+import {
+  getSubscription,
+  SUB_CHANGE_EVENT,
+  type SubscriptionState,
+} from './lib/subscription';
+import {
+  getTelegramUser,
+  getTelegramWebApp,
+  haptic,
+  initTelegramApp,
+  isTelegramWebApp,
+} from './lib/telegram';
 import {
   applyBrandSlot,
   readBrandSlotInfo,
@@ -224,6 +238,13 @@ export default function App() {
   const fileName = primarySticker.name;
   const selectedCount = selectedStickers.length;
 
+  const [sub, setSub] = useState<SubscriptionState>(getSubscription);
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subFeaturedReason, setSubFeaturedReason] = useState<string | undefined>();
+  const [mobileTab, setMobileTab] = useState<'canvas' | 'brand' | 'layers'>('canvas');
+  const tgUser = useMemo(() => getTelegramUser(), []);
+  const inTma = useMemo(() => isTelegramWebApp(), []);
+
   const [selectedNodePath, setSelectedNodePath] = useState<NodePath | null>(null);
   const [isEmptyHero, setIsEmptyHero] = useState(true);
   const [showTgModal, setShowTgModal] = useState(false);
@@ -242,6 +263,45 @@ export default function App() {
   snapRef.current = hist.snap;
 
   const say = useCallback((text: string, bad = false) => setToast({ text, bad }), []);
+
+  // TMA initialization and subscription listener
+  useEffect(() => {
+    initTelegramApp();
+
+    const handleSubChange = (e: Event) => {
+      const custom = e as CustomEvent<SubscriptionState>;
+      if (custom.detail) {
+        setSub(custom.detail);
+      } else {
+        setSub(getSubscription());
+      }
+    };
+    window.addEventListener(SUB_CHANGE_EVENT, handleSubChange);
+    return () => window.removeEventListener(SUB_CHANGE_EVENT, handleSubChange);
+  }, []);
+
+  // Sync Telegram BackButton with modals
+  useEffect(() => {
+    const tg = getTelegramWebApp();
+    if (!tg?.BackButton) return;
+
+    const anyModalOpen = showModal || showSubModal || showTgModal || showLinkModal;
+    if (anyModalOpen) {
+      tg.BackButton.show();
+      const onBack = () => {
+        if (showSubModal) setShowSubModal(false);
+        else if (showModal) setShowModal(false);
+        else if (showTgModal) setShowTgModal(false);
+        else if (showLinkModal) setShowLinkModal(false);
+      };
+      tg.BackButton.onClick(onBack);
+      return () => {
+        tg.BackButton.offClick(onBack);
+      };
+    } else {
+      tg.BackButton.hide();
+    }
+  }, [showModal, showSubModal, showTgModal, showLinkModal]);
 
   useEffect(() => {
     if (!toast) return;
@@ -393,6 +453,12 @@ export default function App() {
   /** Opens multiple catalog emojis simultaneously for synchronized live editing. */
   const openCatalogBatchForEdit = useCallback(
     async (catItems: CatalogItem[]) => {
+      if (!sub.isPro && catItems.length > 1) {
+        haptic('warning');
+        setSubFeaturedReason('Одновременное редактирование нескольких эмодзи сразу доступно в тарифе MAGNAT PRO.');
+        setShowSubModal(true);
+        return;
+      }
       const capped = catItems.slice(0, MAX_MULTI_SELECT);
       if (!capped.length) return;
       try {
@@ -431,7 +497,7 @@ export default function App() {
         say(e instanceof Error ? e.message : 'Не удалось загрузить выбранные эмодзи', true);
       }
     },
-    [say, showPackTray],
+    [say, showPackTray, sub.isPro],
   );
 
   
@@ -640,6 +706,12 @@ export default function App() {
   };
 
   const downloadZipList = async (list: PackItem[], archivePrefix: string) => {
+    if (!sub.isPro && list.length > 2) {
+      haptic('warning');
+      setSubFeaturedReason('Скачивание полного архива .ZIP без ограничений доступно в тарифе MAGNAT PRO.');
+      setShowSubModal(true);
+      return;
+    }
     try {
       say(`Собираю .zip архив (${list.length} эмодзи)...`);
       const blob = await createPackZip(list, archivePrefix);
@@ -649,6 +721,7 @@ export default function App() {
       a.download = `${archivePrefix}_${list.length}_emojis.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      haptic('success');
       say(`Скачан архив из ${list.length} готовых эмодзи (.tgs)!`);
     } catch (err) {
       say(err instanceof Error ? err.message : 'Ошибка сборки архива', true);
@@ -685,6 +758,12 @@ export default function App() {
         files.length === 1 &&
         (/\.(svg|png|webp|jpe?g)$/i.test(files[0].name) || files[0].type.startsWith('image/'))
       ) {
+        if (!sub.isPro) {
+          haptic('warning');
+          setSubFeaturedReason('Векторизация собственного логотипа в слои Telegram .tgs входит в тариф MAGNAT PRO.');
+          setShowSubModal(true);
+          return;
+        }
         const imgFile = files[0];
         say(`Векторизую логотип ${imgFile.name}...`);
         const vec = await fileToVectorLogo(imgFile);
@@ -1105,7 +1184,7 @@ export default function App() {
   }, [editPrimary, handleBrandReset, primarySticker.catalogId, say]);
 
   return (
-    <div className="tier-app">
+    <div className={`tier-app ${inTma ? 'in-tma' : ''}`}>
       {/* TOP NAVBAR (Screenshot 2 Replica) */}
       <header className="tier-navbar">
         <div className="tier-nav-left">
@@ -1262,9 +1341,46 @@ export default function App() {
             </button>
           )}
 
-          <div className="tier-profile-badge" title="Профиль MAGNAT Studio">
-            <div className="tier-avatar">M</div>
-            <span className="tier-username">MAGNAT</span>
+          {/* PRO Upgrade Button */}
+          <button
+            type="button"
+            className={`tier-nav-btn tier-btn-pro ${sub.isPro ? 'active' : ''}`}
+            onClick={() => {
+              haptic('medium');
+              setSubFeaturedReason(undefined);
+              setShowSubModal(true);
+            }}
+            title={sub.isPro ? 'Управление подпиской MAGNAT PRO' : 'Разблокировать все 284 шаблона и функции PRO'}
+          >
+            <Crown size={14} color={sub.isPro ? '#ffd700' : '#fbbf24'} />
+            <span>{sub.isPro ? (sub.plan === 'lifetime' ? 'VIP 👑' : 'PRO ⚡') : 'ТАРИФЫ / PRO'}</span>
+          </button>
+
+          <div
+            className="tier-profile-badge"
+            onClick={() => {
+              haptic('light');
+              setShowSubModal(true);
+            }}
+            title={tgUser ? `Telegram: @${tgUser.username || tgUser.first_name}` : 'Профиль MAGNAT Studio'}
+          >
+            <div className="tier-avatar">
+              {tgUser?.photo_url ? (
+                <img
+                  src={tgUser.photo_url}
+                  alt=""
+                  style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                />
+              ) : tgUser?.first_name ? (
+                tgUser.first_name[0].toUpperCase()
+              ) : (
+                'M'
+              )}
+            </div>
+            <span className="tier-username">
+              {tgUser ? `@${tgUser.username || tgUser.first_name}` : 'MAGNAT'}
+            </span>
+            {sub.isPro && <span className="tier-pro-pill">PRO</span>}
           </div>
         </div>
 
@@ -1285,9 +1401,9 @@ export default function App() {
       </header>
 
       {/* 3-PANEL STUDIO GRID (Screenshot 2 Replica) */}
-      <div className="tier-studio">
+      <div className={`tier-studio mobile-tab-${mobileTab}`}>
         {/* LEFT PANEL: ЧАСТИ ЭМОДЗИ */}
-        <aside className="tier-panel tier-panel-left">
+        <aside className={`tier-panel tier-panel-left ${mobileTab === 'layers' ? 'mobile-visible' : ''}`}>
           <div className="tier-panel-header">
             <div className="tier-panel-title-row">
               <h3 className="tier-panel-title">части эмодзи</h3>
@@ -1360,13 +1476,19 @@ export default function App() {
 
           <div className="tier-left-footer">
             <span className="tier-access-label">доступ к редактору</span>
-            <span className="tier-access-date">открыт до 23.11.2026</span>
+            <span className="tier-access-date">
+              {sub.isPro
+                ? sub.plan === 'lifetime'
+                  ? 'VIP навсегда 👑'
+                  : 'PRO активен ⚡'
+                : 'Free тариф'}
+            </span>
           </div>
         </aside>
 
         {/* CENTER CANVAS & PLAYER (Screenshot 2 Replica) */}
         <main
-          className={`tier-center ${dragging ? 'drop' : ''}`}
+          className={`tier-center ${dragging ? 'drop' : ''} ${mobileTab === 'canvas' ? 'mobile-visible' : ''}`}
           onDragOver={(e) => {
             e.preventDefault();
             setDragging(true);
@@ -1440,7 +1562,7 @@ export default function App() {
         </main>
 
         {/* RIGHT PANEL: 3 SECTIONS (Screenshot 2 Replica) */}
-        <aside className="tier-panel tier-right-panel">
+        <aside className={`tier-panel tier-right-panel tier-panel-right ${mobileTab === 'brand' ? 'mobile-visible' : ''}`}>
           {/* SECTION 1: T НАДПИСЬ */}
           <section className="tier-section">
             <div className="tier-section-title">
@@ -1564,9 +1686,75 @@ export default function App() {
         onToggle={() => setShowPackTray((v) => !v)}
       />
 
+      {/* TMA / MOBILE BOTTOM NAVIGATION BAR */}
+      <nav className="tma-bottom-bar">
+        <button
+          type="button"
+          className={`tma-tab-btn ${mobileTab === 'canvas' ? 'active' : ''}`}
+          onClick={() => {
+            setMobileTab('canvas');
+            haptic('select');
+          }}
+        >
+          <Sparkles size={18} />
+          <span>Холст</span>
+        </button>
+        <button
+          type="button"
+          className="tma-tab-btn"
+          onClick={() => {
+            setModalAddToPack(false);
+            setShowModal(true);
+            haptic('select');
+          }}
+        >
+          <LayoutGrid size={18} />
+          <span>Шаблоны</span>
+        </button>
+        <button
+          type="button"
+          className={`tma-tab-btn ${mobileTab === 'brand' ? 'active' : ''}`}
+          onClick={() => {
+            setMobileTab('brand');
+            haptic('select');
+          }}
+        >
+          <Type size={18} />
+          <span>Бренд</span>
+        </button>
+        <button
+          type="button"
+          className={`tma-tab-btn ${mobileTab === 'layers' ? 'active' : ''}`}
+          onClick={() => {
+            setMobileTab('layers');
+            haptic('select');
+          }}
+        >
+          <Square size={18} />
+          <span>Слои</span>
+        </button>
+        <button
+          type="button"
+          className={`tma-tab-btn tma-tab-pro ${sub.isPro ? 'is-pro' : ''}`}
+          onClick={() => {
+            setSubFeaturedReason(undefined);
+            setShowSubModal(true);
+            haptic('medium');
+          }}
+        >
+          <Crown size={18} color="#ffd700" />
+          <span>{sub.isPro ? 'VIP' : 'PRO'}</span>
+        </button>
+      </nav>
+
       <TemplatesModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
+        isPro={sub.isPro}
+        onOpenSubscription={(reason) => {
+          setSubFeaturedReason(reason);
+          setShowSubModal(true);
+        }}
         onSelect={(newDoc, item, isAdd) => {
           setIsEmptyHero(false);
           if (isAdd) {
@@ -1586,6 +1774,17 @@ export default function App() {
           handleAddBatchToPack(items);
         }}
         defaultAddToPack={modalAddToPack}
+      />
+
+      <SubscriptionModal
+        isOpen={showSubModal}
+        onClose={() => setShowSubModal(false)}
+        subscription={sub}
+        onSubscriptionChange={(next) => {
+          setSub(next);
+          say(next.isPro ? '👑 Тариф MAGNAT PRO успешно активирован!' : 'Тариф изменён на Бесплатный');
+        }}
+        featuredReason={subFeaturedReason}
       />
 
       <TelegramModal
