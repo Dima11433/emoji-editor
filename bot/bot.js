@@ -650,16 +650,6 @@ async function handleUpdate(update) {
           web_app: { url: WEB_APP_URL },
         },
       ],
-      [
-        {
-          text: '👑 Купить MAGNAT PRO (290 ⭐️)',
-          callback_data: 'buy_pro_stars',
-        },
-        {
-          text: '💎 Lifetime VIP (890 ⭐️)',
-          callback_data: 'buy_vip_stars',
-        },
-      ],
     ];
 
     if (isAdminUser) {
@@ -733,9 +723,8 @@ async function handleUpdate(update) {
         `⭐️ <b>Команды бота:</b>\n` +
         `/start — Главное меню и запуск приложения\n` +
         `/editor — Открыть веб-редактор\n` +
-        `/pro — Оплата месячной подписки PRO за Stars\n` +
-        `/vip — Оплата вечной подписки Lifetime VIP за Stars\n` +
-        `/admin — Панель администратора (только для админов)`,
+        `/admin — Панель администратора (только для админов)\n\n` +
+        `💎 <i>Управление подписками, Stars и покупка генераций доступны прямо внутри приложения в разделе «Профиль»!</i>`,
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
@@ -1169,8 +1158,6 @@ async function initBot() {
         { command: 'start', description: 'Запустить MAGNAT Studio' },
         { command: 'editor', description: 'Открыть веб-редактор' },
         { command: 'admin', description: 'Панель администратора' },
-        { command: 'pro', description: 'Подписка PRO (Stars)' },
-        { command: 'vip', description: 'Lifetime VIP (Stars)' },
         { command: 'help', description: 'Инструкция по загрузке в @Stickers' },
       ],
     });
