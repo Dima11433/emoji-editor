@@ -127,7 +127,7 @@ export const CATALOG: CatalogItem[] = [
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/016.tgs",
-    "bytes": 53046
+    "bytes": 50721
   },
   {
     "id": "shablony1_017",
@@ -136,7 +136,7 @@ export const CATALOG: CatalogItem[] = [
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/017.tgs",
-    "bytes": 20003
+    "bytes": 17886
   },
   {
     "id": "shablony1_018",
@@ -145,7 +145,7 @@ export const CATALOG: CatalogItem[] = [
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/018.tgs",
-    "bytes": 50376
+    "bytes": 48109
   },
   {
     "id": "shablony1_019",
@@ -154,7 +154,7 @@ export const CATALOG: CatalogItem[] = [
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/019.tgs",
-    "bytes": 30366
+    "bytes": 28171
   },
   {
     "id": "shablony1_020",
@@ -163,7 +163,7 @@ export const CATALOG: CatalogItem[] = [
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/020.tgs",
-    "bytes": 50525
+    "bytes": 48243
   },
   {
     "id": "shablony1_021",
@@ -172,7 +172,7 @@ export const CATALOG: CatalogItem[] = [
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
     "file": "templates/shablony1/021.tgs",
-    "bytes": 51939
+    "bytes": 49659
   },
   {
     "id": "classic_001",

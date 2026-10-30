@@ -200,7 +200,7 @@ export interface BrandSlotSnapshot {
 export const DEFAULT_BRAND_OPTIONS: BrandSlotOptions = {
   mode: 'text',
   text: 'MAGNAT',
-  plateText: 'platega',
+  plateText: 'MAGNAT',
   plateTextEnabled: true,
   syncPlateText: false,
   hideBuiltInPlate: false,
@@ -593,10 +593,6 @@ function ensureSnapshot(gr: ShapeItem, parentInjected = false): BrandSlotSnapsho
 function detectOrigText(doc: LottieDoc): string {
   const nm = typeof doc.nm === 'string' ? doc.nm : '';
   if (/баннер/i.test(nm)) return 'BANNER';
-  const slots = findBrandSlots(doc);
-  if (slots.some((s) => s.nm === 'TextGroup' || (s._brandSlot as BrandSlotSnapshot)?.role === 'center')) {
-    return 'platega';
-  }
   return 'MAGNAT';
 }
 
@@ -615,7 +611,7 @@ export function readBrandSlotInfo(doc: LottieDoc): {
   const origText = detectOrigText(doc);
   const hasCenterSlot = slots.some((s) => s.nm === 'TextGroup' || (s._brandSlot as BrandSlotSnapshot)?.role === 'center');
   const hasPlateSlot = slots.some((s) => s.nm === 'USERNAME' || (s._brandSlot as BrandSlotSnapshot)?.role === 'plate');
-  const origPlateText = 'platega';
+  const origPlateText = 'MAGNAT';
 
   if (!slots.length) {
     return {
@@ -656,7 +652,7 @@ export function readBrandSlotInfo(doc: LottieDoc): {
     options: {
       ...DEFAULT_BRAND_OPTIONS,
       text: hasInjected ? DEFAULT_BRAND_OPTIONS.text : origText,
-      plateText: 'platega',
+      plateText: 'MAGNAT',
       plateTextEnabled: true,
       syncPlateText: false,
       hideBuiltInPlate: false,
@@ -1150,10 +1146,10 @@ export function applyBrandSlot(
     let paths: ShapeItem[] = [];
     const canUseOrig = snap.origShapes.length > 0 && !snap.injected;
     const targetText = role === 'plate'
-      ? (opts.syncPlateText ? opts.text : (opts.plateText || 'platega'))
+      ? (opts.syncPlateText ? opts.text : (opts.plateText || 'MAGNAT'))
       : (opts.text || (snap.injected ? 'MAGNAT' : ''));
     const isExactOrigName = role === 'plate'
-      ? (targetText === 'platega' || targetText === 'USERNAME')
+      ? (targetText === 'MAGNAT' || targetText === 'USERNAME')
       : (targetText === (snap.injected ? 'MAGNAT' : origText));
     const useOrig = opts.mode === 'text' && canUseOrig && (opts.useOriginalGlyphs || !fonts) && isExactOrigName;
 
