@@ -148,7 +148,7 @@ export function TmaCatalogView({
             <span>профиль</span>
           </button>
         </nav>
-        <div className="tma-dock-footer">@tierubot</div>
+        <div className="tma-dock-footer">@magnat_emoji_bot</div>
       </div>
     </div>
   );

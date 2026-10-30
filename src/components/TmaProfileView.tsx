@@ -694,7 +694,7 @@ export function TmaProfileView({
             <span>профиль</span>
           </button>
         </nav>
-        <div className="tma-dock-footer">@tierubot</div>
+        <div className="tma-dock-footer">@magnat_emoji_bot</div>
       </div>
 
       {/* CHECKOUT MODAL (STARS & CRYPTOBOT ONLY — matching screenshot media_1793367256359_d9089ade.png) */}

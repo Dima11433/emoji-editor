@@ -74,30 +74,19 @@ export function TmaPacksView({
 }: TmaPacksViewProps) {
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
 
-  // List of packs matching Screenshot media_1793367215727_cb60614d.png
-  const packList: PackEntry[] = [
-    {
+  // Real user packs only (no hardcoded/dummy entries)
+  const userPacks: PackEntry[] = [];
+  if (pack && pack.length > 0) {
+    userPacks.push({
       id: 'current',
-      name: 'ohhpoi',
-      botTag: '@tierubot',
-      count: pack.length > 0 ? pack.length : 11,
+      name: 'Мой стикерпак',
+      botTag: '@magnat_emoji_bot',
+      count: pack.length,
       stickers: pack,
-    },
-    {
-      id: 'ueud',
-      name: 'ueud',
-      botTag: '@tierubot',
-      count: 8,
-    },
-    {
-      id: 'mgg',
-      name: 'mgg',
-      botTag: '@tierubot',
-      count: 3,
-    },
-  ];
+    });
+  }
 
-  const activePack = packList.find((p) => p.id === selectedPackId);
+  const activePack = userPacks.find((p) => p.id === selectedPackId);
 
   return (
     <div className="tma-view-container tma-packs-view">
@@ -142,37 +131,60 @@ export function TmaPacksView({
           <h1 className="tma-page-title">мои паки</h1>
         )}
 
-        {/* VIEW 1: PACKS LIST (Exact match to screenshot media_1793367215727_cb60614d.png) */}
+        {/* VIEW 1: PACKS LIST OR CLEAN EMPTY STATE */}
         {!selectedPackId && (
-          <div className="tma-packs-list-card">
-            {packList.map((item) => (
-              <div
-                key={item.id}
-                className="tma-pack-row-item"
+          userPacks.length === 0 ? (
+            <div className="tma-packs-list-card" style={{ padding: '36px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '38px', marginBottom: 12 }}>📦</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginBottom: 6 }}>
+                У вас пока нет созданных паков
+              </div>
+              <div style={{ fontSize: '13px', color: '#848c9e', marginBottom: 20, lineHeight: 1.5 }}>
+                Выберите любые готовые шаблоны в каталоге или настройте эмодзи, чтобы собрать свой первый набор.
+              </div>
+              <button
+                type="button"
+                className="tma-btn-blue"
+                style={{ width: '100%', justifyContent: 'center' }}
                 onClick={() => {
-                  setSelectedPackId(item.id);
+                  onOpenCatalog();
                   haptic('select');
                 }}
               >
-                <div className="tma-pack-row-left">
-                  <StackedThumbnail
-                    firstSticker={item.id === 'current' ? pack[0] : undefined}
-                    fallbackText={item.name}
-                  />
-                  <div className="tma-pack-row-text">
-                    <span className="tma-pack-row-title">
-                      {item.name} · сделано в {item.botTag}
-                    </span>
-                    <span className="tma-pack-row-subtitle">
-                      эмодзи · {item.count} штук
-                    </span>
+                <LayoutGrid size={16} /> Перейти к шаблонам
+              </button>
+            </div>
+          ) : (
+            <div className="tma-packs-list-card">
+              {userPacks.map((item) => (
+                <div
+                  key={item.id}
+                  className="tma-pack-row-item"
+                  onClick={() => {
+                    setSelectedPackId(item.id);
+                    haptic('select');
+                  }}
+                >
+                  <div className="tma-pack-row-left">
+                    <StackedThumbnail
+                      firstSticker={item.id === 'current' ? pack[0] : undefined}
+                      fallbackText={item.name}
+                    />
+                    <div className="tma-pack-row-text">
+                      <span className="tma-pack-row-title">
+                        {item.name} · сделано в {item.botTag}
+                      </span>
+                      <span className="tma-pack-row-subtitle">
+                        эмодзи · {item.count} {item.count === 1 ? 'штука' : (item.count < 5 ? 'штуки' : 'штук')}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <ChevronRight size={18} className="tma-icon-muted" />
-              </div>
-            ))}
-          </div>
+                  <ChevronRight size={18} className="tma-icon-muted" />
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* VIEW 2: PACK DETAIL (STICKERS GRID & EXPORT) */}
@@ -301,7 +313,7 @@ export function TmaPacksView({
             <span>профиль</span>
           </button>
         </nav>
-        <div className="tma-dock-footer">@tierubot</div>
+        <div className="tma-dock-footer">@magnat_emoji_bot</div>
       </div>
     </div>
   );
