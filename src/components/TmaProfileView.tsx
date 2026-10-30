@@ -23,7 +23,6 @@ import {
 import {
   activateSubscription,
   addGenerations,
-  redeemPromoCode,
   TIER_PLANS,
   type BillingPeriod,
   type PlanId,
@@ -90,8 +89,6 @@ export function TmaProfileView({
 
   const [paymentMethod, setPaymentMethod] = useState<'stars' | 'cryptobot'>('stars');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [promoFeedback, setPromoFeedback] = useState<{ text: string; bad?: boolean } | null>(null);
 
   const userName = telegramUser?.first_name || 'magnat';
   const userHandle = telegramUser?.username ? `@${telegramUser.username}` : '@ggg468q';
@@ -245,22 +242,6 @@ export function TmaProfileView({
       tg?.showAlert ? tg.showAlert(msg) : alert(msg);
     } finally {
       setIsProcessingPayment(false);
-    }
-  };
-
-  const handleApplyPromo = () => {
-    if (!promoCodeInput.trim()) return;
-    const res = redeemPromoCode(promoCodeInput);
-    if (res.success && res.state) {
-      haptic('success');
-      setPromoFeedback({ text: res.message, bad: false });
-      onSubscriptionChange(res.state);
-      setTimeout(() => {
-        setShowCheckoutModal(false);
-      }, 1500);
-    } else {
-      haptic('error');
-      setPromoFeedback({ text: res.message, bad: true });
     }
   };
 

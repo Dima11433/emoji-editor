@@ -304,16 +304,6 @@ export function Preview({
             />
             {showGrid && <div className="stage-grid-overlay" aria-hidden />}
           </div>
-          <div className="stage-mini-pip" title="Реальный размер эмодзи в чате Telegram (40×40 px)">
-            <LottieCell
-              doc={doc}
-              playing={playing}
-              speed={speed}
-              seekSignal={seekSignal}
-              className="stage-mini-canvas"
-            />
-            <span>TG 40px</span>
-          </div>
           <button
             type="button"
             className={`stage-grid-btn ${showGrid ? 'on' : ''}`}

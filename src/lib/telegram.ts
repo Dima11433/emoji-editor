@@ -103,7 +103,11 @@ export function isTelegramWebApp(): boolean {
   if (window.location.search.includes('tma=1') || window.location.search.includes('tg=1')) {
     return true;
   }
-  return Boolean(window.Telegram?.WebApp?.initData);
+  return Boolean(
+    window.Telegram?.WebApp?.initData ||
+    window.Telegram?.WebApp?.platform ||
+    window.Telegram?.WebApp?.version
+  );
 }
 
 /** Get Telegram WebApp singleton */

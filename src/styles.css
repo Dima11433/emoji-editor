@@ -3094,9 +3094,87 @@ button:disabled {
   color: #ffd700;
 }
 
-/* Mobile responsive rules */
+/* TMA & Mobile responsive rules */
+.in-tma .tier-desktop-only,
+.in-tma .stage-mini-pip {
+  display: none !important;
+}
+
+.in-tma .tier-app {
+  height: 100vh;
+  padding-bottom: 56px;
+}
+
+.in-tma .tier-navbar {
+  height: 48px;
+  min-height: 48px;
+  padding: 0 10px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.in-tma .tier-nav-left {
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.in-tma .tier-nav-center {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.in-tma .tier-project-badge {
+  padding: 2px 6px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.in-tma .tier-project-name {
+  max-width: 120px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.in-tma .tier-nav-right {
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.in-tma .tier-btn-back-catalog {
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.in-tma .tier-studio {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.in-tma .tier-panel-left,
+.in-tma .tier-panel-right,
+.in-tma .tier-center {
+  display: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.in-tma .tier-panel-left.mobile-visible,
+.in-tma .tier-panel-right.mobile-visible,
+.in-tma .tier-center.mobile-visible {
+  display: flex !important;
+}
+
 @media (max-width: 900px) {
-  .tier-desktop-only {
+  .tier-desktop-only,
+  .stage-mini-pip {
     display: none !important;
   }
 
