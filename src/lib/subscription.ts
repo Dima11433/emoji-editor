@@ -1,22 +1,26 @@
 /**
- * Subscription & Monetization Engine
- * Manages Free vs PRO vs Lifetime tiers, promo codes, and feature gating.
+ * Subscription & Monetization Engine (Matching tier / tierapp reference)
+ * Manages Generation Balance, Subscriptions (Pro, Pro+, Max, Редактор),
+ * Period selection (Month, 3 Months, Year), Telegram Stars & Promo codes.
  */
 
 import type { CatalogItem } from './catalog';
 
-export type SubscriptionPlan = 'free' | 'pro' | 'lifetime';
+export type PlanId = 'free' | 'pro' | 'pro_plus' | 'max' | 'editor' | 'lifetime';
+export type BillingPeriod = 'month' | '3months' | 'year';
 
 export interface SubscriptionState {
-  plan: SubscriptionPlan;
+  plan: PlanId;
   isPro: boolean;
+  generationsBalance: number;
+  billingPeriod: BillingPeriod;
   activatedAt: number | null;
-  expiresAt: number | null; // null for lifetime or free
+  expiresAt: number | null;
   promoCode: string | null;
   userId?: number | string;
 }
 
-const STORAGE_KEY = 'magnat_subscription_state_v1';
+const STORAGE_KEY = 'magnat_subscription_state_v2';
 export const SUB_CHANGE_EVENT = 'magnat:sub_changed';
 
 /** Free tier allowed template IDs */
@@ -41,67 +45,167 @@ export const FREE_TEMPLATE_IDS = new Set<string>([
   'classic_010',
 ]);
 
-/** Pricing table */
-export const PRICING = {
+export interface PlanConfig {
+  id: PlanId;
+  name: string;
+  badge?: string;
+  subtitle: string;
+  highlight: string;
+  prices: {
+    month: { rub: number; stars: number; label: string };
+    '3months': { rub: number; stars: number; label: string };
+    year: { rub: number; stars: number; label: string };
+  };
+  badges: string[];
+}
+
+export const TIER_PLANS: Record<Exclude<PlanId, 'free'>, PlanConfig> = {
   pro: {
-    title: 'MAGNAT PRO · Месяц',
-    badge: 'ПОПУЛЯРНЫЙ',
-    stars: 290,
-    rub: 390,
-    ton: 1.5,
-    usdt: 4.9,
-    durationDays: 30,
-    features: [
-      'Все 284 анимированных Telegram шаблона',
-      'Мульти-редактирование до 60 эмодзи в 1 клик',
-      'Загрузка своего SVG логотипа в слои',
-      'Экспорт готового ZIP архива для @Stickers',
-      'Все премиум шрифты (Unbounded, Pacifico и др.)',
-      'Экспорт без водяных знаков и ограничений',
-      'Приоритетный рендер 60 FPS',
+    id: 'pro',
+    name: 'Pro',
+    subtitle: 'свой логотип на каждом эмодзи',
+    highlight: '150 генераций ✨ в месяц',
+    prices: {
+      month: { rub: 200, stars: 150, label: '200 ₽ в месяц' },
+      '3months': { rub: 510, stars: 380, label: '510 ₽ за 3 месяца' },
+      year: { rub: 1680, stars: 1200, label: '1680 ₽ за год' },
+    },
+    badges: [
+      '150 эмодзи в паке',
+      '120 стикеров в паке',
+      '284 шаблона',
+      '1 сохранённый стиль',
+      'свой логотип',
+      'весь веб-редактор',
+    ],
+  },
+  pro_plus: {
+    id: 'pro_plus',
+    name: 'Pro+',
+    badge: 'выгодно',
+    subtitle: 'редактор для каждого эмодзи отдельно',
+    highlight: '400 генераций ✨ в месяц',
+    prices: {
+      month: { rub: 350, stars: 250, label: '350 ₽ в месяц' },
+      '3months': { rub: 890, stars: 640, label: '890 ₽ за 3 месяца' },
+      year: { rub: 2940, stars: 2100, label: '2940 ₽ за год' },
+    },
+    badges: [
+      '200 эмодзи в паке',
+      '120 стикеров в паке',
+      '284 шаблона',
+      '5 сохранённых стилей',
+      'свой логотип',
+      'весь веб-редактор',
+      'редактор каждого эмодзи',
+    ],
+  },
+  max: {
+    id: 'max',
+    name: 'Max',
+    badge: 'популярный',
+    subtitle: 'сборки без месячного лимита',
+    highlight: 'без месячного лимита ✨',
+    prices: {
+      month: { rub: 700, stars: 500, label: '700 ₽ в месяц' },
+      '3months': { rub: 1785, stars: 1280, label: '1785 ₽ за 3 месяца' },
+      year: { rub: 5880, stars: 4200, label: '5880 ₽ за год' },
+    },
+    badges: [
+      '200 эмодзи в паке',
+      '120 стикеров в паке',
+      '284 шаблона',
+      '∞ сохранённых стилей',
+      'свой логотип',
+      'весь веб-редактор',
+      'редактор каждого эмодзи',
+      '1 сборка за раз',
+    ],
+  },
+  editor: {
+    id: 'editor',
+    name: 'Редактор',
+    subtitle: 'весь веб-редактор editor',
+    highlight: 'веб-редактор ✨',
+    prices: {
+      month: { rub: 200, stars: 150, label: '200 ₽ в месяц' },
+      '3months': { rub: 510, stars: 380, label: '510 ₽ за 3 месяца' },
+      year: { rub: 1680, stars: 1200, label: '1680 ₽ за год' },
+    },
+    badges: [
+      'все шаблоны',
+      'эффекты',
+      'экспорт и заливка в telegram',
+      'брифы для клиентов',
     ],
   },
   lifetime: {
-    title: 'LIFETIME VIP · Навсегда',
-    badge: 'ВЫГОДА -60%',
-    stars: 890,
-    rub: 1290,
-    ton: 4.5,
-    usdt: 14.9,
-    durationDays: null, // infinite
-    features: [
-      'Доступ навсегда ко всем 284 шаблонам',
-      'Все будущие обновления и новые паки бесплатно',
-      'Мульти-редактирование без ограничений',
-      'Загрузка векторных логотипов и фирменных цветов',
-      'Экспорт для @Stickers и прямая отправка в Telegram',
-      'Закрытый чат резидентов и поддержка создателя',
-      'Статус VIP MAGNAT в профиле',
+    id: 'lifetime',
+    name: 'Lifetime VIP',
+    badge: 'навсегда',
+    subtitle: 'пожизненный безлимит ко всему сервису',
+    highlight: 'навсегда без лимитов 👑',
+    prices: {
+      month: { rub: 1490, stars: 990, label: '1490 ₽ навсегда' },
+      '3months': { rub: 1490, stars: 990, label: '1490 ₽ навсегда' },
+      year: { rub: 1490, stars: 990, label: '1490 ₽ навсегда' },
+    },
+    badges: [
+      'все 284 шаблона навсегда',
+      'все будущие обновления',
+      '∞ генераций',
+      'прямая публикация в @Stickers',
+      'VIP поддержка',
     ],
   },
 };
 
-/** Load active subscription from localStorage */
-export function getSubscription(): SubscriptionState {
-  if (typeof window === 'undefined') {
-    return { plan: 'free', isPro: false, activatedAt: null, expiresAt: null, promoCode: null };
-  }
+export const PRICING = {
+  pro: {
+    title: 'MAGNAT PRO · Месяц',
+    badge: 'ПОПУЛЯРНЫЙ',
+    stars: 150,
+    rub: 200,
+    ton: 0.9,
+    usdt: 2.5,
+    durationDays: 30,
+    features: TIER_PLANS.pro.badges,
+  },
+  lifetime: {
+    title: 'LIFETIME VIP · Навсегда',
+    badge: 'ВЫГОДА -60%',
+    stars: 990,
+    rub: 1490,
+    ton: 5.5,
+    usdt: 16.9,
+    durationDays: null,
+    features: TIER_PLANS.lifetime.badges,
+  },
+};
 
+const DEFAULT_STATE: SubscriptionState = {
+  plan: 'free',
+  isPro: false,
+  generationsBalance: 1, // 1 free trial generation
+  billingPeriod: 'month',
+  activatedAt: null,
+  expiresAt: null,
+  promoCode: null,
+};
+
+/** Load active state */
+export function getSubscription(): SubscriptionState {
+  if (typeof window === 'undefined') return { ...DEFAULT_STATE };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return { plan: 'free', isPro: false, activatedAt: null, expiresAt: null, promoCode: null };
-    }
+    if (!raw) return { ...DEFAULT_STATE };
     const data: SubscriptionState = JSON.parse(raw);
 
-    // Check expiration for time-limited PRO
-    if (data.plan === 'pro' && data.expiresAt && Date.now() > data.expiresAt) {
+    // Expiration check
+    if (data.plan !== 'free' && data.plan !== 'lifetime' && data.expiresAt && Date.now() > data.expiresAt) {
       const expired: SubscriptionState = {
-        plan: 'free',
-        isPro: false,
-        activatedAt: null,
-        expiresAt: null,
-        promoCode: null,
+        ...DEFAULT_STATE,
+        generationsBalance: data.generationsBalance,
       };
       saveSubscription(expired);
       return expired;
@@ -109,14 +213,14 @@ export function getSubscription(): SubscriptionState {
 
     return {
       ...data,
-      isPro: data.plan === 'pro' || data.plan === 'lifetime',
+      isPro: data.plan !== 'free',
     };
   } catch {
-    return { plan: 'free', isPro: false, activatedAt: null, expiresAt: null, promoCode: null };
+    return { ...DEFAULT_STATE };
   }
 }
 
-/** Save subscription to localStorage and broadcast event */
+/** Save and broadcast */
 export function saveSubscription(state: SubscriptionState): void {
   if (typeof window === 'undefined') return;
   try {
@@ -127,70 +231,121 @@ export function saveSubscription(state: SubscriptionState): void {
   }
 }
 
-/** Grant a plan */
+/** Purchase piece-rate generations */
+export function addGenerations(count: number): SubscriptionState {
+  const cur = getSubscription();
+  const next: SubscriptionState = {
+    ...cur,
+    generationsBalance: cur.generationsBalance + count,
+  };
+  saveSubscription(next);
+  return next;
+}
+
+/** Consume 1 generation if available */
+export function consumeGeneration(): { ok: boolean; remaining: number } {
+  const cur = getSubscription();
+  // Max and lifetime have unlimited generations
+  if (cur.plan === 'max' || cur.plan === 'lifetime') {
+    return { ok: true, remaining: 999999 };
+  }
+  if (cur.generationsBalance > 0) {
+    const next: SubscriptionState = {
+      ...cur,
+      generationsBalance: cur.generationsBalance - 1,
+    };
+    saveSubscription(next);
+    return { ok: true, remaining: next.generationsBalance };
+  }
+  return { ok: false, remaining: 0 };
+}
+
+/** Activate a subscription plan */
 export function activateSubscription(
-  plan: 'pro' | 'lifetime',
-  durationDays: number | null = 30,
+  plan: PlanId,
+  period: BillingPeriod = 'month',
   promoCode: string | null = null,
 ): SubscriptionState {
-  const expiresAt = durationDays ? Date.now() + durationDays * 24 * 60 * 60 * 1000 : null;
-  const state: SubscriptionState = {
+  const cur = getSubscription();
+  let days = 30;
+  if (period === '3months') days = 90;
+  if (period === 'year') days = 365;
+
+  let addedGenerations = 150;
+  if (plan === 'pro') addedGenerations = 150;
+  if (plan === 'pro_plus') addedGenerations = 400;
+  if (plan === 'max') addedGenerations = 99999;
+  if (plan === 'editor') addedGenerations = 50;
+  if (plan === 'lifetime') addedGenerations = 999999;
+
+  const expiresAt = plan === 'lifetime' ? null : Date.now() + days * 24 * 60 * 60 * 1000;
+
+  const next: SubscriptionState = {
     plan,
-    isPro: true,
+    isPro: plan !== 'free',
+    generationsBalance: cur.generationsBalance + addedGenerations,
+    billingPeriod: period,
     activatedAt: Date.now(),
     expiresAt,
     promoCode,
   };
-  saveSubscription(state);
-  return state;
+  saveSubscription(next);
+  return next;
 }
 
 /** Reset to free */
 export function resetSubscription(): SubscriptionState {
-  const state: SubscriptionState = {
-    plan: 'free',
-    isPro: false,
-    activatedAt: null,
-    expiresAt: null,
-    promoCode: null,
+  const cur = getSubscription();
+  const next: SubscriptionState = {
+    ...DEFAULT_STATE,
+    generationsBalance: cur.generationsBalance,
   };
-  saveSubscription(state);
-  return state;
+  saveSubscription(next);
+  return next;
 }
 
-/** Check if a template requires PRO */
+/** Check if template is locked */
 export function isTemplateLocked(item: CatalogItem, isProUser: boolean): boolean {
   if (isProUser) return false;
   return !FREE_TEMPLATE_IDS.has(item.id);
 }
 
-/** Promo code redemption */
+/** Redeem Promo Code */
 export function redeemPromoCode(rawCode: string): { success: boolean; message: string; state?: SubscriptionState } {
   const code = rawCode.trim().toUpperCase();
 
   if (code === 'MAGNAT' || code === 'MAGNAT_VIP' || code === 'FOUNDER' || code === 'ADMIN') {
-    const next = activateSubscription('lifetime', null, code);
+    const next = activateSubscription('lifetime', 'year', code);
     return {
       success: true,
-      message: '🎉 Промокод активирован! Вам предоставлен пожизненный доступ MAGNAT VIP!',
+      message: '🎉 Промокод активирован! Вам предоставлен вечный тариф LIFETIME VIP!',
       state: next,
     };
   }
 
-  if (code === 'CRYPTO2026' || code === 'PROPASS' || code === 'START2026' || code === 'TGSTARS') {
-    const next = activateSubscription('pro', 30, code);
+  if (code === 'TIER_MAX' || code === 'MAX') {
+    const next = activateSubscription('max', 'month', code);
     return {
       success: true,
-      message: '🎉 Промокод активирован! Доступ MAGNAT PRO на 30 дней разблокирован!',
+      message: '🎉 Промокод активирован! Тариф MAX без лимитов подключён!',
       state: next,
     };
   }
 
-  if (code === 'DEMO' || code === 'TEST' || code === 'FREEWEEK') {
-    const next = activateSubscription('pro', 7, code);
+  if (code === 'TIER_PRO' || code === 'PRO' || code === 'TGSTARS') {
+    const next = activateSubscription('pro', 'month', code);
     return {
       success: true,
-      message: '🎉 Промокод активирован! Пробный период PRO на 7 дней включён!',
+      message: '🎉 Промокод активирован! Тариф PRO (150 генераций) подключён!',
+      state: next,
+    };
+  }
+
+  if (code === 'DEMO' || code === 'FREE20') {
+    const next = addGenerations(20);
+    return {
+      success: true,
+      message: '🎉 Начислено +20 бесплатных генераций!',
       state: next,
     };
   }

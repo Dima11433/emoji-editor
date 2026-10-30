@@ -94,7 +94,7 @@ export function SubscriptionModal({
           setIsProcessing(false);
           if (confirmed) {
             haptic('success');
-            const next = activateSubscription(selectedPlan, currentPricing.durationDays, 'TELEGRAM_STARS');
+            const next = activateSubscription(selectedPlan, 'month', 'TELEGRAM_STARS');
             onSubscriptionChange(next);
             tg.showAlert('🎉 Оплата Telegram Stars прошла успешно! Тариф активирован.');
             onClose();
@@ -106,7 +106,7 @@ export function SubscriptionModal({
       setTimeout(() => {
         setIsProcessing(false);
         haptic('success');
-        const next = activateSubscription(selectedPlan, currentPricing.durationDays, 'WEB_STARS_PAY');
+        const next = activateSubscription(selectedPlan, 'month', 'WEB_STARS_PAY');
         onSubscriptionChange(next);
         onClose();
       }, 800);
@@ -115,7 +115,7 @@ export function SubscriptionModal({
 
   const handleDirectActivateTest = () => {
     haptic('medium');
-    const next = activateSubscription(selectedPlan, currentPricing.durationDays, 'DIRECT_DEMO');
+    const next = activateSubscription(selectedPlan, 'month', 'DIRECT_DEMO');
     onSubscriptionChange(next);
     onClose();
   };
@@ -216,7 +216,7 @@ export function SubscriptionModal({
         <div className="sub-features-box">
           <div className="sub-features-title">В тариф входит:</div>
           <div className="sub-features-grid">
-            {currentPricing.features.map((feat, idx) => (
+            {currentPricing.features.map((feat: string, idx: number) => (
               <div key={idx} className="sub-feature-item">
                 <div className="sub-feature-icon-wrap">
                   <Check size={12} strokeWidth={3} />

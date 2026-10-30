@@ -14,6 +14,7 @@ import {
   Type,
   Undo2,
   Crown,
+  ArrowLeft,
 } from 'lucide-react';
 import type { Font } from 'opentype.js';
 import { BrandPanel } from './components/BrandPanel';
@@ -27,6 +28,9 @@ import { Preview, type PreviewSticker } from './components/Preview';
 import { TelegramModal } from './components/TelegramModal';
 import { TemplatesModal } from './components/TemplatesModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
+import { TmaCatalogView } from './components/TmaCatalogView';
+import { TmaProfileView } from './components/TmaProfileView';
+import { TmaPacksView } from './components/TmaPacksView';
 import {
   getSubscription,
   SUB_CHANGE_EVENT,
@@ -238,6 +242,15 @@ export default function App() {
   const fileName = primarySticker.name;
   const selectedCount = selectedStickers.length;
 
+  const [mainView, setMainView] = useState<'studio' | 'tma_catalog' | 'tma_profile' | 'tma_packs'>(() => {
+    if (typeof window !== 'undefined') {
+      if (isTelegramWebApp() || window.innerWidth < 900) {
+        return 'tma_catalog';
+      }
+    }
+    return 'studio';
+  });
+
   const [sub, setSub] = useState<SubscriptionState>(getSubscription);
   const [showSubModal, setShowSubModal] = useState(false);
   const [subFeaturedReason, setSubFeaturedReason] = useState<string | undefined>();
@@ -280,19 +293,25 @@ export default function App() {
     return () => window.removeEventListener(SUB_CHANGE_EVENT, handleSubChange);
   }, []);
 
-  // Sync Telegram BackButton with modals
+  // Sync Telegram BackButton with modals and TMA views
   useEffect(() => {
     const tg = getTelegramWebApp();
     if (!tg?.BackButton) return;
 
     const anyModalOpen = showModal || showSubModal || showTgModal || showLinkModal;
-    if (anyModalOpen) {
+    const isSubView = mainView !== 'tma_catalog';
+
+    if (anyModalOpen || isSubView) {
       tg.BackButton.show();
       const onBack = () => {
         if (showSubModal) setShowSubModal(false);
         else if (showModal) setShowModal(false);
         else if (showTgModal) setShowTgModal(false);
         else if (showLinkModal) setShowLinkModal(false);
+        else if (mainView !== 'tma_catalog') {
+          setMainView('tma_catalog');
+          haptic('light');
+        }
       };
       tg.BackButton.onClick(onBack);
       return () => {
@@ -301,7 +320,7 @@ export default function App() {
     } else {
       tg.BackButton.hide();
     }
-  }, [showModal, showSubModal, showTgModal, showLinkModal]);
+  }, [showModal, showSubModal, showTgModal, showLinkModal, mainView]);
 
   useEffect(() => {
     if (!toast) return;
@@ -1183,17 +1202,107 @@ export default function App() {
     say('Сброшено');
   }, [editPrimary, handleBrandReset, primarySticker.catalogId, say]);
 
+  if (mainView === 'tma_catalog') {
+    return (
+      <>
+        <TmaCatalogView
+          subscription={sub}
+          telegramUser={tgUser}
+          onSelectTemplate={(item) => {
+            loadCatalogDoc(item).then((d) => {
+              openSingleSticker(d, item.name, item.id);
+              setMainView('studio');
+              say(`Открыт #${item.num} «${item.name}»`);
+            });
+          }}
+          onOpenProfile={() => {
+            setMainView('tma_profile');
+            haptic('select');
+          }}
+          onOpenPacks={() => {
+            setMainView('tma_packs');
+            haptic('select');
+          }}
+          onOpenEditor={() => {
+            setMainView('studio');
+            haptic('select');
+          }}
+        />
+        {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
+      </>
+    );
+  }
+
+  if (mainView === 'tma_profile') {
+    return (
+      <>
+        <TmaProfileView
+          subscription={sub}
+          telegramUser={tgUser}
+          onSubscriptionChange={(next) => {
+            setSub(next);
+            say(next.isPro ? '👑 Тариф активирован!' : 'Баланс обновлён');
+          }}
+          onBackToCatalog={() => {
+            setMainView('tma_catalog');
+            haptic('light');
+          }}
+          onOpenPacks={() => {
+            setMainView('tma_packs');
+            haptic('select');
+          }}
+        />
+        {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
+      </>
+    );
+  }
+
+  if (mainView === 'tma_packs') {
+    return (
+      <>
+        <TmaPacksView
+          pack={pack}
+          onOpenCatalog={() => {
+            setMainView('tma_catalog');
+            haptic('select');
+          }}
+          onOpenProfile={() => {
+            setMainView('tma_profile');
+            haptic('select');
+          }}
+          onOpenEditorForSticker={(item) => {
+            openSingleSticker(item.doc, item.name, item.catalogId);
+            setMainView('studio');
+            haptic('select');
+          }}
+          onDownloadZip={() => downloadZipList(pack, 'magnat_emoji_pack')}
+          onRemoveSticker={removePackSticker}
+          onClearPack={clearUnselectedPackStickers}
+        />
+        {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
+      </>
+    );
+  }
+
   return (
     <div className={`tier-app ${inTma ? 'in-tma' : ''}`}>
       {/* TOP NAVBAR (Screenshot 2 Replica) */}
       <header className="tier-navbar">
         <div className="tier-nav-left">
+          <button
+            type="button"
+            className="tier-nav-btn tier-btn-back-catalog"
+            onClick={() => {
+              setMainView('tma_catalog');
+              haptic('select');
+            }}
+            title="Каталог шаблонов Telegram"
+          >
+            <ArrowLeft size={14} /> шаблоны
+          </button>
           <span
             className="tier-logo"
-            onClick={() => {
-              setModalAddToPack(false);
-              setShowModal(true);
-            }}
+            onClick={() => setMainView('tma_catalog')}
             title="Каталог шаблонов MAGNAT"
           >
             MAGNAT
@@ -1347,8 +1456,7 @@ export default function App() {
             className={`tier-nav-btn tier-btn-pro ${sub.isPro ? 'active' : ''}`}
             onClick={() => {
               haptic('medium');
-              setSubFeaturedReason(undefined);
-              setShowSubModal(true);
+              setMainView('tma_profile');
             }}
             title={sub.isPro ? 'Управление подпиской MAGNAT PRO' : 'Разблокировать все 284 шаблона и функции PRO'}
           >
@@ -1360,7 +1468,7 @@ export default function App() {
             className="tier-profile-badge"
             onClick={() => {
               haptic('light');
-              setShowSubModal(true);
+              setMainView('tma_profile');
             }}
             title={tgUser ? `Telegram: @${tgUser.username || tgUser.first_name}` : 'Профиль MAGNAT Studio'}
           >
