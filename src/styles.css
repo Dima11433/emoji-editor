@@ -3936,6 +3936,158 @@ button:disabled {
   font-weight: 500;
 }
 
+/* TMA PAYMENT METHODS MODAL (Screenshot media_1793367256359_d9089ade.png Replica) */
+.tma-pay-modal-box {
+  max-width: 440px !important;
+  background: #11141e !important;
+  border-radius: 24px !important;
+  padding: 22px !important;
+}
+
+.tma-pay-modal-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.tma-pay-modal-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.tma-pay-summary-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #161a27;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 18px;
+}
+
+.tma-pay-summary-line strong {
+  color: #ffffff;
+}
+
+.tma-pay-total-badge {
+  font-size: 15px;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.tma-pay-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tma-pay-card {
+  position: relative;
+  background: #151823;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 14px;
+  height: 94px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.16s ease;
+  user-select: none;
+}
+
+.tma-pay-card:active {
+  transform: scale(0.97);
+}
+
+.tma-pay-card.selected {
+  border-color: #38bdf8;
+  background: #181d2c;
+  box-shadow: 0 0 0 1px #38bdf8, 0 8px 24px rgba(56, 189, 248, 0.22);
+}
+
+.tma-pay-card-left {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 60%;
+}
+
+.tma-pay-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.tma-pay-card-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: #848c9e;
+  line-height: 1.25;
+}
+
+.tma-pay-art {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 76px;
+  height: 76px;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.tma-pay-card:hover .tma-pay-art {
+  transform: scale(1.06) rotate(3deg);
+}
+
+.tma-pay-art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tma-btn-pay-action {
+  width: 100%;
+  height: 48px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tma-btn-crypto-pay {
+  background: #0284c7 !important;
+}
+
+.tma-btn-crypto-pay:active {
+  background: #0369a1 !important;
+}
+
+.tma-pay-note {
+  font-size: 12px;
+  color: #848c9e;
+  text-align: center;
+  font-weight: 500;
+}
+
 
 /* ==========================================================================
    GLASS IRIS ASSISTANT DASHBOARD STYLES

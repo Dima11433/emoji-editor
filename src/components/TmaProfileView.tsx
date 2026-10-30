@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import {
-  Check,
   ChevronRight,
-  Copy,
   CreditCard,
   FileText,
-  KeyRound,
   Layers,
   LayoutGrid,
   Minus,
@@ -90,25 +87,18 @@ export function TmaProfileView({
     starsPrice: number;
   } | null>(null);
 
-  const [paymentMethod, setPaymentMethod] = useState<'stars' | 'sbp' | 'crypto' | 'promo'>('stars');
+  const [paymentMethod, setPaymentMethod] = useState<'stars' | 'cryptobot'>('stars');
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoFeedback, setPromoFeedback] = useState<{ text: string; bad?: boolean } | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const userName = telegramUser?.first_name || 'magnat';
   const userHandle = telegramUser?.username ? `@${telegramUser.username}` : '@ggg468q';
 
   // Calculate piece price: 9 ₽ per unit, >= 50 is 7 ₽
+  // 1 звезда = 1,2 ₽ (matching screenshot)
   const unitRate = pieceCount >= 50 ? 7 : 9;
   const pieceRubTotal = pieceCount * unitRate;
-  const pieceStarsTotal = Math.max(10, Math.round(pieceRubTotal * 0.75));
-
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    haptic('light');
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
+  const pieceStarsTotal = Math.max(10, Math.round(pieceRubTotal / 1.2));
 
   const handleOpenPieceCheckout = () => {
     haptic('medium');
@@ -126,12 +116,13 @@ export function TmaProfileView({
     haptic('medium');
     const cfg = TIER_PLANS[planId];
     const p = cfg.prices[periodKey];
+    const starsPrice = Math.max(10, Math.round(p.rub / 1.2));
     setCheckoutTarget({
       type: 'plan',
       planId,
       title: `${cfg.name} (${cfg.prices[periodKey].label})`,
       rubPrice: p.rub,
-      starsPrice: p.stars,
+      starsPrice,
     });
     setShowCheckoutModal(true);
   };
@@ -527,165 +518,144 @@ export function TmaProfileView({
         <div className="tma-dock-footer">@tierubot</div>
       </div>
 
-      {/* CHECKOUT MODAL (STARS / SBP / TON / DEMO) */}
+      {/* CHECKOUT MODAL (STARS & CRYPTOBOT ONLY — matching screenshot media_1793367256359_d9089ade.png) */}
       {showCheckoutModal && checkoutTarget && (
         <div className="sub-modal-backdrop" onClick={() => setShowCheckoutModal(false)}>
-          <div className="sub-modal-window" onClick={(e) => e.stopPropagation()}>
-            <div className="sub-modal-header">
-              <div className="sub-badge-pro">
-                <Sparkles size={14} color="#ffd700" />
-                <span>ОПЛАТА ТАРИФА</span>
-              </div>
+          <div className="sub-modal-window tma-pay-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="tma-pay-modal-top-row">
+              <h2 className="tma-pay-modal-title">способы оплаты</h2>
               <button
                 type="button"
                 className="sub-close-btn"
                 onClick={() => setShowCheckoutModal(false)}
+                aria-label="Закрыть"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div style={{ textAlign: 'center', margin: '14px 0 20px 0' }}>
-              <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: 800 }}>
-                {checkoutTarget.title}
-              </h2>
-              <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-                Выберите удобный способ оплаты без комиссий
+            <div className="tma-pay-summary-line">
+              <span>Тариф: <strong>{checkoutTarget.title}</strong></span>
+              <span className="tma-pay-total-badge">{checkoutTarget.rubPrice} ₽</span>
+            </div>
+
+            {/* 2-COLUMN GRID (ЗВЁЗДЫ & CRYPTOBOT ONLY) */}
+            <div className="tma-pay-methods-grid">
+              {/* CARD 1: ЗВЁЗДЫ */}
+              <div
+                className={`tma-pay-card ${paymentMethod === 'stars' ? 'selected' : ''}`}
+                onClick={() => {
+                  setPaymentMethod('stars');
+                  haptic('select');
+                }}
+              >
+                <div className="tma-pay-card-left">
+                  <span className="tma-pay-card-title">Звёзды</span>
+                  <span className="tma-pay-card-sub">1 звезда = 1,2 ₽</span>
+                </div>
+                <div className="tma-pay-art tma-pay-art-star">
+                  <svg viewBox="0 0 100 100">
+                    <defs>
+                      <linearGradient id="tmaStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#FFE033" />
+                        <stop offset="65%" stopColor="#FFB300" />
+                        <stop offset="100%" stopColor="#FF8F00" />
+                      </linearGradient>
+                      <linearGradient id="tmaStarShine" x1="0%" y1="0%" x2="40%" y2="40%">
+                        <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+                        <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M50 8 L62 33 L90 37 L70 57 L75 85 L50 71 L25 85 L30 57 L10 37 L38 33 Z"
+                      fill="url(#tmaStarGrad)"
+                      stroke="#FFF7C2"
+                      strokeWidth="2.5"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M50 12 L60 33 L85 36 L66 54 L50 24 Z" fill="url(#tmaStarShine)" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* CARD 2: CRYPTOBOT */}
+              <div
+                className={`tma-pay-card ${paymentMethod === 'cryptobot' ? 'selected' : ''}`}
+                onClick={() => {
+                  setPaymentMethod('cryptobot');
+                  haptic('select');
+                }}
+              >
+                <div className="tma-pay-card-left">
+                  <span className="tma-pay-card-title">CryptoBot</span>
+                  <span className="tma-pay-card-sub">оплата криптой</span>
+                </div>
+                <div className="tma-pay-art tma-pay-art-crypto">
+                  <svg viewBox="0 0 100 100">
+                    <defs>
+                      <linearGradient id="tmaCryptoDisc" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#38BDF8" />
+                        <stop offset="55%" stopColor="#0284C7" />
+                        <stop offset="100%" stopColor="#0369A1" />
+                      </linearGradient>
+                    </defs>
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="43"
+                      fill="url(#tmaCryptoDisc)"
+                      stroke="rgba(255,255,255,0.45)"
+                      strokeWidth="2"
+                    />
+                    <path d="M30 38 L50 64 L70 38 L58 38 L50 49 L42 38 Z" fill="#FFFFFF" />
+                    <path d="M50 49 L70 38 L58 38 Z" fill="#BAE6FD" />
+                  </svg>
+                </div>
               </div>
             </div>
 
-            {/* PAYMENT TABS */}
-            <div className="sub-payment-tabs" style={{ marginBottom: 16 }}>
-              <button
-                type="button"
-                className={`sub-tab-btn ${paymentMethod === 'stars' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('stars')}
-              >
-                <Star size={14} fill="#fbbf24" color="#fbbf24" /> Stars
-              </button>
-              <button
-                type="button"
-                className={`sub-tab-btn ${paymentMethod === 'sbp' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('sbp')}
-              >
-                <Zap size={14} /> СБП / Карты
-              </button>
-              <button
-                type="button"
-                className={`sub-tab-btn ${paymentMethod === 'crypto' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('crypto')}
-              >
-                <Wallet size={14} /> TON Crypto
-              </button>
-              <button
-                type="button"
-                className={`sub-tab-btn ${paymentMethod === 'promo' ? 'active' : ''}`}
-                onClick={() => setPaymentMethod('promo')}
-              >
-                <KeyRound size={14} /> Промокод
-              </button>
-            </div>
-
+            {/* ACTION BUTTON */}
             {paymentMethod === 'stars' && (
-              <div className="sub-tab-content">
-                <div className="sub-stars-promo">
-                  <div className="sub-stars-icon-large">⭐️</div>
-                  <div className="sub-stars-text">
-                    <strong>Оплата через Telegram Stars</strong>
-                    <p>Мгновенно списывается с баланса Telegram в 1 клик</p>
-                  </div>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
                 <button
                   type="button"
-                  className="sub-primary-pay-btn"
+                  className="tma-btn-blue tma-btn-pay-action"
                   onClick={handleConfirmPayment}
                 >
-                  <Star size={16} fill="#000" color="#000" />
-                  Оплатить {checkoutTarget.starsPrice} Stars ({checkoutTarget.rubPrice} ₽)
+                  <Star size={16} fill="#fff" color="#fff" />
+                  Оплатить {checkoutTarget.starsPrice} Stars
                 </button>
+                <span className="tma-pay-note">
+                  Списание с баланса Telegram в 1 клик • 0% комиссий
+                </span>
               </div>
             )}
 
-            {paymentMethod === 'sbp' && (
-              <div className="sub-tab-content">
-                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#cbd5e1' }}>
-                  Прямой перевод по СБП (0% комиссий):
-                </p>
-                <div className="sub-address-group">
-                  <div className="sub-address-label">
-                    <span>Номер телефона:</span>
-                    <span className="sub-crypto-amount">{checkoutTarget.rubPrice} ₽</span>
-                  </div>
-                  <div className="sub-address-row">
-                    <code>+7 (900) 000-00-00 (Тинькофф / Сбер)</code>
-                    <button
-                      type="button"
-                      className="sub-copy-btn"
-                      onClick={() => handleCopy('+79000000000', 'phone')}
-                    >
-                      {copiedKey === 'phone' ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
-                    </button>
-                  </div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <button type="button" className="sub-primary-pay-btn" onClick={handleConfirmPayment}>
-                    Я оплатил {checkoutTarget.rubPrice} ₽
-                  </button>
-                </div>
+            {paymentMethod === 'cryptobot' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="tma-btn-blue tma-btn-pay-action tma-btn-crypto-pay"
+                  onClick={() => {
+                    const tg = getTelegramWebApp();
+                    if (tg?.openTelegramLink) {
+                      tg.openTelegramLink('https://t.me/CryptoBot');
+                    } else {
+                      window.open('https://t.me/CryptoBot', '_blank');
+                    }
+                    handleConfirmPayment();
+                  }}
+                >
+                  <Wallet size={16} />
+                  Оплатить {(checkoutTarget.rubPrice / 95).toFixed(2)} USDT в CryptoBot
+                </button>
+                <span className="tma-pay-note">
+                  USDT, TON, BTC через официального @CryptoBot
+                </span>
               </div>
             )}
 
-            {paymentMethod === 'crypto' && (
-              <div className="sub-tab-content">
-                <div className="sub-address-group">
-                  <div className="sub-address-label">
-                    <span>TON Кошелёк:</span>
-                    <span className="sub-crypto-amount">
-                      {(checkoutTarget.rubPrice / 250).toFixed(2)} TON
-                    </span>
-                  </div>
-                  <div className="sub-address-row">
-                    <code>UQDFN_EXAMPLE_TON_MAGNAT_WALLET_ADDRESS_PRO_2026</code>
-                    <button
-                      type="button"
-                      className="sub-copy-btn"
-                      onClick={() => handleCopy('UQDFN_EXAMPLE_TON_MAGNAT_WALLET_ADDRESS_PRO_2026', 'ton')}
-                    >
-                      {copiedKey === 'ton' ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
-                    </button>
-                  </div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <button type="button" className="sub-primary-pay-btn" onClick={handleConfirmPayment}>
-                    Подтвердить перевод
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {paymentMethod === 'promo' && (
-              <div className="sub-tab-content">
-                <div className="sub-promo-input-row">
-                  <input
-                    type="text"
-                    className="sub-promo-input"
-                    placeholder="MAGNAT_VIP, MAX или DEMO"
-                    value={promoCodeInput}
-                    onChange={(e) => setPromoCodeInput(e.target.value)}
-                  />
-                  <button type="button" className="sub-promo-submit-btn" onClick={handleApplyPromo}>
-                    Активировать
-                  </button>
-                </div>
-                {promoFeedback && (
-                  <div className={`sub-promo-feedback ${promoFeedback.bad ? 'bad' : 'good'}`}>
-                    {promoFeedback.text}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <div style={{ marginTop: 14, textAlign: 'center' }}>
               <button
                 type="button"
                 className="sub-link-btn"
