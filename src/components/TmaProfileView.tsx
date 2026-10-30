@@ -246,8 +246,9 @@ export function TmaProfileView({
                   setPieceCount((c) => Math.max(5, c - 5));
                   haptic('select');
                 }}
+                aria-label="Уменьшить"
               >
-                <Minus size={15} />
+                <Minus size={16} strokeWidth={2.4} />
               </button>
               <span className="tma-counter-val">{pieceCount}</span>
               <button
@@ -257,8 +258,9 @@ export function TmaProfileView({
                   setPieceCount((c) => c + 5);
                   haptic('select');
                 }}
+                aria-label="Увеличить"
               >
-                <Plus size={15} />
+                <Plus size={16} strokeWidth={2.4} />
               </button>
             </div>
 

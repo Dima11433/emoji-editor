@@ -3440,7 +3440,7 @@ button:disabled {
   border-radius: 999px;
 }
 
-/* STEPPER CARD (Screenshot 2) */
+/* STEPPER CARD (Screenshot 2 Replica) */
 .tma-stepper-card {
   display: flex;
   flex-direction: column;
@@ -3456,41 +3456,64 @@ button:disabled {
 .tma-counter-control {
   display: flex;
   align-items: center;
-  background: #1b1f2e;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 4px;
-  flex-shrink: 0;
+  height: 48px;
+  background: #1b1e2a;
+  border: 2px solid #2f6bff;
+  border-radius: 999px;
+  padding: 0;
+  flex: 0 0 148px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(47, 107, 255, 0.18);
 }
 
 .tma-counter-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
+  flex: 1;
+  height: 100%;
   background: transparent;
   border: none;
-  color: #cbd5e1;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background 0.12s ease;
 }
 
 .tma-counter-btn:active {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .tma-counter-val {
-  font-size: 16px;
+  flex: 1.1;
+  height: 100%;
+  font-size: 17px;
   font-weight: 800;
   color: #ffffff;
-  min-width: 38px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  user-select: none;
 }
 
 .tma-btn-pay-stepper {
   flex: 1;
-  height: 46px;
+  height: 48px;
+  border-radius: 999px;
+  background: #2f6bff;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(47, 107, 255, 0.35);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.tma-btn-pay-stepper:active {
+  transform: scale(0.97);
+  filter: brightness(0.92);
 }
 
 /* SUBSCRIPTION SECTION (Screenshots 2-5) */
