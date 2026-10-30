@@ -1,4 +1,4 @@
-// Auto-generated catalog: 21 custom templates + 263 MAGNAT animated Telegram emojis (284 total)
+// Auto-generated catalog: 17 custom templates + 263 MAGNAT animated Telegram emojis (280 total)
 export type TemplateCategory = 'shablony1' | 'classic' | 'characters' | 'gifts' | 'love';
 
 export interface CatalogItem {
@@ -22,44 +22,8 @@ export const TEMPLATE_CATEGORIES: { id: 'all' | TemplateCategory; label: string 
 
 export const CATALOG: CatalogItem[] = [
   {
-    "id": "shablony1_012",
-    "num": 1,
-    "name": "Баннер 1/3 · Лево",
-    "category": "shablony1",
-    "categoryLabel": "Шаблоны",
-    "file": "templates/shablony1/012.tgs",
-    "bytes": 5237
-  },
-  {
-    "id": "shablony1_013",
-    "num": 2,
-    "name": "Баннер 2/3 · Центр",
-    "category": "shablony1",
-    "categoryLabel": "Шаблоны",
-    "file": "templates/shablony1/013.tgs",
-    "bytes": 5201
-  },
-  {
-    "id": "shablony1_014",
-    "num": 3,
-    "name": "Баннер 3/3 · Право",
-    "category": "shablony1",
-    "categoryLabel": "Шаблоны",
-    "file": "templates/shablony1/014.tgs",
-    "bytes": 5204
-  },
-  {
-    "id": "shablony1_015",
-    "num": 4,
-    "name": "Значок 3D · XXX",
-    "category": "shablony1",
-    "categoryLabel": "Шаблоны",
-    "file": "templates/shablony1/015.tgs",
-    "bytes": 2322
-  },
-  {
     "id": "shablony1_001",
-    "num": 5,
+    "num": 1,
     "name": "Шаблон · Ракета",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -68,7 +32,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_002",
-    "num": 6,
+    "num": 2,
     "name": "Шаблон · Корона",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -77,7 +41,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_003",
-    "num": 7,
+    "num": 3,
     "name": "Шаблон · Огонь",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -86,7 +50,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_004",
-    "num": 8,
+    "num": 4,
     "name": "Шаблон · Ссылка",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -95,7 +59,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_005",
-    "num": 9,
+    "num": 5,
     "name": "Шаблон · Карта",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -104,7 +68,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_006",
-    "num": 10,
+    "num": 6,
     "name": "Шаблон · Танцы",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -113,7 +77,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_007",
-    "num": 11,
+    "num": 7,
     "name": "Шаблон · Купюры",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -122,7 +86,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_008",
-    "num": 12,
+    "num": 8,
     "name": "Шаблон · Хакер",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -131,7 +95,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_009",
-    "num": 13,
+    "num": 9,
     "name": "Шаблон · Полумесяц",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -140,7 +104,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_010",
-    "num": 14,
+    "num": 10,
     "name": "Шаблон · Щит",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -149,7 +113,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_011",
-    "num": 15,
+    "num": 11,
     "name": "Шаблон · Шестерёнка",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -158,7 +122,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_016",
-    "num": 16,
+    "num": 12,
     "name": "Капсула · Неон Роза",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -167,7 +131,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_017",
-    "num": 17,
+    "num": 13,
     "name": "Капсула · Космос",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -176,7 +140,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_018",
-    "num": 18,
+    "num": 14,
     "name": "Капсула · Тёмная",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -185,7 +149,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_019",
-    "num": 19,
+    "num": 15,
     "name": "Капсула · Корона VIP",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -194,7 +158,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_020",
-    "num": 20,
+    "num": 16,
     "name": "Капсула · Пламя",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -203,7 +167,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "shablony1_021",
-    "num": 21,
+    "num": 17,
     "name": "Капсула · Кибер Маджента",
     "category": "shablony1",
     "categoryLabel": "Шаблоны",
@@ -212,7 +176,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_001",
-    "num": 1,
+    "num": 18,
     "name": "MAGNAT #001",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -221,7 +185,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_002",
-    "num": 2,
+    "num": 19,
     "name": "MAGNAT #002",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -230,7 +194,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_003",
-    "num": 3,
+    "num": 20,
     "name": "MAGNAT #003",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -239,7 +203,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_004",
-    "num": 4,
+    "num": 21,
     "name": "MAGNAT #004",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -248,7 +212,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_005",
-    "num": 5,
+    "num": 22,
     "name": "MAGNAT #005",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -257,7 +221,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_006",
-    "num": 6,
+    "num": 23,
     "name": "MAGNAT #006",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -266,7 +230,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_007",
-    "num": 7,
+    "num": 24,
     "name": "MAGNAT #007",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -275,7 +239,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_008",
-    "num": 8,
+    "num": 25,
     "name": "MAGNAT #008",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -284,7 +248,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_009",
-    "num": 9,
+    "num": 26,
     "name": "MAGNAT #009",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -293,7 +257,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_010",
-    "num": 10,
+    "num": 27,
     "name": "MAGNAT #010",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -302,7 +266,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_011",
-    "num": 11,
+    "num": 28,
     "name": "MAGNAT #011",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -311,7 +275,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_012",
-    "num": 12,
+    "num": 29,
     "name": "MAGNAT #012",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -320,7 +284,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_013",
-    "num": 13,
+    "num": 30,
     "name": "MAGNAT #013",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -329,7 +293,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_014",
-    "num": 14,
+    "num": 31,
     "name": "MAGNAT #014",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -338,7 +302,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_015",
-    "num": 15,
+    "num": 32,
     "name": "MAGNAT #015",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -347,7 +311,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_016",
-    "num": 16,
+    "num": 33,
     "name": "MAGNAT #016",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -356,7 +320,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_017",
-    "num": 17,
+    "num": 34,
     "name": "MAGNAT #017",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -365,7 +329,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_018",
-    "num": 18,
+    "num": 35,
     "name": "MAGNAT #018",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -374,7 +338,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_019",
-    "num": 19,
+    "num": 36,
     "name": "MAGNAT #019",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -383,7 +347,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_020",
-    "num": 20,
+    "num": 37,
     "name": "MAGNAT #020",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -392,7 +356,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_021",
-    "num": 21,
+    "num": 38,
     "name": "MAGNAT #021",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -401,7 +365,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_022",
-    "num": 22,
+    "num": 39,
     "name": "MAGNAT #022",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -410,7 +374,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_023",
-    "num": 23,
+    "num": 40,
     "name": "MAGNAT #023",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -419,7 +383,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_024",
-    "num": 24,
+    "num": 41,
     "name": "MAGNAT #024",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -428,7 +392,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_025",
-    "num": 25,
+    "num": 42,
     "name": "MAGNAT #025",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -437,7 +401,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_026",
-    "num": 26,
+    "num": 43,
     "name": "MAGNAT #026",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -446,7 +410,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_027",
-    "num": 27,
+    "num": 44,
     "name": "MAGNAT #027",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -455,7 +419,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_028",
-    "num": 28,
+    "num": 45,
     "name": "MAGNAT #028",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -464,7 +428,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_029",
-    "num": 29,
+    "num": 46,
     "name": "MAGNAT #029",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -473,7 +437,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_030",
-    "num": 30,
+    "num": 47,
     "name": "MAGNAT #030",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -482,7 +446,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_031",
-    "num": 31,
+    "num": 48,
     "name": "MAGNAT #031",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -491,7 +455,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_032",
-    "num": 32,
+    "num": 49,
     "name": "MAGNAT #032",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -500,7 +464,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_033",
-    "num": 33,
+    "num": 50,
     "name": "MAGNAT #033",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -509,7 +473,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_034",
-    "num": 34,
+    "num": 51,
     "name": "MAGNAT #034",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -518,7 +482,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_035",
-    "num": 35,
+    "num": 52,
     "name": "MAGNAT #035",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -527,7 +491,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_036",
-    "num": 36,
+    "num": 53,
     "name": "MAGNAT #036",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -536,7 +500,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_037",
-    "num": 37,
+    "num": 54,
     "name": "MAGNAT #037",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -545,7 +509,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_038",
-    "num": 38,
+    "num": 55,
     "name": "MAGNAT #038",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -554,7 +518,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_039",
-    "num": 39,
+    "num": 56,
     "name": "MAGNAT #039",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -563,7 +527,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_040",
-    "num": 40,
+    "num": 57,
     "name": "MAGNAT #040",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -572,7 +536,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_041",
-    "num": 41,
+    "num": 58,
     "name": "MAGNAT #041",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -581,7 +545,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_042",
-    "num": 42,
+    "num": 59,
     "name": "MAGNAT #042",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -590,7 +554,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_043",
-    "num": 43,
+    "num": 60,
     "name": "MAGNAT #043",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -599,7 +563,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_044",
-    "num": 44,
+    "num": 61,
     "name": "MAGNAT #044",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -608,7 +572,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_045",
-    "num": 45,
+    "num": 62,
     "name": "MAGNAT #045",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -617,7 +581,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_046",
-    "num": 46,
+    "num": 63,
     "name": "MAGNAT #046",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -626,7 +590,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_047",
-    "num": 47,
+    "num": 64,
     "name": "MAGNAT #047",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -635,7 +599,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_048",
-    "num": 48,
+    "num": 65,
     "name": "MAGNAT #048",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -644,7 +608,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_049",
-    "num": 49,
+    "num": 66,
     "name": "MAGNAT #049",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -653,7 +617,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_050",
-    "num": 50,
+    "num": 67,
     "name": "MAGNAT #050",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -662,7 +626,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_051",
-    "num": 51,
+    "num": 68,
     "name": "MAGNAT #051",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -671,7 +635,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_052",
-    "num": 52,
+    "num": 69,
     "name": "MAGNAT #052",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -680,7 +644,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_053",
-    "num": 53,
+    "num": 70,
     "name": "MAGNAT #053",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -689,7 +653,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_054",
-    "num": 54,
+    "num": 71,
     "name": "MAGNAT #054",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -698,7 +662,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_055",
-    "num": 55,
+    "num": 72,
     "name": "MAGNAT #055",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -707,7 +671,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_056",
-    "num": 56,
+    "num": 73,
     "name": "MAGNAT #056",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -716,7 +680,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_057",
-    "num": 57,
+    "num": 74,
     "name": "MAGNAT #057",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -725,7 +689,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_058",
-    "num": 58,
+    "num": 75,
     "name": "MAGNAT #058",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -734,7 +698,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_059",
-    "num": 59,
+    "num": 76,
     "name": "MAGNAT #059",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -743,7 +707,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_060",
-    "num": 60,
+    "num": 77,
     "name": "MAGNAT #060",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -752,7 +716,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_061",
-    "num": 61,
+    "num": 78,
     "name": "MAGNAT #061",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -761,7 +725,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_062",
-    "num": 62,
+    "num": 79,
     "name": "MAGNAT #062",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -770,7 +734,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_063",
-    "num": 63,
+    "num": 80,
     "name": "MAGNAT #063",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -779,7 +743,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_064",
-    "num": 64,
+    "num": 81,
     "name": "MAGNAT #064",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -788,7 +752,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_065",
-    "num": 65,
+    "num": 82,
     "name": "MAGNAT #065",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -797,7 +761,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_066",
-    "num": 66,
+    "num": 83,
     "name": "MAGNAT #066",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -806,7 +770,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_067",
-    "num": 67,
+    "num": 84,
     "name": "MAGNAT #067",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -815,7 +779,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_068",
-    "num": 68,
+    "num": 85,
     "name": "MAGNAT #068",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -824,7 +788,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_069",
-    "num": 69,
+    "num": 86,
     "name": "MAGNAT #069",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -833,7 +797,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_070",
-    "num": 70,
+    "num": 87,
     "name": "MAGNAT #070",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -842,7 +806,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_071",
-    "num": 71,
+    "num": 88,
     "name": "MAGNAT #071",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -851,7 +815,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_072",
-    "num": 72,
+    "num": 89,
     "name": "MAGNAT #072",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -860,7 +824,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_073",
-    "num": 73,
+    "num": 90,
     "name": "MAGNAT #073",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -869,7 +833,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_074",
-    "num": 74,
+    "num": 91,
     "name": "MAGNAT #074",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -878,7 +842,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_075",
-    "num": 75,
+    "num": 92,
     "name": "MAGNAT #075",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -887,7 +851,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_076",
-    "num": 76,
+    "num": 93,
     "name": "MAGNAT #076",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -896,7 +860,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_077",
-    "num": 77,
+    "num": 94,
     "name": "MAGNAT #077",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -905,7 +869,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_078",
-    "num": 78,
+    "num": 95,
     "name": "MAGNAT #078",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -914,7 +878,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_079",
-    "num": 79,
+    "num": 96,
     "name": "MAGNAT #079",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -923,7 +887,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_080",
-    "num": 80,
+    "num": 97,
     "name": "MAGNAT #080",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -932,7 +896,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_081",
-    "num": 81,
+    "num": 98,
     "name": "MAGNAT #081",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -941,7 +905,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_082",
-    "num": 82,
+    "num": 99,
     "name": "MAGNAT #082",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -950,7 +914,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_083",
-    "num": 83,
+    "num": 100,
     "name": "MAGNAT #083",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -959,7 +923,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_084",
-    "num": 84,
+    "num": 101,
     "name": "MAGNAT #084",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -968,7 +932,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_085",
-    "num": 85,
+    "num": 102,
     "name": "MAGNAT #085",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -977,7 +941,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_086",
-    "num": 86,
+    "num": 103,
     "name": "MAGNAT #086",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -986,7 +950,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_087",
-    "num": 87,
+    "num": 104,
     "name": "MAGNAT #087",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -995,7 +959,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_088",
-    "num": 88,
+    "num": 105,
     "name": "MAGNAT #088",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1004,7 +968,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_089",
-    "num": 89,
+    "num": 106,
     "name": "MAGNAT #089",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1013,7 +977,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_090",
-    "num": 90,
+    "num": 107,
     "name": "MAGNAT #090",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1022,7 +986,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_091",
-    "num": 91,
+    "num": 108,
     "name": "MAGNAT #091",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1031,7 +995,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_092",
-    "num": 92,
+    "num": 109,
     "name": "MAGNAT #092",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1040,7 +1004,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_093",
-    "num": 93,
+    "num": 110,
     "name": "MAGNAT #093",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1049,7 +1013,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_094",
-    "num": 94,
+    "num": 111,
     "name": "MAGNAT #094",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1058,7 +1022,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_095",
-    "num": 95,
+    "num": 112,
     "name": "MAGNAT #095",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1067,7 +1031,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_096",
-    "num": 96,
+    "num": 113,
     "name": "MAGNAT #096",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1076,7 +1040,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_097",
-    "num": 97,
+    "num": 114,
     "name": "MAGNAT #097",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1085,7 +1049,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_098",
-    "num": 98,
+    "num": 115,
     "name": "MAGNAT #098",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1094,7 +1058,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_099",
-    "num": 99,
+    "num": 116,
     "name": "MAGNAT #099",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1103,7 +1067,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_100",
-    "num": 100,
+    "num": 117,
     "name": "MAGNAT #100",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1112,7 +1076,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_101",
-    "num": 101,
+    "num": 118,
     "name": "MAGNAT #101",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1121,7 +1085,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_102",
-    "num": 102,
+    "num": 119,
     "name": "MAGNAT #102",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1130,7 +1094,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_103",
-    "num": 103,
+    "num": 120,
     "name": "MAGNAT #103",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1139,7 +1103,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_104",
-    "num": 104,
+    "num": 121,
     "name": "MAGNAT #104",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1148,7 +1112,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_105",
-    "num": 105,
+    "num": 122,
     "name": "MAGNAT #105",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1157,7 +1121,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_106",
-    "num": 106,
+    "num": 123,
     "name": "MAGNAT #106",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1166,7 +1130,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_107",
-    "num": 107,
+    "num": 124,
     "name": "MAGNAT #107",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1175,7 +1139,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_108",
-    "num": 108,
+    "num": 125,
     "name": "MAGNAT #108",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1184,7 +1148,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_109",
-    "num": 109,
+    "num": 126,
     "name": "MAGNAT #109",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1193,7 +1157,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_110",
-    "num": 110,
+    "num": 127,
     "name": "MAGNAT #110",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1202,7 +1166,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_111",
-    "num": 111,
+    "num": 128,
     "name": "MAGNAT #111",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1211,7 +1175,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_112",
-    "num": 112,
+    "num": 129,
     "name": "MAGNAT #112",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1220,7 +1184,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_113",
-    "num": 113,
+    "num": 130,
     "name": "MAGNAT #113",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1229,7 +1193,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_114",
-    "num": 114,
+    "num": 131,
     "name": "MAGNAT #114",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1238,7 +1202,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_115",
-    "num": 115,
+    "num": 132,
     "name": "MAGNAT #115",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1247,7 +1211,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_116",
-    "num": 116,
+    "num": 133,
     "name": "MAGNAT #116",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1256,7 +1220,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_117",
-    "num": 117,
+    "num": 134,
     "name": "MAGNAT #117",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1265,7 +1229,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_118",
-    "num": 118,
+    "num": 135,
     "name": "MAGNAT #118",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1274,7 +1238,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_119",
-    "num": 119,
+    "num": 136,
     "name": "MAGNAT #119",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1283,7 +1247,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_120",
-    "num": 120,
+    "num": 137,
     "name": "MAGNAT #120",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1292,7 +1256,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_121",
-    "num": 121,
+    "num": 138,
     "name": "MAGNAT #121",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1301,7 +1265,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_122",
-    "num": 122,
+    "num": 139,
     "name": "MAGNAT #122",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1310,7 +1274,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_123",
-    "num": 123,
+    "num": 140,
     "name": "MAGNAT #123",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1319,7 +1283,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_124",
-    "num": 124,
+    "num": 141,
     "name": "MAGNAT #124",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1328,7 +1292,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_125",
-    "num": 125,
+    "num": 142,
     "name": "MAGNAT #125",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1337,7 +1301,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_126",
-    "num": 126,
+    "num": 143,
     "name": "MAGNAT #126",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1346,7 +1310,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_127",
-    "num": 127,
+    "num": 144,
     "name": "MAGNAT #127",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1355,7 +1319,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_128",
-    "num": 128,
+    "num": 145,
     "name": "MAGNAT #128",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1364,7 +1328,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_129",
-    "num": 129,
+    "num": 146,
     "name": "MAGNAT #129",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1373,7 +1337,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_130",
-    "num": 130,
+    "num": 147,
     "name": "MAGNAT #130",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1382,7 +1346,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_131",
-    "num": 131,
+    "num": 148,
     "name": "MAGNAT #131",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1391,7 +1355,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_132",
-    "num": 132,
+    "num": 149,
     "name": "MAGNAT #132",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1400,7 +1364,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_133",
-    "num": 133,
+    "num": 150,
     "name": "MAGNAT #133",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1409,7 +1373,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_134",
-    "num": 134,
+    "num": 151,
     "name": "MAGNAT #134",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1418,7 +1382,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_135",
-    "num": 135,
+    "num": 152,
     "name": "MAGNAT #135",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1427,7 +1391,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_136",
-    "num": 136,
+    "num": 153,
     "name": "MAGNAT #136",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1436,7 +1400,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_137",
-    "num": 137,
+    "num": 154,
     "name": "MAGNAT #137",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1445,7 +1409,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_138",
-    "num": 138,
+    "num": 155,
     "name": "MAGNAT #138",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1454,7 +1418,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_139",
-    "num": 139,
+    "num": 156,
     "name": "MAGNAT #139",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1463,7 +1427,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_140",
-    "num": 140,
+    "num": 157,
     "name": "MAGNAT #140",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1472,7 +1436,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_141",
-    "num": 141,
+    "num": 158,
     "name": "MAGNAT #141",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1481,7 +1445,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_142",
-    "num": 142,
+    "num": 159,
     "name": "MAGNAT #142",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1490,7 +1454,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_143",
-    "num": 143,
+    "num": 160,
     "name": "MAGNAT #143",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1499,7 +1463,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "classic_144",
-    "num": 144,
+    "num": 161,
     "name": "MAGNAT #144",
     "category": "classic",
     "categoryLabel": "Классика",
@@ -1508,7 +1472,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_001",
-    "num": 1,
+    "num": 162,
     "name": "MAGNAT #001",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1517,7 +1481,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_002",
-    "num": 2,
+    "num": 163,
     "name": "MAGNAT #002",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1526,7 +1490,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_003",
-    "num": 3,
+    "num": 164,
     "name": "MAGNAT #003",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1535,7 +1499,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_004",
-    "num": 4,
+    "num": 165,
     "name": "MAGNAT #004",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1544,7 +1508,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_005",
-    "num": 5,
+    "num": 166,
     "name": "MAGNAT #005",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1553,7 +1517,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_006",
-    "num": 6,
+    "num": 167,
     "name": "MAGNAT #006",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1562,7 +1526,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_007",
-    "num": 7,
+    "num": 168,
     "name": "MAGNAT #007",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1571,7 +1535,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_008",
-    "num": 8,
+    "num": 169,
     "name": "MAGNAT #008",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1580,7 +1544,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_009",
-    "num": 9,
+    "num": 170,
     "name": "MAGNAT #009",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1589,7 +1553,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_010",
-    "num": 10,
+    "num": 171,
     "name": "MAGNAT #010",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1598,7 +1562,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_011",
-    "num": 11,
+    "num": 172,
     "name": "MAGNAT #011",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1607,7 +1571,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_012",
-    "num": 12,
+    "num": 173,
     "name": "MAGNAT #012",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1616,7 +1580,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_013",
-    "num": 13,
+    "num": 174,
     "name": "MAGNAT #013",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1625,7 +1589,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_014",
-    "num": 14,
+    "num": 175,
     "name": "MAGNAT #014",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1634,7 +1598,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_015",
-    "num": 15,
+    "num": 176,
     "name": "MAGNAT #015",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1643,7 +1607,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_016",
-    "num": 16,
+    "num": 177,
     "name": "MAGNAT #016",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1652,7 +1616,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_017",
-    "num": 17,
+    "num": 178,
     "name": "MAGNAT #017",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1661,7 +1625,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_018",
-    "num": 18,
+    "num": 179,
     "name": "MAGNAT #018",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1670,7 +1634,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_019",
-    "num": 19,
+    "num": 180,
     "name": "MAGNAT #019",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1679,7 +1643,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_020",
-    "num": 20,
+    "num": 181,
     "name": "MAGNAT #020",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1688,7 +1652,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_021",
-    "num": 21,
+    "num": 182,
     "name": "MAGNAT #021",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1697,7 +1661,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_022",
-    "num": 22,
+    "num": 183,
     "name": "MAGNAT #022",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1706,7 +1670,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_023",
-    "num": 23,
+    "num": 184,
     "name": "MAGNAT #023",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1715,7 +1679,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_024",
-    "num": 24,
+    "num": 185,
     "name": "MAGNAT #024",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1724,7 +1688,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_025",
-    "num": 25,
+    "num": 186,
     "name": "MAGNAT #025",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1733,7 +1697,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_026",
-    "num": 26,
+    "num": 187,
     "name": "MAGNAT #026",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1742,7 +1706,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_027",
-    "num": 27,
+    "num": 188,
     "name": "MAGNAT #027",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1751,7 +1715,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_028",
-    "num": 28,
+    "num": 189,
     "name": "MAGNAT #028",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1760,7 +1724,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_029",
-    "num": 29,
+    "num": 190,
     "name": "MAGNAT #029",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1769,7 +1733,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_030",
-    "num": 30,
+    "num": 191,
     "name": "MAGNAT #030",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1778,7 +1742,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_031",
-    "num": 31,
+    "num": 192,
     "name": "MAGNAT #031",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1787,7 +1751,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_032",
-    "num": 32,
+    "num": 193,
     "name": "MAGNAT #032",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1796,7 +1760,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_033",
-    "num": 33,
+    "num": 194,
     "name": "MAGNAT #033",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1805,7 +1769,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_034",
-    "num": 34,
+    "num": 195,
     "name": "MAGNAT #034",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1814,7 +1778,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_035",
-    "num": 35,
+    "num": 196,
     "name": "MAGNAT #035",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1823,7 +1787,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_036",
-    "num": 36,
+    "num": 197,
     "name": "MAGNAT #036",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1832,7 +1796,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_037",
-    "num": 37,
+    "num": 198,
     "name": "MAGNAT #037",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1841,7 +1805,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_038",
-    "num": 38,
+    "num": 199,
     "name": "MAGNAT #038",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1850,7 +1814,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_039",
-    "num": 39,
+    "num": 200,
     "name": "MAGNAT #039",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1859,7 +1823,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_040",
-    "num": 40,
+    "num": 201,
     "name": "MAGNAT #040",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1868,7 +1832,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_041",
-    "num": 41,
+    "num": 202,
     "name": "MAGNAT #041",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1877,7 +1841,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_042",
-    "num": 42,
+    "num": 203,
     "name": "MAGNAT #042",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1886,7 +1850,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_043",
-    "num": 43,
+    "num": 204,
     "name": "MAGNAT #043",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1895,7 +1859,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_044",
-    "num": 44,
+    "num": 205,
     "name": "MAGNAT #044",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1904,7 +1868,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_045",
-    "num": 45,
+    "num": 206,
     "name": "MAGNAT #045",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1913,7 +1877,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_046",
-    "num": 46,
+    "num": 207,
     "name": "MAGNAT #046",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1922,7 +1886,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_047",
-    "num": 47,
+    "num": 208,
     "name": "MAGNAT #047",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1931,7 +1895,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_048",
-    "num": 48,
+    "num": 209,
     "name": "MAGNAT #048",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1940,7 +1904,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_049",
-    "num": 49,
+    "num": 210,
     "name": "MAGNAT #049",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1949,7 +1913,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_050",
-    "num": 50,
+    "num": 211,
     "name": "MAGNAT #050",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1958,7 +1922,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_051",
-    "num": 51,
+    "num": 212,
     "name": "MAGNAT #051",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1967,7 +1931,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_052",
-    "num": 52,
+    "num": 213,
     "name": "MAGNAT #052",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1976,7 +1940,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_053",
-    "num": 53,
+    "num": 214,
     "name": "MAGNAT #053",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1985,7 +1949,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_054",
-    "num": 54,
+    "num": 215,
     "name": "MAGNAT #054",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -1994,7 +1958,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_055",
-    "num": 55,
+    "num": 216,
     "name": "MAGNAT #055",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -2003,7 +1967,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_056",
-    "num": 56,
+    "num": 217,
     "name": "MAGNAT #056",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -2012,7 +1976,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_057",
-    "num": 57,
+    "num": 218,
     "name": "MAGNAT #057",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -2021,7 +1985,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "characters_058",
-    "num": 58,
+    "num": 219,
     "name": "MAGNAT #058",
     "category": "characters",
     "categoryLabel": "Персонажи",
@@ -2030,7 +1994,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_001",
-    "num": 1,
+    "num": 220,
     "name": "MAGNAT #001",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2039,7 +2003,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_002",
-    "num": 2,
+    "num": 221,
     "name": "MAGNAT #002",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2048,7 +2012,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_003",
-    "num": 3,
+    "num": 222,
     "name": "MAGNAT #003",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2057,7 +2021,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_004",
-    "num": 4,
+    "num": 223,
     "name": "MAGNAT #004",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2066,7 +2030,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_005",
-    "num": 5,
+    "num": 224,
     "name": "MAGNAT #005",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2075,7 +2039,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_006",
-    "num": 6,
+    "num": 225,
     "name": "MAGNAT #006",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2084,7 +2048,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_007",
-    "num": 7,
+    "num": 226,
     "name": "MAGNAT #007",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2093,7 +2057,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_008",
-    "num": 8,
+    "num": 227,
     "name": "MAGNAT #008",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2102,7 +2066,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_009",
-    "num": 9,
+    "num": 228,
     "name": "MAGNAT #009",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2111,7 +2075,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_010",
-    "num": 10,
+    "num": 229,
     "name": "MAGNAT #010",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2120,7 +2084,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_011",
-    "num": 11,
+    "num": 230,
     "name": "MAGNAT #011",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2129,7 +2093,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_012",
-    "num": 12,
+    "num": 231,
     "name": "MAGNAT #012",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2138,7 +2102,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_013",
-    "num": 13,
+    "num": 232,
     "name": "MAGNAT #013",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2147,7 +2111,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_014",
-    "num": 14,
+    "num": 233,
     "name": "MAGNAT #014",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2156,7 +2120,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_015",
-    "num": 15,
+    "num": 234,
     "name": "MAGNAT #015",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2165,7 +2129,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_016",
-    "num": 16,
+    "num": 235,
     "name": "MAGNAT #016",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2174,7 +2138,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_017",
-    "num": 17,
+    "num": 236,
     "name": "MAGNAT #017",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2183,7 +2147,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_018",
-    "num": 18,
+    "num": 237,
     "name": "MAGNAT #018",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2192,7 +2156,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_019",
-    "num": 19,
+    "num": 238,
     "name": "MAGNAT #019",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2201,7 +2165,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_020",
-    "num": 20,
+    "num": 239,
     "name": "MAGNAT #020",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2210,7 +2174,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_021",
-    "num": 21,
+    "num": 240,
     "name": "MAGNAT #021",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2219,7 +2183,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_022",
-    "num": 22,
+    "num": 241,
     "name": "MAGNAT #022",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2228,7 +2192,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_023",
-    "num": 23,
+    "num": 242,
     "name": "MAGNAT #023",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2237,7 +2201,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_024",
-    "num": 24,
+    "num": 243,
     "name": "MAGNAT #024",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2246,7 +2210,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_025",
-    "num": 25,
+    "num": 244,
     "name": "MAGNAT #025",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2255,7 +2219,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_026",
-    "num": 26,
+    "num": 245,
     "name": "MAGNAT #026",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2264,7 +2228,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_027",
-    "num": 27,
+    "num": 246,
     "name": "MAGNAT #027",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2273,7 +2237,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_028",
-    "num": 28,
+    "num": 247,
     "name": "MAGNAT #028",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2282,7 +2246,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_029",
-    "num": 29,
+    "num": 248,
     "name": "MAGNAT #029",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2291,7 +2255,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_030",
-    "num": 30,
+    "num": 249,
     "name": "MAGNAT #030",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2300,7 +2264,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_031",
-    "num": 31,
+    "num": 250,
     "name": "MAGNAT #031",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2309,7 +2273,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_032",
-    "num": 32,
+    "num": 251,
     "name": "MAGNAT #032",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2318,7 +2282,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_033",
-    "num": 33,
+    "num": 252,
     "name": "MAGNAT #033",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2327,7 +2291,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "gifts_034",
-    "num": 34,
+    "num": 253,
     "name": "MAGNAT #034",
     "category": "gifts",
     "categoryLabel": "Подарки",
@@ -2336,7 +2300,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_001",
-    "num": 1,
+    "num": 254,
     "name": "MAGNAT #001",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2345,7 +2309,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_002",
-    "num": 2,
+    "num": 255,
     "name": "MAGNAT #002",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2354,7 +2318,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_003",
-    "num": 3,
+    "num": 256,
     "name": "MAGNAT #003",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2363,7 +2327,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_004",
-    "num": 4,
+    "num": 257,
     "name": "MAGNAT #004",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2372,7 +2336,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_005",
-    "num": 5,
+    "num": 258,
     "name": "MAGNAT #005",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2381,7 +2345,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_006",
-    "num": 6,
+    "num": 259,
     "name": "MAGNAT #006",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2390,7 +2354,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_007",
-    "num": 7,
+    "num": 260,
     "name": "MAGNAT #007",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2399,7 +2363,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_008",
-    "num": 8,
+    "num": 261,
     "name": "MAGNAT #008",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2408,7 +2372,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_009",
-    "num": 9,
+    "num": 262,
     "name": "MAGNAT #009",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2417,7 +2381,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_010",
-    "num": 10,
+    "num": 263,
     "name": "MAGNAT #010",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2426,7 +2390,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_011",
-    "num": 11,
+    "num": 264,
     "name": "MAGNAT #011",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2435,7 +2399,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_012",
-    "num": 12,
+    "num": 265,
     "name": "MAGNAT #012",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2444,7 +2408,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_013",
-    "num": 13,
+    "num": 266,
     "name": "MAGNAT #013",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2453,7 +2417,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_014",
-    "num": 14,
+    "num": 267,
     "name": "MAGNAT #014",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2462,7 +2426,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_015",
-    "num": 15,
+    "num": 268,
     "name": "MAGNAT #015",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2471,7 +2435,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_016",
-    "num": 16,
+    "num": 269,
     "name": "MAGNAT #016",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2480,7 +2444,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_017",
-    "num": 17,
+    "num": 270,
     "name": "MAGNAT #017",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2489,7 +2453,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_018",
-    "num": 18,
+    "num": 271,
     "name": "MAGNAT #018",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2498,7 +2462,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_019",
-    "num": 19,
+    "num": 272,
     "name": "MAGNAT #019",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2507,7 +2471,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_020",
-    "num": 20,
+    "num": 273,
     "name": "MAGNAT #020",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2516,7 +2480,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_021",
-    "num": 21,
+    "num": 274,
     "name": "MAGNAT #021",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2525,7 +2489,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_022",
-    "num": 22,
+    "num": 275,
     "name": "MAGNAT #022",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2534,7 +2498,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_023",
-    "num": 23,
+    "num": 276,
     "name": "MAGNAT #023",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2543,7 +2507,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_024",
-    "num": 24,
+    "num": 277,
     "name": "MAGNAT #024",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2552,7 +2516,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_025",
-    "num": 25,
+    "num": 278,
     "name": "MAGNAT #025",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2561,7 +2525,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_026",
-    "num": 26,
+    "num": 279,
     "name": "MAGNAT #026",
     "category": "love",
     "categoryLabel": "Любовь",
@@ -2570,7 +2534,7 @@ export const CATALOG: CatalogItem[] = [
   },
   {
     "id": "love_027",
-    "num": 27,
+    "num": 280,
     "name": "MAGNAT #027",
     "category": "love",
     "categoryLabel": "Любовь",

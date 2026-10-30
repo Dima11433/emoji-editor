@@ -341,13 +341,10 @@ export default function App() {
     return loaded;
   }, []);
 
-  // Preload Montserrat Black + initial 3-tile banner trio (or first sticker) on startup
+  // Preload Montserrat Black + initial template on startup
   useEffect(() => {
     ensureFont('montserrat').catch(() => {});
-    const bannerTrio = CATALOG.filter((c) =>
-      ['shablony1_012', 'shablony1_013', 'shablony1_014'].includes(c.id),
-    );
-    const startupTargets = bannerTrio.length === 3 ? bannerTrio : CATALOG.slice(0, 1);
+    const startupTargets = CATALOG.slice(0, 1);
     if (!startupTargets.length) return;
 
     let cancelled = false;

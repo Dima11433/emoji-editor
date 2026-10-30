@@ -25,14 +25,14 @@ export const SUB_CHANGE_EVENT = 'magnat:sub_changed';
 
 /** Free tier allowed template IDs */
 export const FREE_TEMPLATE_IDS = new Set<string>([
-  'shablony1_012', // Баннер 1/3
-  'shablony1_013', // Баннер 2/3
-  'shablony1_014', // Баннер 3/3
   'shablony1_001', // Шаблон Ракета
   'shablony1_002', // Шаблон Корона
   'shablony1_003', // Шаблон Огонь
   'shablony1_004', // Шаблон Ссылка
   'shablony1_005', // Шаблон Карта
+  'shablony1_006', // Шаблон Алмаз
+  'shablony1_007', // Шаблон Звезда
+  'shablony1_008', // Шаблон Чат
   'classic_001',
   'classic_002',
   'classic_003',

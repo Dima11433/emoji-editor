@@ -45,22 +45,18 @@ const loadPublicTgs = (relFile: string) => {
   return parseSticker(new Uint8Array(readFileSync(full)));
 };
 
-describe('Full catalog (21 shablony1 templates + 263 MAGNAT = 284 emojis)', () => {
-  it('contains 21 shablony1 templates and 263 MAGNAT emojis (284 total)', () => {
-    expect(CATALOG).toHaveLength(284);
+describe('Full catalog (17 shablony1 templates + 263 MAGNAT = 280 emojis)', () => {
+  it('contains 17 shablony1 templates and 263 MAGNAT emojis (280 total)', () => {
+    expect(CATALOG).toHaveLength(280);
     const shablony = CATALOG.filter((i) => i.category === 'shablony1');
     const magnat = CATALOG.filter((i) => i.category !== 'shablony1');
-    expect(shablony).toHaveLength(21);
+    expect(shablony).toHaveLength(17);
     expect(magnat).toHaveLength(263);
     expect(magnat.every((item) => item.name.startsWith('MAGNAT #'))).toBe(true);
   });
 
-  it('parses all 284 .tgs files, verifies Telegram canvas/size/duration limits, and checks brand slots', () => {
+  it('parses all 280 .tgs files, verifies Telegram canvas/size/duration limits, and checks brand slots', () => {
     const builtInShablonyIds = new Set([
-      'shablony1_012',
-      'shablony1_013',
-      'shablony1_014',
-      'shablony1_015',
       'shablony1_016',
       'shablony1_017',
       'shablony1_018',
@@ -88,94 +84,11 @@ describe('Full catalog (21 shablony1 templates + 263 MAGNAT = 284 emojis)', () =
   });
 });
 
-describe('Custom templates (shablony1): 3-tile banner, 3D XXX badge, overlay branding & 3D themes', () => {
-  it('replaces XXX SHOP seamlessly across all 3 wide banner tiles (012..014) with undistorted aspect compensation', () => {
-    const bannerFiles = [
-      'templates/shablony1/012.tgs',
-      'templates/shablony1/013.tgs',
-      'templates/shablony1/014.tgs',
-    ];
-    const docs = bannerFiles.map(loadPublicTgs);
-    for (const d of docs) {
-      const info = readBrandSlotInfo(d);
-      expect(info.count).toBe(1);
-      expect(info.isInjected).toBe(false);
-      expect(info.origText).toBe('XXX SHOP');
-      expect(info.options.text).toBe('XXX SHOP');
-    }
-
-    // Simultaneously apply a new brand across all 3 banner tiles (multi-edit workflow)
-    const verifiedLogo = BUILTIN_LOGOS.find((l) => l.id === 'preset_verified')!;
-    for (const d of docs) {
-      applyBrandSlot(
-        d,
-        {
-          ...DEFAULT_BRAND_OPTIONS,
-          mode: 'logo+text',
-          logo: verifiedLogo,
-          text: 'MAGNAT SHOP',
-          useOriginalGlyphs: false,
-          fillHex: '#ffd54f',
-        },
-        montserrat,
-      );
-      const gz = toTgsAutoFit(d);
-      expect(gz.byteLength).toBeLessThanOrEqual(MAX_BYTES);
-      expect(checkTelegram(d, gz.byteLength).filter((c) => c.status === 'error')).toEqual([]);
-    }
-
-    // All 3 tiles must produce identical banner-space slot geometry for zero-seam stitching
-    const slotJson0 = JSON.stringify(findBrandSlots(docs[0])[0].it);
-    expect(JSON.stringify(findBrandSlots(docs[1])[0].it)).toBe(slotJson0);
-    expect(JSON.stringify(findBrandSlots(docs[2])[0].it)).toBe(slotJson0);
-
-    // Reset restores original XXX SHOP 9 glyph subpaths
-    for (const d of docs) {
-      resetBrandSlot(d);
-      expect(findBrandSlots(d)[0].it!.filter((x) => x.ty === 'sh')).toHaveLength(9);
-    }
-  });
-
-  it('updates both front glyphs and 3D extruded shadow on 015.tgs (Значок 3D · XXX) and resets cleanly', () => {
-    const doc = loadPublicTgs('templates/shablony1/015.tgs');
-    const info = readBrandSlotInfo(doc);
-    expect(info.count).toBe(1);
-    expect(info.origText).toBe('XXX');
-    expect(info.options.strokeHex).toBe('#cdd4de');
-
-    applyBrandSlot(
-      doc,
-      {
-        ...info.options,
-        text: 'VIP',
-        useOriginalGlyphs: false,
-        fillHex: '#12141a',
-        strokeHex: '#ffd54f',
-      },
-      montserrat,
-    );
-
-    const outerIt = doc.layers[1].shapes![0].it!;
-    const shadowGr = outerIt.find((x) => x.ty === 'gr' && x.nm === 'tier_extrude_shadow')!;
-    expect(shadowGr).toBeDefined();
-    expect(shadowGr.it!.filter((x) => x.ty === 'sh').length).toBeGreaterThanOrEqual(3);
-
-    // 3D theme recolors the badge & extrude shadow while keeping custom brand slot stroke
-    applyColorTheme(doc, 'gold', { skipBrandSlot: true });
-    expect(tgsSize(doc)).toBeLessThanOrEqual(MAX_BYTES);
-
-    resetBrandSlot(doc);
-    expect(findBrandSlots(doc)[0].it!.filter((x) => x.ty === 'sh')).toHaveLength(3);
-    expect(shadowGr.it!.filter((x) => x.ty === 'sh')).toHaveLength(3);
-  });
+describe('Custom templates (shablony1): overlay branding & 3D themes', () => {
 
   it('injects brand badge (text, logo, logo+text, gold plate, custom position/animation) into all 11 unbranded shablony1 templates under 64 KB and resets cleanly', () => {
     const crownLogo = BUILTIN_LOGOS.find((l) => l.id === 'preset_crown')!;
     const builtInShablony = [
-      'shablony1_012',
-      'shablony1_013',
-      'shablony1_014',
-      'shablony1_015',
       'shablony1_016',
       'shablony1_017',
       'shablony1_018',

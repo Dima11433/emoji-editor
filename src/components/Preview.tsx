@@ -42,11 +42,7 @@ const BACKDROPS: { id: Backdrop; label: string }[] = [
 
 const SPEEDS = [0.5, 1, 1.5, 2] as const;
 
-const BANNER_ORDER: Record<string, number> = {
-  shablony1_012: 1,
-  shablony1_013: 2,
-  shablony1_014: 3,
-};
+const BANNER_ORDER: Record<string, number> = {};
 
 interface SeekSignal {
   tick: number;

@@ -592,8 +592,7 @@ function ensureSnapshot(gr: ShapeItem, parentInjected = false): BrandSlotSnapsho
 
 function detectOrigText(doc: LottieDoc): string {
   const nm = typeof doc.nm === 'string' ? doc.nm : '';
-  if (/баннер/i.test(nm)) return 'XXX SHOP';
-  if (/xxx/i.test(nm)) return 'XXX';
+  if (/баннер/i.test(nm)) return 'BANNER';
   const slots = findBrandSlots(doc);
   if (slots.some((s) => s.nm === 'TextGroup' || (s._brandSlot as BrandSlotSnapshot)?.role === 'center')) {
     return 'platega';
