@@ -18,30 +18,30 @@ const WEB_APP_URL = process.env.WEB_APP_URL || 'https://emoji-editor-ten.vercel.
 const PORT = process.env.PORT || 3200;
 
 // Premium Custom Emoji Helper (HTML mode)
-// Telegram clients render animated custom emoji if supported; fallbacks to unicode
+// Uses verified crown emoji with clean Unicode fallback for 100% reliable delivery
 const P = {
   crown: '<tg-emoji emoji-id="5368324170671202286">👑</tg-emoji>',
-  star: '<tg-emoji emoji-id="5429402927891782298">⭐️</tg-emoji>',
-  sparkles: '<tg-emoji emoji-id="5445007421887258384">✨</tg-emoji>',
-  fire: '<tg-emoji emoji-id="5465465442416462748">🔥</tg-emoji>',
-  palette: '<tg-emoji emoji-id="5382152865911417539">🎨</tg-emoji>',
-  rocket: '<tg-emoji emoji-id="5357284687255447472">🚀</tg-emoji>',
-  diamond: '<tg-emoji emoji-id="5463056023275685857">💎</tg-emoji>',
-  lightning: '<tg-emoji emoji-id="5445284980977864359">⚡️</tg-emoji>',
-  chart: '<tg-emoji emoji-id="5472164874889470949">📊</tg-emoji>',
-  users: '<tg-emoji emoji-id="5370845348308728956">👥</tg-emoji>',
-  gift: '<tg-emoji emoji-id="5449762354784118944">🎁</tg-emoji>',
-  gear: '<tg-emoji emoji-id="5451646226975171764">⚙️</tg-emoji>',
-  broadcast: '<tg-emoji emoji-id="5472164874889470949">📢</tg-emoji>',
-  shield: '<tg-emoji emoji-id="5445007421887258384">🛡</tg-emoji>',
-  check: '<tg-emoji emoji-id="5445007421887258384">✅</tg-emoji>',
+  star: '⭐️',
+  sparkles: '✨',
+  fire: '🔥',
+  palette: '🎨',
+  rocket: '🚀',
+  diamond: '💎',
+  lightning: '⚡️',
+  chart: '📊',
+  users: '👥',
+  gift: '🎁',
+  gear: '⚙️',
+  broadcast: '📢',
+  shield: '🛡',
+  check: '✅',
 };
 
 // State store for admin interactive prompts (find user, broadcast message, etc.)
 const adminSessions = {};
 
 /**
- * Call Telegram Bot API
+ * Call Telegram Bot API with automatic recovery for entity/formatting errors
  */
 function api(method, data = {}) {
   return new Promise((resolve, reject) => {
@@ -58,9 +58,31 @@ function api(method, data = {}) {
       (res) => {
         let body = '';
         res.on('data', (chunk) => (body += chunk));
-        res.on('end', () => {
+        res.on('end', async () => {
           try {
             const parsed = JSON.parse(body);
+            if (!parsed.ok) {
+              console.warn(`[Telegram API Error] ${method}: ${parsed.description}`);
+              // Fallback: If Telegram complains about DOCUMENT_INVALID or entity parsing, strip tg-emoji
+              if (
+                data.text &&
+                (data.text.includes('<tg-emoji') || data.parse_mode === 'HTML') &&
+                (parsed.description.includes('DOCUMENT_INVALID') ||
+                  parsed.description.includes("can't parse entities"))
+              ) {
+                console.warn(`[Fallback] Retrying ${method} without custom emoji tags...`);
+                const cleanData = { ...data };
+                cleanData.text = cleanData.text
+                  .replace(/<tg-emoji[^>]*>/g, '')
+                  .replace(/<\/tg-emoji>/g, '');
+                try {
+                  const retryRes = await api(method, cleanData);
+                  return resolve(retryRes);
+                } catch (err) {
+                  return resolve(parsed);
+                }
+              }
+            }
             resolve(parsed);
           } catch (e) {
             reject(new Error(`Invalid JSON: ${body}`));
@@ -209,6 +231,7 @@ async function handleUpdate(update) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const text = (msg.text || '').trim();
+  console.log(`[BOT MSG] From ${userId} (@${msg.from.username || msg.from.first_name || ''}): "${text}"`);
 
   // Track and register user in database
   const user = db.upsertUser(msg.from);
@@ -552,10 +575,11 @@ async function sendStarsInvoice(chatId, planType = 'pro') {
  * Handle callback queries (including full Admin Panel navigation)
  */
 async function handleCallback(cb) {
-  const chatId = cb.message.chat.id;
-  const messageId = cb.message.message_id;
-  const userId = cb.from.id;
+  const chatId = cb.message?.chat?.id;
+  const messageId = cb.message?.message_id;
+  const userId = cb.from?.id;
   const data = cb.data;
+  console.log(`[BOT CALLBACK] From ${userId}: "${data}"`);
 
   // Answer callback right away to stop spinner
   await api('answerCallbackQuery', { callback_query_id: cb.id }).catch(() => {});
