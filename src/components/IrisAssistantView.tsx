@@ -17,6 +17,9 @@ import {
   Upload,
   Wand2,
   X,
+  Plus,
+  PackagePlus,
+  Layers,
 } from 'lucide-react';
 import lottie, { type AnimationItem } from 'lottie-web/build/player/lottie_light';
 import type { LottieDoc } from '../lib/lottie';
@@ -36,6 +39,7 @@ import type { SubscriptionState } from '../lib/subscription';
 import type { TelegramUser } from '../lib/telegram';
 import { haptic } from '../lib/telegram';
 import { LazyThumb } from './LazyThumb';
+import { BatchPackModal } from './BatchPackModal';
 import type { Font } from 'opentype.js';
 
 interface IrisAssistantViewProps {
@@ -46,6 +50,7 @@ interface IrisAssistantViewProps {
   telegramUser: TelegramUser | null;
   onSelectTemplate: (item: CatalogItem) => void;
   onSaveSticker: (doc: LottieDoc, name: string) => void;
+  onAddBatchItems?: (items: { doc: LottieDoc; name: string; catalogId?: string | null }[]) => void;
   onDownloadZip: () => void;
   onOpenProfile: () => void;
   onOpenAdvancedStudio: () => void;
@@ -125,6 +130,7 @@ export function IrisAssistantView({
   onDownloadZip,
   onOpenProfile,
   onOpenAdvancedStudio: _onOpenAdvancedStudio,
+  onAddBatchItems,
 }: IrisAssistantViewProps) {
   const isPureIcon = isPureIconTemplate(templateItem?.id);
   const [activeTab, setActiveTab] = useState<'editor' | 'catalog' | 'packs' | 'chat'>('editor');
@@ -134,6 +140,7 @@ export function IrisAssistantView({
   const [selectedFontId, setSelectedFontId] = useState<FontId>('montserrat');
   const [uploadedLogo, setUploadedLogo] = useState<VectorLogo | null>(null);
   const [fonts, setFonts] = useState<Font[] | null>(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
 
   // Reset personalization when switching between templates
   useEffect(() => {
@@ -548,18 +555,22 @@ export function IrisAssistantView({
 
               {/* STAGE CONTROLS ROW */}
               <div className="stage-controls-bar">
-                <button
-                  type="button"
-                  className="stage-ctrl-btn"
-                  onClick={() => setIsPlaying((p) => !p)}
-                  title={isPlaying ? 'Пауза' : 'Воспроизведение'}
-                >
-                  {isPlaying ? <Pause size={13} /> : <Play size={13} />}
-                </button>
+                <div className="stage-ctrl-group">
+                  <button
+                    type="button"
+                    className="stage-ctrl-btn"
+                    onClick={() => setIsPlaying((p) => !p)}
+                    title={isPlaying ? 'Пауза' : 'Воспроизведение'}
+                  >
+                    {isPlaying ? <Pause size={13} /> : <Play size={13} />}
+                  </button>
 
-                <div className="stage-frame-counter">
-                  {frameInfo.current} / {frameInfo.total} к/с
+                  <div className="stage-frame-counter">
+                    {frameInfo.current} / {frameInfo.total}
+                  </div>
                 </div>
+
+                <div className="stage-ctrl-divider" />
 
                 <div className="stage-speed-chips">
                   {[0.5, 1, 1.5, 2].map((s) => (
@@ -573,6 +584,8 @@ export function IrisAssistantView({
                     </button>
                   ))}
                 </div>
+
+                <div className="stage-ctrl-divider" />
 
                 <div className="stage-backdrop-chips">
                   <button
@@ -630,109 +643,126 @@ export function IrisAssistantView({
 
                 <div className="composer-divider" />
 
-                {/* Bottom chips and actions row */}
-                <div className="composer-bottom-row">
-                  <div className="composer-chips-group">
-                    {/* Font selector */}
-                    <select
-                      className="composer-chip-btn"
-                      value={selectedFontId}
-                      onChange={(e) => setSelectedFontId(e.target.value as FontId)}
-                      style={{ background: '#181818', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-                    >
-                      {FONTS.map((f) => (
-                        <option key={f.id} value={f.id} style={{ background: '#151515', color: '#fff' }}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
+                {/* Middle tools row (Font, Colors, Logo) */}
+                <div className="composer-tools-row">
+                  {/* Font selector */}
+                  <select
+                    className="composer-chip-btn font-select"
+                    value={selectedFontId}
+                    onChange={(e) => setSelectedFontId(e.target.value as FontId)}
+                    style={{ background: '#181818', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    {FONTS.map((f) => (
+                      <option key={f.id} value={f.id} style={{ background: '#151515', color: '#fff' }}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
 
-                    {/* Fill color */}
-                    <button
-                      type="button"
-                      className="composer-chip-btn"
-                      onClick={() => fillInputRef.current?.click()}
-                      title="Цвет заливки"
-                    >
-                      <div
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          background: fillColor,
-                          border: '1px solid rgba(255,255,255,0.4)',
-                        }}
-                      />
-                      <span>Заливка: {fillColor}</span>
-                      <input
-                        ref={fillInputRef}
-                        type="color"
-                        value={fillColor}
-                        onChange={(e) => setFillColor(e.target.value)}
-                        hidden
-                      />
-                    </button>
-
-                    {/* Stroke color */}
-                    <button
-                      type="button"
-                      className="composer-chip-btn"
-                      onClick={() => strokeInputRef.current?.click()}
-                      title="Цвет обводки"
-                    >
-                      <div
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          background: strokeColor,
-                          border: '1px solid rgba(255,255,255,0.4)',
-                        }}
-                      />
-                      <span>Обводка: {strokeColor}</span>
-                      <input
-                        ref={strokeInputRef}
-                        type="color"
-                        value={strokeColor}
-                        onChange={(e) => setStrokeColor(e.target.value)}
-                        hidden
-                      />
-                    </button>
-
-                    {/* Upload Logo */}
-                    <button
-                      type="button"
-                      className="composer-chip-btn"
-                      onClick={() => fileInputRef.current?.click()}
-                      title="Загрузить векторный логотип"
-                    >
-                      <Upload size={12} />
-                      <span>{uploadedLogo ? uploadedLogo.name : 'Логотип'}</span>
-                      {uploadedLogo && (
-                        <X
-                          size={12}
-                          style={{ marginLeft: 4 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUploadedLogo(null);
-                          }}
-                        />
-                      )}
-                    </button>
+                  {/* Fill color */}
+                  <button
+                    type="button"
+                    className="composer-chip-btn"
+                    onClick={() => fillInputRef.current?.click()}
+                    title={`Цвет заливки: ${fillColor}`}
+                  >
+                    <span className="composer-color-indicator" style={{ background: fillColor }} />
+                    <span>Заливка</span>
+                    <span className="composer-hex-tag">{fillColor}</span>
                     <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,.svg"
+                      ref={fillInputRef}
+                      type="color"
+                      value={fillColor}
+                      onChange={(e) => setFillColor(e.target.value)}
                       hidden
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
-                        e.target.value = '';
-                      }}
                     />
+                  </button>
+
+                  {/* Stroke color */}
+                  <button
+                    type="button"
+                    className="composer-chip-btn"
+                    onClick={() => strokeInputRef.current?.click()}
+                    title={`Цвет обводки: ${strokeColor}`}
+                  >
+                    <span className="composer-color-indicator" style={{ background: strokeColor }} />
+                    <span>Обводка</span>
+                    <span className="composer-hex-tag">{strokeColor}</span>
+                    <input
+                      ref={strokeInputRef}
+                      type="color"
+                      value={strokeColor}
+                      onChange={(e) => setStrokeColor(e.target.value)}
+                      hidden
+                    />
+                  </button>
+
+                  {/* Upload Logo */}
+                  <button
+                    type="button"
+                    className="composer-chip-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Загрузить векторный логотип"
+                  >
+                    <Upload size={12} />
+                    <span>{uploadedLogo ? uploadedLogo.name : 'Логотип'}</span>
+                    {uploadedLogo && (
+                      <X
+                        size={12}
+                        style={{ marginLeft: 4 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadedLogo(null);
+                        }}
+                      />
+                    )}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.svg"
+                    hidden
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+
+                {/* Bottom action row: Pack info + Multi-add on left, Single actions on right */}
+                <div className="composer-action-bar">
+                  <div className="composer-pack-meta">
+                    <button
+                      type="button"
+                      className="composer-pack-pill"
+                      onClick={() => setActiveTab('packs')}
+                      title="Открыть мой пак"
+                    >
+                      <Layers size={13} color="#2F6BFF" />
+                      <span>В паке: <strong>{pack.length}</strong></span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="composer-multi-btn"
+                      onClick={() => setShowBatchModal(true)}
+                      title="Собрать пак: выбрать сразу много или все эмодзи"
+                    >
+                      <Plus size={13} />
+                      <span>Добавить много в пак</span>
+                    </button>
                   </div>
 
-                  {/* Actions right */}
-                  <div className="composer-actions-group">
+                  <div className="composer-action-buttons">
+                    <button
+                      type="button"
+                      className="composer-btn-glass"
+                      onClick={handleSaveToPack}
+                      title="Добавить этот эмодзи в пак"
+                    >
+                      <Sparkles size={13} color="#fbbf24" />
+                      <span>В пак</span>
+                    </button>
                     <button
                       type="button"
                       className="composer-btn-gradient"
@@ -741,15 +771,6 @@ export function IrisAssistantView({
                     >
                       <Download size={13} />
                       <span>Скачать .tgs</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="composer-btn-glass"
-                      onClick={handleSaveToPack}
-                      title="Добавить в пак"
-                    >
-                      <Sparkles size={13} color="#fbbf24" />
-                      <span>В пак</span>
                     </button>
                   </div>
                 </div>
@@ -831,25 +852,37 @@ export function IrisAssistantView({
           {/* TAB 2: FULL CATALOG (284 TEMPLATES) */}
           {activeTab === 'catalog' && (
             <div className="iris-catalog-container">
-              {/* Category Filter Pills */}
-              <div className="iris-catalog-filters">
+              {/* Category Filter Pills & Multi-add button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 'calc(16 * var(--u))' }}>
+                <div className="iris-catalog-filters" style={{ margin: 0 }}>
+                  <button
+                    type="button"
+                    className={`iris-filter-btn ${selectedCategory === 'all' ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory('all')}
+                  >
+                    Все ({CATALOG.length})
+                  </button>
+                  {TEMPLATE_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`iris-filter-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory(cat.id)}
+                    >
+                      {cat.label} ({CATALOG.filter((c) => c.category === cat.id).length})
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   type="button"
-                  className={`iris-filter-btn ${selectedCategory === 'all' ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory('all')}
+                  className="composer-multi-btn"
+                  onClick={() => setShowBatchModal(true)}
+                  style={{ height: 'calc(32 * var(--u))', padding: '0 calc(14 * var(--u))' }}
                 >
-                  Все ({CATALOG.length})
+                  <PackagePlus size={14} color="#3b82f6" />
+                  <span>Добавить много в пак</span>
                 </button>
-                {TEMPLATE_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    className={`iris-filter-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.id)}
-                  >
-                    {cat.label} ({CATALOG.filter((c) => c.category === cat.id).length})
-                  </button>
-                ))}
               </div>
 
               {/* Grid of 284 Templates */}
@@ -896,16 +929,27 @@ export function IrisAssistantView({
                       Готово к публикации в официальном боте @Stickers • {pack.length} эмодзи
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className="top-action-btn primary"
-                    onClick={onDownloadZip}
-                    disabled={pack.length === 0}
-                    style={{ height: 'calc(38 * var(--u))', padding: '0 calc(16 * var(--u))' }}
-                  >
-                    <Download size={14} />
-                    <span>Скачать ZIP для Telegram</span>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(10 * var(--u))' }}>
+                    <button
+                      type="button"
+                      className="top-action-btn"
+                      onClick={() => setShowBatchModal(true)}
+                      style={{ height: 'calc(38 * var(--u))', padding: '0 calc(16 * var(--u))' }}
+                    >
+                      <Plus size={14} color="#3b82f6" />
+                      <span>Добавить много</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="top-action-btn primary"
+                      onClick={onDownloadZip}
+                      disabled={pack.length === 0}
+                      style={{ height: 'calc(38 * var(--u))', padding: '0 calc(16 * var(--u))' }}
+                    >
+                      <Download size={14} />
+                      <span>Скачать ZIP для Telegram</span>
+                    </button>
+                  </div>
                 </div>
 
                 {pack.length === 0 ? (
@@ -1022,6 +1066,26 @@ export function IrisAssistantView({
           )}
         </main>
       </div>
+
+      {/* BATCH PACK MODAL */}
+      <BatchPackModal
+        isOpen={showBatchModal}
+        onClose={() => setShowBatchModal(false)}
+        brandText={brandText}
+        fillColor={fillColor}
+        strokeColor={strokeColor}
+        uploadedLogo={uploadedLogo}
+        fonts={fonts}
+        packLength={pack.length}
+        onAddBatch={(items) => {
+          if (onAddBatchItems) {
+            onAddBatchItems(items);
+          } else {
+            for (const it of items) onSaveSticker(it.doc, it.name);
+          }
+          showToast(`🎉 Добавлено ${items.length} эмодзи в ваш пак! Всего: ${pack.length + items.length}`);
+        }}
+      />
 
       {/* FLOATING TOAST */}
       {toastMsg && (

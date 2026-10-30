@@ -611,6 +611,33 @@ export default function App() {
     }
   };
 
+  const handleAddBatchToPackItems = useCallback(
+    (newItems: { doc: LottieDoc; name: string; catalogId?: string | null }[]) => {
+      if (!newItems.length) return;
+      const cur = snapRef.current;
+      const packEntries: PackItem[] = newItems.map((it, idx) => ({
+        id: makeUid(`batch${idx}`),
+        name: sanitizeFileName(it.name),
+        catalogId: it.catalogId ?? null,
+        doc: structuredClone(it.doc),
+      }));
+      const nextItems = [...cur.items, ...packEntries];
+      dispatch({
+        type: 'apply',
+        next: {
+          items: nextItems,
+          selectedIds: [packEntries[0].id],
+          primaryId: packEntries[0].id,
+        },
+        key: null,
+        at: Date.now(),
+      });
+      setIsEmptyHero(false);
+      say(`Добавлено ${packEntries.length} эмодзи в ваш пак! (Всего: ${nextItems.length})`);
+    },
+    [say],
+  );
+
   const handlePackSelect = (id: string, toggleMulti: boolean) => {
     const cur = snapRef.current;
     if (!toggleMulti) {
@@ -1266,6 +1293,7 @@ export default function App() {
             addToPack(newDoc, name, selectedCatalogItem?.id ?? null);
             say(`«${name}» сохранён в ваши паки!`);
           }}
+          onAddBatchItems={handleAddBatchToPackItems}
           onOpenTemplatesModal={() => {
             setModalAddToPack(false);
             setShowModal(true);
@@ -1394,6 +1422,7 @@ export default function App() {
             addToPack(newDoc, name, selectedCatalogItem?.id ?? null);
             say(`«${name}» сохранён в ваши паки!`);
           }}
+          onAddBatchItems={handleAddBatchToPackItems}
           onDownloadZip={() => downloadZipList(pack, 'magnat_emoji_pack')}
           onOpenProfile={() => {
             setMainView('tma_profile');

@@ -5,6 +5,7 @@ import {
   Pencil,
   Check,
   X,
+  PackagePlus,
 } from 'lucide-react';
 import lottie, { type AnimationItem } from 'lottie-web/build/player/lottie_light';
 import type { LottieDoc } from '../lib/lottie';
@@ -18,6 +19,7 @@ import { loadFont } from '../lib/fonts';
 import { fileToVectorLogo, type VectorLogo } from '../lib/logoVector';
 import { haptic } from '../lib/telegram';
 import { isPureIconTemplate, type CatalogItem } from '../lib/catalog';
+import { BatchPackModal } from './BatchPackModal';
 import type { SubscriptionState } from '../lib/subscription';
 import type { Font } from 'opentype.js';
 
@@ -28,6 +30,7 @@ interface TmaEditorViewProps {
   onBackToCatalog: () => void;
   onOpenAdvancedStudio: () => void;
   onSaveSticker: (doc: LottieDoc, name: string) => void;
+  onAddBatchItems?: (items: { doc: LottieDoc; name: string; catalogId: string }[]) => void;
   onOpenTemplatesModal: () => void;
   onOpenProModal: () => void;
 }
@@ -68,6 +71,7 @@ export function TmaEditorView({
   onBackToCatalog,
   onOpenAdvancedStudio: _onOpenAdvancedStudio,
   onSaveSticker,
+  onAddBatchItems,
   onOpenTemplatesModal,
   onOpenProModal,
 }: TmaEditorViewProps) {
@@ -80,6 +84,7 @@ export function TmaEditorView({
   const [fonts, setFonts] = useState<Font[] | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [showAdvancedColors, setShowAdvancedColors] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fillInputRef = useRef<HTMLInputElement>(null);
@@ -324,8 +329,8 @@ export function TmaEditorView({
           </div>
         </div>
 
-        {/* PRIMARY ACTION BUTTON (Exact match to reference screenshot) */}
-        <div className="tma-editor-section" style={{ marginTop: 22, marginBottom: 8 }}>
+        {/* PRIMARY ACTION BUTTONS */}
+        <div className="tma-editor-section" style={{ marginTop: 22, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button
             type="button"
             className={`tma-editor-create-btn ${savedSuccess ? 'success' : ''}`}
@@ -336,8 +341,32 @@ export function TmaEditorView({
                 <Check size={18} /> {packType === 'emoji' ? 'Эмодзи добавлен в пак!' : 'Стикер добавлен в пак!'}
               </>
             ) : (
-              packType === 'emoji' ? 'создать эмодзи-пак' : 'создать стикер-пак'
+              packType === 'emoji' ? 'сохранить этот эмодзи в пак' : 'сохранить этот стикер в пак'
             )}
+          </button>
+
+          <button
+            type="button"
+            className="tma-editor-batch-btn"
+            onClick={() => setShowBatchModal(true)}
+            style={{
+              height: 48,
+              borderRadius: 14,
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.14)',
+              color: '#ffffff',
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            <PackagePlus size={18} color="#3b82f6" />
+            <span>📦 Добавить много эмодзи в пак</span>
           </button>
         </div>
 
@@ -451,6 +480,26 @@ export function TmaEditorView({
         {/* FOOTER */}
         <div className="tma-editor-footer">@magnat_emoji_bot</div>
       </div>
+
+      <BatchPackModal
+        isOpen={showBatchModal}
+        onClose={() => setShowBatchModal(false)}
+        brandText={brandText}
+        fillColor={fillColor}
+        strokeColor={strokeColor}
+        uploadedLogo={uploadedLogo}
+        fonts={fonts}
+        packLength={0}
+        onAddBatch={(items) => {
+          if (onAddBatchItems) {
+            onAddBatchItems(items);
+          } else {
+            for (const it of items) onSaveSticker(it.doc, it.name);
+          }
+          setSavedSuccess(true);
+          setTimeout(() => setSavedSuccess(false), 3000);
+        }}
+      />
     </div>
   );
 }
