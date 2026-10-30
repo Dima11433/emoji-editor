@@ -1341,7 +1341,7 @@ export default function App() {
           </span>
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             style={{ background: 'linear-gradient(135deg, rgba(47,107,255,0.25), rgba(90,76,245,0.25))', borderColor: 'rgba(47,107,255,0.4)', color: '#93C5FD' }}
             onClick={() => {
               setMainView('iris_assistant');
@@ -1353,7 +1353,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             onClick={() => {
               setIsEmptyHero(true);
               say('Открыт стартовый экран MAGNAT');
@@ -1364,7 +1364,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             onClick={() => fileInput.current?.click()}
             title="Открыть .tgs, .json, .zip или векторный логотип"
           >
@@ -1372,7 +1372,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             onClick={() => setShowLinkModal(true)}
             title="Импортировать пак по ссылке Telegram"
           >
@@ -1380,7 +1380,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             onClick={() => {
               setModalAddToPack(false);
               setShowModal(true);
@@ -1455,7 +1455,7 @@ export default function App() {
         <div className="tier-nav-right">
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             onClick={() => setShowTgModal(true)}
             title="Посмотреть анимацию в реалистичном чате Telegram"
           >
@@ -1463,7 +1463,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className="tier-nav-btn"
+            className="tier-nav-btn tier-desktop-only"
             onClick={() => {
               setShowTgModal(true);
               say('Режим видео: предпросмотр анимации в сообщении Telegram');

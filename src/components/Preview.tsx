@@ -88,6 +88,7 @@ const LottieCell = React.memo(function LottieCell({
       if (cancelled || !boxRef.current) return;
 
       try {
+        boxRef.current.innerHTML = '';
         const clean = cleanForExport(doc) as LottieDoc;
         anim = lottie.loadAnimation({
           container: boxRef.current,
@@ -292,15 +293,17 @@ export function Preview({
 
       {effectiveMode === 'single' && (
         <div className={`stage stage-${backdrop}`}>
-          <LottieCell
-            doc={doc}
-            playing={playing}
-            speed={speed}
-            seekSignal={seekSignal}
-            onEnterFrame={handlePrimaryFrame}
-            className="stage-canvas"
-          />
-          {showGrid && <div className="stage-grid-overlay" aria-hidden />}
+          <div className={`canvas-box ${backdrop}`}>
+            <LottieCell
+              doc={doc}
+              playing={playing}
+              speed={speed}
+              seekSignal={seekSignal}
+              onEnterFrame={handlePrimaryFrame}
+              className="stage-canvas"
+            />
+            {showGrid && <div className="stage-grid-overlay" aria-hidden />}
+          </div>
           <div className="stage-mini-pip" title="Реальный размер эмодзи в чате Telegram (40×40 px)">
             <LottieCell
               doc={doc}
