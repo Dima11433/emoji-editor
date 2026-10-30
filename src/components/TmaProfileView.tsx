@@ -568,70 +568,7 @@ export function TmaProfileView({
             <ChevronRight size={18} className="tma-icon-muted" />
           </div>
 
-          {isAdmin && (
-            <div
-              className="tma-card-box"
-              style={{
-                borderColor: 'rgba(234, 179, 8, 0.4)',
-                marginTop: 10,
-                background: 'linear-gradient(180deg, rgba(234, 179, 8, 0.08), rgba(0, 0, 0, 0.4))',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 10,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Crown size={16} color="#facc15" />
-                  <span style={{ fontWeight: 600, fontSize: 14, color: '#facc15' }}>
-                    Админ-панель MAGNAT
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: '#8c8c8c' }}>@magnat_emoji_bot</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  className="tma-btn-blue"
-                  style={{ flex: 1, padding: '10px 12px', fontSize: 13 }}
-                  onClick={() => {
-                    const tg = getTelegramWebApp();
-                    if (tg?.openTelegramLink) {
-                      tg.openTelegramLink('https://t.me/magnat_emoji_bot?start=admin');
-                    } else {
-                      window.open('https://t.me/magnat_emoji_bot', '_blank');
-                    }
-                  }}
-                >
-                  👑 Панель в боте
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.14)',
-                    borderRadius: 12,
-                    color: '#fff',
-                    padding: '10px 14px',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => {
-                    const next = activateSubscription('max', 'year', 'ADMIN_SUPER');
-                    onSubscriptionChange(next);
-                    haptic('success');
-                  }}
-                >
-                  ⚡️ VIP MAX
-                </button>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* SECTION 5: ПОЛЕЗНОЕ И ПРОМОКОД */}
