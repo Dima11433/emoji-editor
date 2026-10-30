@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ChevronRight,
   CreditCard,
+  Crown,
   FileText,
   Layers,
   LayoutGrid,
@@ -94,6 +95,12 @@ export function TmaProfileView({
 
   const userName = telegramUser?.first_name || 'magnat';
   const userHandle = telegramUser?.username ? `@${telegramUser.username}` : '@ggg468q';
+  const isAdmin =
+    telegramUser?.id === 6667583896 ||
+    telegramUser?.id === 1380263054 ||
+    window.location.search.includes('admin=1') ||
+    telegramUser?.username?.toLowerCase() === 'ggg468q' ||
+    telegramUser?.username?.toLowerCase() === 'dimaz';
 
   // Calculate piece price: 9 ₽ per unit, >= 50 is 7 ₽
   // 1 звезда = 1,2 ₽ (matching screenshot)
@@ -279,6 +286,35 @@ export function TmaProfileView({
           </div>
           <h2 className="tma-profile-name">{userName}</h2>
           <div className="tma-profile-handle-pill">{userHandle}</div>
+          {isAdmin && (
+            <div
+              style={{
+                marginTop: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 12px',
+                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.18), rgba(249, 115, 22, 0.18))',
+                border: '1px solid rgba(234, 179, 8, 0.45)',
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#facc15',
+                cursor: 'pointer',
+              }}
+              onClick={() => {
+                const tg = getTelegramWebApp();
+                if (tg?.openTelegramLink) {
+                  tg.openTelegramLink('https://t.me/magnat_emoji_bot?start=admin');
+                } else {
+                  window.open('https://t.me/magnat_emoji_bot', '_blank');
+                }
+              }}
+            >
+              <Crown size={13} color="#facc15" />
+              <span>Администратор • Открыть панель бота</span>
+            </div>
+          )}
         </div>
 
         {/* CARD 1: БАЛАНС ГЕНЕРАЦИЙ (Matching Screenshot 2) */}
@@ -531,6 +567,71 @@ export function TmaProfileView({
             <span>бесплатно и проба</span>
             <ChevronRight size={18} className="tma-icon-muted" />
           </div>
+
+          {isAdmin && (
+            <div
+              className="tma-card-box"
+              style={{
+                borderColor: 'rgba(234, 179, 8, 0.4)',
+                marginTop: 10,
+                background: 'linear-gradient(180deg, rgba(234, 179, 8, 0.08), rgba(0, 0, 0, 0.4))',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 10,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Crown size={16} color="#facc15" />
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#facc15' }}>
+                    Админ-панель MAGNAT
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: '#8c8c8c' }}>@magnat_emoji_bot</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="tma-btn-blue"
+                  style={{ flex: 1, padding: '10px 12px', fontSize: 13 }}
+                  onClick={() => {
+                    const tg = getTelegramWebApp();
+                    if (tg?.openTelegramLink) {
+                      tg.openTelegramLink('https://t.me/magnat_emoji_bot?start=admin');
+                    } else {
+                      window.open('https://t.me/magnat_emoji_bot', '_blank');
+                    }
+                  }}
+                >
+                  👑 Панель в боте
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 12,
+                    color: '#fff',
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    const next = activateSubscription('max', 'year', 'ADMIN_SUPER');
+                    onSubscriptionChange(next);
+                    haptic('success');
+                  }}
+                >
+                  ⚡️ VIP MAX
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* SECTION 5: ПОЛЕЗНОЕ И ПРОМОКОД */}

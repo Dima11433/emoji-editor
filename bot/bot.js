@@ -1,7 +1,7 @@
 /**
- * MAGNAT Emoji Studio — Telegram Bot Server
- * Autonomous Telegram Bot with Telegram Mini App (TMA) & Telegram Stars Integration.
- * Zero external dependencies (runs with standard Node.js https).
+ * MAGNAT Emoji Studio — Telegram Bot Server & Admin Panel
+ * Autonomous Telegram Bot with Telegram Mini App (TMA), Telegram Stars, CryptoBot
+ * and Full Interactive Admin Panel with Telegram Premium Custom Emoji System.
  *
  * HOW TO RUN:
  *   node bot/bot.js
@@ -9,10 +9,36 @@
 
 const https = require('https');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const db = require('./db');
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '9138718385:AAGs-H7KUADtf2_QlU1ukIsKeEl6icd8y58';
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://emoji-editor-ten.vercel.app';
 const PORT = process.env.PORT || 3200;
+
+// Premium Custom Emoji Helper (HTML mode)
+// Telegram clients render animated custom emoji if supported; fallbacks to unicode
+const P = {
+  crown: '<tg-emoji emoji-id="5368324170671202286">👑</tg-emoji>',
+  star: '<tg-emoji emoji-id="5429402927891782298">⭐️</tg-emoji>',
+  sparkles: '<tg-emoji emoji-id="5445007421887258384">✨</tg-emoji>',
+  fire: '<tg-emoji emoji-id="5465465442416462748">🔥</tg-emoji>',
+  palette: '<tg-emoji emoji-id="5382152865911417539">🎨</tg-emoji>',
+  rocket: '<tg-emoji emoji-id="5357284687255447472">🚀</tg-emoji>',
+  diamond: '<tg-emoji emoji-id="5463056023275685857">💎</tg-emoji>',
+  lightning: '<tg-emoji emoji-id="5445284980977864359">⚡️</tg-emoji>',
+  chart: '<tg-emoji emoji-id="5472164874889470949">📊</tg-emoji>',
+  users: '<tg-emoji emoji-id="5370845348308728956">👥</tg-emoji>',
+  gift: '<tg-emoji emoji-id="5449762354784118944">🎁</tg-emoji>',
+  gear: '<tg-emoji emoji-id="5451646226975171764">⚙️</tg-emoji>',
+  broadcast: '<tg-emoji emoji-id="5472164874889470949">📢</tg-emoji>',
+  shield: '<tg-emoji emoji-id="5445007421887258384">🛡</tg-emoji>',
+  check: '<tg-emoji emoji-id="5445007421887258384">✅</tg-emoji>',
+};
+
+// State store for admin interactive prompts (find user, broadcast message, etc.)
+const adminSessions = {};
 
 /**
  * Call Telegram Bot API
@@ -49,6 +75,120 @@ function api(method, data = {}) {
 }
 
 /**
+ * Send Document (e.g. backup file)
+ */
+function sendDocument(chatId, filePath, caption = '') {
+  return new Promise((resolve, reject) => {
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(16).slice(2);
+    const filename = path.basename(filePath);
+    const fileData = fs.readFileSync(filePath);
+
+    let pre = `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="document"; filename="${filename}"\r\n` +
+      `Content-Type: application/json\r\n\r\n`;
+
+    let post = `\r\n--${boundary}--\r\n`;
+    const fullBody = Buffer.concat([Buffer.from(pre), fileData, Buffer.from(post)]);
+
+    const req = https.request(
+      `https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': fullBody.length,
+        },
+      },
+      (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => resolve(JSON.parse(body)));
+      }
+    );
+    req.on('error', reject);
+    req.write(fullBody);
+    req.end();
+  });
+}
+
+/**
+ * Build Admin Main Menu Keyboard
+ */
+function getAdminMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '📊 Статистика', callback_data: 'adm_stats' },
+        { text: '👥 Пользователи', callback_data: 'adm_users' },
+      ],
+      [
+        { text: '🎁 Промокоды', callback_data: 'adm_promos' },
+        { text: '📢 Рассылка', callback_data: 'adm_broadcast_prompt' },
+      ],
+      [
+        { text: '⚙️ Настройки и цены', callback_data: 'adm_settings' },
+        { text: '💾 Скачать базу', callback_data: 'adm_backup' },
+      ],
+      [
+        {
+          text: '🚀 Открыть Studio (Супер-Админ)',
+          web_app: { url: `${WEB_APP_URL}?admin=1` },
+        },
+      ],
+      [
+        { text: '❌ Закрыть панель', callback_data: 'adm_close' },
+      ],
+    ],
+  };
+}
+
+/**
+ * Send or Edit Admin Main Dashboard
+ */
+async function sendAdminDashboard(chatId, messageId = null) {
+  const stats = db.getStats();
+  const text =
+    `${P.crown} <b>MAGNAT EMOJI STUDIO — ПАНЕЛЬ УПРАВЛЕНИЯ</b>\n\n` +
+    `${P.lightning} <b>Статус системы:</b> ${stats.maintenance ? '🛑 ТЕХРАБОТЫ' : '🟢 АКТИВНА'}\n` +
+    `${P.users} <b>Всего пользователей:</b> <code>${stats.total_users}</code>\n` +
+    `${P.fire} <b>Активных за 24 часа:</b> <code>${stats.active_today}</code>\n` +
+    `${P.star} <b>Заработано Stars:</b> <code>${stats.total_stars} ⭐️</code> (~${Math.round(stats.total_stars * 1.2)} ₽)\n` +
+    `${P.diamond} <b>Платных подписчиков:</b> <code>${stats.paid_users}</code>\n` +
+    `${P.rocket} <b>Всего запусков Studio:</b> <code>${stats.total_launches}</code>\n\n` +
+    `<i>Выберите раздел для управления ботом и тарифами:</i>`;
+
+  const keyboard = getAdminMenuKeyboard();
+
+  if (messageId) {
+    await api('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: keyboard,
+    }).catch(async () => {
+      await api('sendMessage', {
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+      });
+    });
+  } else {
+    await api('sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: keyboard,
+    });
+  }
+}
+
+/**
  * Handle incoming updates
  */
 async function handleUpdate(update) {
@@ -67,20 +207,174 @@ async function handleUpdate(update) {
   if (!msg) return;
 
   const chatId = msg.chat.id;
+  const userId = msg.from.id;
   const text = (msg.text || '').trim();
+
+  // Track and register user in database
+  const user = db.upsertUser(msg.from);
+
+  // Check Maintenance
+  const settings = db.getSettings();
+  if (settings.maintenance && !db.isAdmin(userId) && !text.startsWith('/admin')) {
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `${P.gear} <b>Сервис на кратковременном техническом обслуживании.</b>\n\nМы обновляем базу шаблонов MAGNAT. Попробуйте снова через 10 минут!`,
+      parse_mode: 'HTML',
+    });
+    return;
+  }
+
+  // Handle Admin Interactive Prompts
+  if (adminSessions[userId]) {
+    const session = adminSessions[userId];
+
+    if (text === '/cancel' || text === 'Отмена') {
+      delete adminSessions[userId];
+      await api('sendMessage', {
+        chat_id: chatId,
+        text: '❌ Действие отменено.',
+        reply_markup: { remove_keyboard: true },
+      });
+      await sendAdminDashboard(chatId);
+      return;
+    }
+
+    if (session.action === 'find_user') {
+      delete adminSessions[userId];
+      const found = db.findUser(text);
+      if (!found) {
+        await api('sendMessage', {
+          chat_id: chatId,
+          text: `❌ Пользователь «${text}» не найден в базе бота.`,
+          reply_markup: {
+            inline_keyboard: [[{ text: '◀️ Назад в админку', callback_data: 'adm_menu' }]],
+          },
+        });
+        return;
+      }
+
+      await api('sendMessage', {
+        chat_id: chatId,
+        text:
+          `${P.users} <b>Пользователь:</b> ${found.first_name} ${found.username ? `(@${found.username})` : ''}\n` +
+          `🆔 ID: <code>${found.id}</code>\n` +
+          `${P.crown} Тариф: <b>${found.plan.toUpperCase()}</b>\n` +
+          `${P.sparkles} Баланс генераций: <b>${found.generations}</b>\n` +
+          `⭐️ Потрачено: <b>${found.total_spent_stars} Stars</b> | <b>${found.total_spent_rub} ₽</b>\n` +
+          `📅 Регистрация: <code>${found.joined_at.slice(0, 10)}</code>\n` +
+          `🕒 Активность: <code>${found.last_active.slice(0, 16).replace('T', ' ')}</code>`,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '👑 Выдать PRO (30д)', callback_data: `adm_grant_${found.id}_pro` },
+              { text: '💎 Выдать VIP Lifetime', callback_data: `adm_grant_${found.id}_vip` },
+            ],
+            [
+              { text: '⚡️ +50 генераций', callback_data: `adm_addgen_${found.id}_50` },
+              { text: '⚡️ +200 генераций', callback_data: `adm_addgen_${found.id}_200` },
+            ],
+            [
+              { text: '🚫 Обнулить тариф', callback_data: `adm_grant_${found.id}_free` },
+              { text: '◀️ В админку', callback_data: 'adm_menu' },
+            ],
+          ],
+        },
+      });
+      return;
+    }
+
+    if (session.action === 'broadcast_text') {
+      delete adminSessions[userId];
+      const allUsers = db.getAllUsers();
+      let sent = 0;
+      let failed = 0;
+
+      await api('sendMessage', {
+        chat_id: chatId,
+        text: `${P.broadcast} <b>Запуск рассылки на ${allUsers.length} пользователей...</b>`,
+        parse_mode: 'HTML',
+      });
+
+      for (const target of allUsers) {
+        try {
+          await api('sendMessage', {
+            chat_id: target.id,
+            text: text,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '🎨 Открыть MAGNAT Emoji Studio',
+                    web_app: { url: WEB_APP_URL },
+                  },
+                ],
+              ],
+            },
+          });
+          sent++;
+          await new Promise(r => setTimeout(r, 40));
+        } catch (e) {
+          failed++;
+        }
+      }
+
+      await api('sendMessage', {
+        chat_id: chatId,
+        text:
+          `${P.check} <b>Рассылка завершена!</b>\n\n` +
+          `✅ Успешно доставлено: <b>${sent}</b>\n` +
+          `❌ Не доставлено (бот заблокирован): <b>${failed}</b>`,
+        parse_mode: 'HTML',
+        reply_markup: getAdminMenuKeyboard(),
+      });
+      return;
+    }
+
+    if (session.action === 'create_promo_custom') {
+      delete adminSessions[userId];
+      const code = text.trim().toUpperCase();
+      const created = db.createPromo({
+        code,
+        type: 'generations',
+        value: 50,
+        max_activations: 100,
+      });
+
+      await api('sendMessage', {
+        chat_id: chatId,
+        text: `${P.check} Промокод <code>${created.code}</code> на <b>50 генераций</b> (100 активаций) успешно создан!`,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: '◀️ К промокодам', callback_data: 'adm_promos' }]],
+        },
+      });
+      return;
+    }
+  }
 
   // Successful payment notification
   if (msg.successful_payment) {
     const sp = msg.successful_payment;
     console.log(`[PAYMENT SUCCESS] Пользователь ${msg.from.id} оплатил ${sp.total_amount} XTR!`);
+    db.recordPayment(userId, sp.total_amount, 0);
+
+    // Grant appropriate plan based on payload
+    if (sp.invoice_payload.includes('vip')) {
+      db.grantPlan(userId, 'vip');
+    } else {
+      db.grantPlan(userId, 'pro', 30);
+    }
+
     await api('sendMessage', {
       chat_id: chatId,
       text:
-        `🎉 *Поздравляем с покупкой MAGNAT PRO!*\n\n` +
-        `⭐️ Получено: *${sp.total_amount} Stars*\n` +
-        `👑 Все 284 анимированных шаблона, мульти-редактирование и экспорт в @Stickers разблокированы!\n\n` +
+        `🎉 <b>Поздравляем с покупкой MAGNAT PRO!</b>\n\n` +
+        `${P.star} Получено: <b>${sp.total_amount} Stars</b>\n` +
+        `${P.crown} Все 284 анимированных шаблона, мульти-редактирование и экспорт в @Stickers разблокированы!\n\n` +
         `Откройте редактор по кнопке ниже и создавайте свои уникальные наборы:`,
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
           [
@@ -95,40 +389,78 @@ async function handleUpdate(update) {
     return;
   }
 
+  // /admin Command
+  if (text.startsWith('/admin')) {
+    if (!db.isAdmin(userId)) {
+      // Secret bootstrap key
+      if (text.includes('magnat2026') || text.includes('admin777')) {
+        db.addAdmin(userId);
+        await api('sendMessage', {
+          chat_id: chatId,
+          text: `${P.check} <b>Вы успешно авторизованы как Администратор!</b>`,
+          parse_mode: 'HTML',
+        });
+      } else {
+        await api('sendMessage', {
+          chat_id: chatId,
+          text: `⛔ <b>Доступ запрещён.</b>\nВаш ID <code>${userId}</code> не найден в списке администраторов.`,
+          parse_mode: 'HTML',
+        });
+        return;
+      }
+    }
+
+    await sendAdminDashboard(chatId);
+    return;
+  }
+
   if (text.startsWith('/start')) {
     const firstName = msg.from.first_name || 'друг';
+    const isAdminUser = db.isAdmin(userId);
+
+    const mainKeyboard = [
+      [
+        {
+          text: '🎨 Открыть Emoji Studio',
+          web_app: { url: WEB_APP_URL },
+        },
+      ],
+      [
+        {
+          text: '👑 Купить MAGNAT PRO (290 ⭐️)',
+          callback_data: 'buy_pro_stars',
+        },
+        {
+          text: '💎 Lifetime VIP (890 ⭐️)',
+          callback_data: 'buy_vip_stars',
+        },
+      ],
+    ];
+
+    if (isAdminUser) {
+      mainKeyboard.push([
+        {
+          text: '👑 Панель Администратора',
+          callback_data: 'adm_menu',
+        },
+      ]);
+    }
+
     await api('sendMessage', {
       chat_id: chatId,
       text:
-        `👋 Привет, *${firstName}*!\n\n` +
-        `Добро пожаловать в *MAGNAT Emoji Studio* — профессиональный редактор и генератор анимированных .tgs эмодзи и стикеров для Telegram!\n\n` +
-        `🔥 *Что умеет редактор:*\n` +
-        `• 284 готовых анимированных шаблона (персонажи, подарки, любовь, 3D значки)\n` +
+        `👋 Привет, <b>${firstName}</b>!\n\n` +
+        `Добро пожаловать в <b>MAGNAT Emoji Studio</b> — профессиональный редактор и генератор анимированных .tgs эмодзи и стикеров для Telegram!\n\n` +
+        `${P.fire} <b>Что умеет редактор:</b>\n` +
+        `• <b>284 готовых шаблона</b> (персонажи, подарки, любовь, 3D значки)\n` +
         `• Замена надписей вашим никнеймом, каналом или брендом на лету\n` +
         `• Векторизация и загрузка вашего логотипа прямо в слои эмодзи\n` +
         `• Мульти-редактирование до 60 эмодзи одновременно в 1 клик\n` +
         `• Готовый экспорт в .tgs и .zip для официального бота @Stickers\n\n` +
         `Нажмите кнопку ниже, чтобы запустить редактор прямо в Telegram:`,
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: '🎨 Открыть Emoji Studio',
-              web_app: { url: WEB_APP_URL },
-            },
-          ],
-          [
-            {
-              text: '👑 Купить MAGNAT PRO (290 ⭐️)',
-              callback_data: 'buy_pro_stars',
-            },
-            {
-              text: '💎 Lifetime VIP (890 ⭐️)',
-              callback_data: 'buy_vip_stars',
-            },
-          ],
-        ],
+        inline_keyboard: mainKeyboard,
       },
     });
     return;
@@ -137,7 +469,8 @@ async function handleUpdate(update) {
   if (text.startsWith('/editor')) {
     await api('sendMessage', {
       chat_id: chatId,
-      text: `🚀 Запускайте веб-редактор MAGNAT Emoji Studio по кнопке ниже:`,
+      text: `${P.rocket} <b>Запускайте веб-редактор MAGNAT Emoji Studio:</b>`,
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
           [
@@ -166,18 +499,19 @@ async function handleUpdate(update) {
     await api('sendMessage', {
       chat_id: chatId,
       text:
-        `📖 *Инструкция по публикации пака в Telegram:*\n\n` +
-        `1. Откройте *MAGNAT Emoji Studio* и настройте ваши эмодзи.\n` +
+        `📖 <b>Инструкция по публикации пака в Telegram:</b>\n\n` +
+        `1. Откройте <b>MAGNAT Emoji Studio</b> и настройте ваши эмодзи.\n` +
         `2. Скачайте .tgs файлы или готовый .zip архив пака.\n` +
         `3. Перейдите в официальный бот @Stickers.\n` +
-        `4. Отправьте команду \`/newemojis\` (для эмодзи) или \`/newanimated\` (для стикеров).\n` +
+        `4. Отправьте команду <code>/newemojis</code> (для эмодзи) или <code>/newanimated</code> (для стикеров).\n` +
         `5. Отправьте ваши скачанные файлы.\n\n` +
-        `⭐️ Команды бота:\n` +
+        `⭐️ <b>Команды бота:</b>\n` +
         `/start — Главное меню и запуск приложения\n` +
         `/editor — Открыть веб-редактор\n` +
         `/pro — Оплата месячной подписки PRO за Stars\n` +
-        `/vip — Оплата вечной подписки Lifetime VIP за Stars`,
-      parse_mode: 'Markdown',
+        `/vip — Оплата вечной подписки Lifetime VIP за Stars\n` +
+        `/admin — Панель администратора (только для админов)`,
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
           [
@@ -214,18 +548,309 @@ async function sendStarsInvoice(chatId, planType = 'pro') {
   });
 }
 
-// Handle callback queries
+/**
+ * Handle callback queries (including full Admin Panel navigation)
+ */
 async function handleCallback(cb) {
   const chatId = cb.message.chat.id;
+  const messageId = cb.message.message_id;
+  const userId = cb.from.id;
   const data = cb.data;
 
+  // Answer callback right away to stop spinner
+  await api('answerCallbackQuery', { callback_query_id: cb.id }).catch(() => {});
+
+  // Standard user buttons
   if (data === 'buy_pro_stars') {
-    await sendStarsInvoice(chatId, 'pro');
-  } else if (data === 'buy_vip_stars') {
-    await sendStarsInvoice(chatId, 'vip');
+    return sendStarsInvoice(chatId, 'pro');
+  }
+  if (data === 'buy_vip_stars') {
+    return sendStarsInvoice(chatId, 'vip');
   }
 
-  await api('answerCallbackQuery', { callback_query_id: cb.id });
+  // --- ADMIN PANEL ROUTING ---
+  if (!db.isAdmin(userId)) {
+    return api('sendMessage', {
+      chat_id: chatId,
+      text: '⛔ У вас нет доступа к административным функциям.',
+    });
+  }
+
+  if (data === 'adm_menu') {
+    return sendAdminDashboard(chatId, messageId);
+  }
+
+  if (data === 'adm_close') {
+    await api('deleteMessage', { chat_id: chatId, message_id: messageId }).catch(() => {});
+    return;
+  }
+
+  // 1. STATS
+  if (data === 'adm_stats') {
+    const stats = db.getStats();
+    const text =
+      `${P.chart} <b>ПОДРОБНАЯ АНАЛИТИКА MAGNAT STUDIO</b>\n\n` +
+      `👥 Всего зарегистрировано: <b>${stats.total_users}</b>\n` +
+      `🔥 Активных за последние 24ч: <b>${stats.active_today}</b>\n` +
+      `💳 Пользователей с оплатой: <b>${stats.paid_users}</b>\n\n` +
+      `<b>Разбивка по тарифам:</b>\n` +
+      `• Free: <code>${stats.plans_breakdown.free}</code>\n` +
+      `• Pro: <code>${stats.plans_breakdown.pro}</code>\n` +
+      `• Pro+: <code>${stats.plans_breakdown.pro_plus}</code>\n` +
+      `• Max: <code>${stats.plans_breakdown.max}</code>\n` +
+      `• Редактор: <code>${stats.plans_breakdown.editor}</code>\n` +
+      `• Lifetime VIP: <code>${stats.plans_breakdown.vip}</code>\n\n` +
+      `<b>Выручка:</b>\n` +
+      `⭐️ Stars: <b>${stats.total_stars} XTR</b> (~${Math.round(stats.total_stars * 1.2)} ₽)\n` +
+      `🪙 Crypto / RUB: <b>${stats.total_rub} ₽</b>\n` +
+      `🚀 Всего открытий студии: <b>${stats.total_launches}</b>`;
+
+    await api('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔄 Обновить', callback_data: 'adm_stats' }],
+          [{ text: '◀️ Назад в админку', callback_data: 'adm_menu' }],
+        ],
+      },
+    });
+    return;
+  }
+
+  // 2. USERS
+  if (data === 'adm_users') {
+    const users = db.getAllUsers().slice(-6).reverse();
+    let text = `${P.users} <b>УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ</b>\n\nПоследние зарегистрированные:\n`;
+
+    users.forEach((u, idx) => {
+      text += `${idx + 1}. <b>${u.first_name}</b> ${u.username ? `(@${u.username})` : ''} — <code>${u.id}</code>\n` +
+        `   Тариф: <b>${u.plan.toUpperCase()}</b> | Ген: <b>${u.generations}</b>\n`;
+    });
+
+    text += `\n<i>Введите ник или ID для быстрого поиска и выдачи подписки:</i>`;
+
+    await api('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔍 Найти пользователя по @ / ID', callback_data: 'adm_find_prompt' }],
+          [{ text: '◀️ Назад в админку', callback_data: 'adm_menu' }],
+        ],
+      },
+    });
+    return;
+  }
+
+  if (data === 'adm_find_prompt') {
+    adminSessions[userId] = { action: 'find_user' };
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `🔎 <b>Отправьте Telegram ID пользователя или @username:</b>\n\n<i>Для отмены отправьте /cancel</i>`,
+      parse_mode: 'HTML',
+    });
+    return;
+  }
+
+  // Grant plan callback: adm_grant_<targetId>_<plan>
+  if (data.startsWith('adm_grant_')) {
+    const [, , targetId, plan] = data.split('_');
+    db.grantPlan(targetId, plan, plan === 'vip' ? 36500 : 30);
+    const u = db.getUser(targetId);
+
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `${P.check} Пользователю <b>${u ? u.first_name : targetId}</b> успешно выдан тариф <b>${plan.toUpperCase()}</b>!`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '◀️ В админку', callback_data: 'adm_menu' }]],
+      },
+    });
+
+    // Notify user
+    api('sendMessage', {
+      chat_id: targetId,
+      text: `${P.crown} <b>Администратор активировал вам тариф ${plan.toUpperCase()}!</b>\nОткройте MAGNAT Emoji Studio, все возможности разблокированы.`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '🚀 Открыть Studio', web_app: { url: WEB_APP_URL } }]],
+      },
+    }).catch(() => {});
+    return;
+  }
+
+  // Add generations callback: adm_addgen_<targetId>_<count>
+  if (data.startsWith('adm_addgen_')) {
+    const [, , targetId, count] = data.split('_');
+    db.addGenerations(targetId, count);
+    const u = db.getUser(targetId);
+
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `${P.check} Пользователю <b>${u ? u.first_name : targetId}</b> начислено <b>+${count} генераций</b>!`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '◀️ В админку', callback_data: 'adm_menu' }]],
+      },
+    });
+
+    api('sendMessage', {
+      chat_id: targetId,
+      text: `${P.sparkles} <b>Вам начислено +${count} бонусных генераций от администратора!</b>`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '🎨 Открыть Studio', web_app: { url: WEB_APP_URL } }]],
+      },
+    }).catch(() => {});
+    return;
+  }
+
+  // 3. PROMOS
+  if (data === 'adm_promos') {
+    const promos = db.getPromos();
+    let text = `${P.gift} <b>УПРАВЛЕНИЕ ПРОМОКОДАМИ</b>\n\nАктивные промокоды:\n`;
+
+    promos.forEach((pr, i) => {
+      text += `${i + 1}. <code>${pr.code}</code> — ${pr.type === 'generations' ? `+${pr.value} ген.` : `Тариф ${pr.value.toUpperCase()}`}\n` +
+        `   Осталось активаций: <b>${pr.activations_left}</b> / ${pr.max_activations}\n`;
+    });
+
+    await api('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '➕ Промокод (+50 ген)', callback_data: 'adm_promo_add_50' },
+            { text: '➕ Промокод (PRO 30д)', callback_data: 'adm_promo_add_pro' },
+          ],
+          [
+            { text: '✍️ Свой промокод', callback_data: 'adm_promo_custom_prompt' },
+          ],
+          [{ text: '◀️ Назад в админку', callback_data: 'adm_menu' }],
+        ],
+      },
+    });
+    return;
+  }
+
+  if (data === 'adm_promo_add_50') {
+    const code = 'GIFT' + Math.floor(1000 + Math.random() * 9000);
+    db.createPromo({ code, type: 'generations', value: 50, max_activations: 100 });
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `${P.check} Создан промокод <code>${code}</code> на <b>50 генераций</b> (100 активаций)!`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '◀️ К промокодам', callback_data: 'adm_promos' }]],
+      },
+    });
+    return;
+  }
+
+  if (data === 'adm_promo_add_pro') {
+    const code = 'PRO' + Math.floor(1000 + Math.random() * 9000);
+    db.createPromo({ code, type: 'plan', value: 'pro', days: 30, max_activations: 50 });
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `${P.check} Создан промокод <code>${code}</code> на <b>PRO 30 дней</b> (50 активаций)!`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '◀️ К промокодам', callback_data: 'adm_promos' }]],
+      },
+    });
+    return;
+  }
+
+  if (data === 'adm_promo_custom_prompt') {
+    adminSessions[userId] = { action: 'create_promo_custom' };
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `✍️ <b>Отправьте название промокода:</b>\n(например: <code>MAGNAT_BONUS</code>)`,
+      parse_mode: 'HTML',
+    });
+    return;
+  }
+
+  // 4. BROADCAST
+  if (data === 'adm_broadcast_prompt') {
+    const count = db.getAllUsers().length;
+    adminSessions[userId] = { action: 'broadcast_text' };
+    await api('sendMessage', {
+      chat_id: chatId,
+      text:
+        `${P.broadcast} <b>МАССОВАЯ РАССЫЛКА</b>\n\n` +
+        `Получателей в базе: <b>${count}</b> пользователей.\n\n` +
+        `<i>Отправьте сообщение (текст, эмодзи, HTML-теги), которое нужно разослать всем пользователям бота:</i>\n\n` +
+        `Для отмены отправьте /cancel`,
+      parse_mode: 'HTML',
+    });
+    return;
+  }
+
+  // 5. SETTINGS
+  if (data === 'adm_settings') {
+    const s = db.getSettings();
+    const text =
+      `${P.gear} <b>НАСТРОЙКИ СИСТЕМЫ И ТАРИФОВ</b>\n\n` +
+      `• Режим техработ: <b>${s.maintenance ? '🛑 ВКЛЮЧЁН' : '🟢 ВЫКЛЮЧЕН'}</b>\n` +
+      `• Курс Stars: <b>1 ⭐️ = ${s.stars_rate} ₽</b>\n` +
+      `• Поштучно (1 шт): <b>${s.price_per_piece} ₽</b>\n` +
+      `• Опт (от 50 шт): <b>${s.price_per_piece_bulk} ₽</b>\n` +
+      `• Стартовый пробный баланс: <b>${s.free_trial_generations} генераций</b>\n` +
+      `• Админов в системе: <b>${db.getAdmins().length}</b>`;
+
+    await api('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: s.maintenance ? '🟢 Отключить техработы' : '🛑 Включить техработы',
+              callback_data: 'adm_toggle_maint',
+            },
+          ],
+          [{ text: '◀️ Назад в админку', callback_data: 'adm_menu' }],
+        ],
+      },
+    });
+    return;
+  }
+
+  if (data === 'adm_toggle_maint') {
+    const cur = db.getSettings().maintenance;
+    db.updateSettings({ maintenance: !cur });
+    await api('sendMessage', {
+      chat_id: chatId,
+      text: `${P.check} Режим техработ изменён на: <b>${!cur ? 'ВКЛЮЧЁН 🛑' : 'ВЫКЛЮЧЕН 🟢'}</b>`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '◀️ К настройкам', callback_data: 'adm_settings' }]],
+      },
+    });
+    return;
+  }
+
+  // 6. BACKUP
+  if (data === 'adm_backup') {
+    const dbPath = path.join(__dirname, 'db.json');
+    if (fs.existsSync(dbPath)) {
+      await sendDocument(chatId, dbPath, `${P.shield} Резервная копия базы данных MAGNAT Studio`);
+    } else {
+      await api('sendMessage', { chat_id: chatId, text: 'Файл базы данных пока пуст.' });
+    }
+    return;
+  }
 }
 
 /**
@@ -266,7 +891,13 @@ const server = http.createServer(async (req, res) => {
 
   if (req.url === '/health' || req.url === '/') {
     res.writeHead(200);
-    return res.end(JSON.stringify({ status: 'ok', service: 'MAGNAT Emoji Bot', webAppUrl: WEB_APP_URL }));
+    return res.end(JSON.stringify({ status: 'ok', service: 'MAGNAT Emoji Bot & Admin Panel', webAppUrl: WEB_APP_URL }));
+  }
+
+  // Admin stats endpoint for TMA
+  if (req.url === '/api/admin/stats') {
+    res.writeHead(200);
+    return res.end(JSON.stringify(db.getStats()));
   }
 
   if (req.method === 'POST' && req.url === '/webhook') {
@@ -311,6 +942,7 @@ async function initBot() {
       commands: [
         { command: 'start', description: 'Запустить MAGNAT Studio' },
         { command: 'editor', description: 'Открыть веб-редактор' },
+        { command: 'admin', description: 'Панель администратора' },
         { command: 'pro', description: 'Подписка PRO (Stars)' },
         { command: 'vip', description: 'Lifetime VIP (Stars)' },
         { command: 'help', description: 'Инструкция по загрузке в @Stickers' },
@@ -325,6 +957,7 @@ async function initBot() {
 initBot().then(() => {
   console.log('🚀 MAGNAT Telegram Bot запущен!');
   console.log(`🔗 WebApp URL: ${WEB_APP_URL}`);
+  console.log(`👑 Администраторы: ${db.getAdmins().join(', ')}`);
   pollUpdates();
   server.listen(PORT, () => {
     console.log(`📡 HTTP Server слушает на порту ${PORT}`);

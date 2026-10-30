@@ -1,0 +1,48 @@
+{
+  "admins": [
+    "6667583896",
+    "1380263054"
+  ],
+  "users": {},
+  "promos": {
+    "MAGNAT2026": {
+      "code": "MAGNAT2026",
+      "type": "generations",
+      "value": 50,
+      "activations_left": 1000,
+      "max_activations": 1000,
+      "created_at": "2026-10-30T14:39:58.437Z"
+    },
+    "VIPSTART": {
+      "code": "VIPSTART",
+      "type": "plan",
+      "value": "pro",
+      "days": 30,
+      "activations_left": 500,
+      "max_activations": 500,
+      "created_at": "2026-10-30T14:39:58.438Z"
+    },
+    "EMOJIKING": {
+      "code": "EMOJIKING",
+      "type": "generations",
+      "value": 100,
+      "activations_left": 200,
+      "max_activations": 200,
+      "created_at": "2026-10-30T14:39:58.438Z"
+    }
+  },
+  "stats": {
+    "total_launches": 0,
+    "total_generations_used": 0,
+    "total_stars_earned": 0,
+    "total_rub_earned": 0,
+    "last_backup_at": "2026-10-30T14:39:58.438Z"
+  },
+  "settings": {
+    "maintenance": false,
+    "stars_rate": 1.2,
+    "price_per_piece": 9,
+    "price_per_piece_bulk": 7,
+    "free_trial_generations": 5
+  }
+}
