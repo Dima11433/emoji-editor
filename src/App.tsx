@@ -31,6 +31,7 @@ import { SubscriptionModal } from './components/SubscriptionModal';
 import { TmaCatalogView } from './components/TmaCatalogView';
 import { TmaProfileView } from './components/TmaProfileView';
 import { TmaPacksView } from './components/TmaPacksView';
+import { TmaEditorView } from './components/TmaEditorView';
 import { IrisAssistantView } from './components/IrisAssistantView';
 import {
   getSubscription,
@@ -243,7 +244,8 @@ export default function App() {
   const fileName = primarySticker.name;
   const selectedCount = selectedStickers.length;
 
-  const [mainView, setMainView] = useState<'studio' | 'tma_catalog' | 'tma_profile' | 'tma_packs' | 'iris_assistant'>(() => {
+  const [selectedCatalogItem, setSelectedCatalogItem] = useState<CatalogItem | null>(null);
+  const [mainView, setMainView] = useState<'studio' | 'tma_catalog' | 'tma_profile' | 'tma_packs' | 'tma_editor' | 'iris_assistant'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('mode') === 'iris' || params.get('iris') === '1') {
@@ -1213,7 +1215,8 @@ export default function App() {
           onSelectTemplate={(item) => {
             loadCatalogDoc(item).then((d) => {
               openSingleSticker(d, item.name, item.id);
-              setMainView('studio');
+              setSelectedCatalogItem(item);
+              setMainView('tma_editor');
               say(`Открыт #${item.num} «${item.name}»`);
             });
           }}
@@ -1226,9 +1229,85 @@ export default function App() {
             haptic('select');
           }}
           onOpenEditor={() => {
-            setMainView('studio');
+            if (!selectedCatalogItem) {
+              const matched = CATALOG.find((c) => c.id === primarySticker.catalogId) || CATALOG[0];
+              setSelectedCatalogItem(matched);
+            }
+            setMainView('tma_editor');
             haptic('select');
           }}
+        />
+        {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
+      </>
+    );
+  }
+
+  if (mainView === 'tma_editor') {
+    return (
+      <>
+        <TmaEditorView
+          initialDoc={primarySticker.doc}
+          templateItem={selectedCatalogItem || CATALOG[0]}
+          subscription={sub}
+          onBackToCatalog={() => {
+            setMainView('tma_catalog');
+            haptic('select');
+          }}
+          onOpenAdvancedStudio={() => {
+            setMainView('studio');
+            haptic('light');
+          }}
+          onSaveSticker={(newDoc, name) => {
+            addToPack(newDoc, name, selectedCatalogItem?.id ?? null);
+            say(`«${name}» сохранён в ваши паки!`);
+          }}
+          onOpenTemplatesModal={() => {
+            setModalAddToPack(false);
+            setShowModal(true);
+          }}
+          onOpenProModal={() => {
+            setSubFeaturedReason('pro_styles');
+            setShowSubModal(true);
+          }}
+        />
+        <TemplatesModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          isPro={sub.isPro}
+          onOpenSubscription={(reason) => {
+            setSubFeaturedReason(reason);
+            setShowSubModal(true);
+          }}
+          onSelect={(newDoc, item, isAdd) => {
+            setIsEmptyHero(false);
+            if (isAdd) {
+              addToPack(newDoc, item.name, item.id);
+            } else {
+              openSingleSticker(newDoc, item.name, item.id);
+              setSelectedCatalogItem(item);
+              say(`Открыт «${item.name}»`);
+              setShowModal(false);
+            }
+          }}
+          onOpenMultiForEdit={(items) => {
+            setIsEmptyHero(false);
+            openCatalogBatchForEdit(items);
+          }}
+          onAddBatchToPack={(items) => {
+            setIsEmptyHero(false);
+            handleAddBatchToPack(items);
+          }}
+          defaultAddToPack={modalAddToPack}
+        />
+        <SubscriptionModal
+          isOpen={showSubModal}
+          onClose={() => setShowSubModal(false)}
+          subscription={sub}
+          onSubscriptionChange={(next) => {
+            setSub(next);
+            say(next.isPro ? '👑 Тариф MAGNAT PRO успешно активирован!' : 'Тариф изменён на Бесплатный');
+          }}
+          featuredReason={subFeaturedReason}
         />
         {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
       </>
@@ -1275,8 +1354,10 @@ export default function App() {
             haptic('select');
           }}
           onOpenEditorForSticker={(item) => {
+            const catItem = CATALOG.find((c) => c.id === item.catalogId) || CATALOG[0];
+            setSelectedCatalogItem(catItem);
             openSingleSticker(item.doc, item.name, item.catalogId);
-            setMainView('studio');
+            setMainView(inTma ? 'tma_editor' : 'studio');
             haptic('select');
           }}
           onDownloadZip={() => downloadZipList(pack, 'magnat_emoji_pack')}

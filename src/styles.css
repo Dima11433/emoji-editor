@@ -5111,3 +5111,363 @@ button:disabled {
   font-size: calc(11.5 * var(--u));
   color: var(--text-muted);
 }
+
+
+/* ==========================================================================
+   TMA EDITOR VIEW (Matching Reference Screenshots 1 & 2)
+   ========================================================================== */
+.tma-editor-view {
+  min-height: 100vh;
+  background: #0b0d13;
+  color: #ffffff;
+}
+
+.tma-header-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #8b92a5;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.15s;
+}
+
+.tma-header-back-btn:hover {
+  color: #ffffff;
+}
+
+.tma-adv-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #8b92a5;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tma-adv-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.tma-editor-scroll-content {
+  padding: 12px 18px 80px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tma-editor-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.tma-editor-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #787f95;
+  text-transform: lowercase;
+  margin-bottom: 8px;
+  margin-left: 2px;
+}
+
+/* Card: Ваш выбор */
+.tma-editor-choice-card {
+  width: 108px;
+  height: 108px;
+  border-radius: 20px;
+  background: #17181f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.tma-editor-choice-player {
+  width: 78%;
+  height: 78%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tma-editor-choice-player svg {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+.tma-editor-badge-btn {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #252732;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.tma-editor-badge-btn:hover {
+  background: #313444;
+}
+
+.badge-top-right {
+  top: -6px;
+  right: -6px;
+}
+
+.badge-bottom-left {
+  bottom: -6px;
+  left: -6px;
+}
+
+/* Segmented control: тип пака */
+.tma-editor-seg-control {
+  background: #151824;
+  border-radius: 16px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tma-editor-seg-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #8b92a5;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tma-editor-seg-btn.active {
+  background: #222638;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Grouped cards */
+.tma-editor-card {
+  background: #141622;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.tma-editor-clickable-card {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tma-editor-clickable-card:hover {
+  background: #181b2a;
+}
+
+.tma-editor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 52px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.tma-editor-row:last-child {
+  border-bottom: none;
+}
+
+.tma-editor-row-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.tma-editor-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tma-editor-input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  width: 170px;
+}
+
+.tma-editor-input::placeholder {
+  color: #555b70;
+  font-weight: 500;
+  font-size: 13.5px;
+}
+
+.tma-editor-hex {
+  font-size: 14px;
+  font-weight: 500;
+  color: #787f95;
+  font-family: monospace;
+}
+
+.tma-editor-color-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tma-editor-hidden-color {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  cursor: pointer;
+}
+
+.tma-editor-pro-badge {
+  font-size: 13px;
+  font-weight: 500;
+  color: #787f95;
+}
+
+.tma-editor-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* Chat simulation card */
+.tma-editor-chat-box {
+  background: #141622;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96px;
+  position: relative;
+  overflow: hidden;
+}
+
+.tma-editor-chat-bubble {
+  background: #212638;
+  border-radius: 14px 14px 14px 4px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.tma-editor-chat-bubble-text {
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.tma-editor-chat-bubble-time {
+  font-size: 10px;
+  color: #787f95;
+  margin-left: 6px;
+}
+
+.tma-editor-chat-emoji-wrap {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tma-editor-chat-player {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tma-editor-chat-player svg {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+/* Primary create button */
+.tma-editor-create-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 16px;
+  background: #202434;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.tma-editor-create-btn:hover {
+  background: #282d42;
+}
+
+.tma-editor-create-btn.success {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.tma-editor-footer {
+  font-size: 13px;
+  color: #3b82f6;
+  text-align: center;
+  margin-top: 18px;
+  margin-bottom: 28px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
