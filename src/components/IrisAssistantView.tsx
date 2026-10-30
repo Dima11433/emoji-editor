@@ -476,25 +476,25 @@ export function IrisAssistantView({
           {/* TAB 1: THE MAIN EDITOR VIEW */}
           {activeTab === 'editor' && (
             <section className="hero-container">
-              {/* THE LIVING GLASS STAGE LAYER (145u square, -30.5u margin) */}
+              {/* THE LIVING GLASS STAGE LAYER (160u) */}
               <div
                 className={`orb-stage-layer ${backdropMode !== 'orb' ? `backdrop-${backdropMode}` : ''}`}
                 style={{
-                  width: 'calc(260 * var(--u))',
-                  height: 'calc(260 * var(--u))',
-                  margin: 'calc(10 * var(--u)) 0',
-                  borderRadius: 'calc(24 * var(--u))',
+                  width: 'calc(160 * var(--u))',
+                  height: 'calc(160 * var(--u))',
+                  margin: 'calc(6 * var(--u)) 0 calc(2 * var(--u)) 0',
+                  borderRadius: '50%',
                 }}
               >
-                <div className="orb-still-plate" style={{ borderRadius: 'calc(24 * var(--u))' }} />
+                <div className="orb-still-plate" />
 
                 {/* Animated Lottie Sticker inside Stage */}
                 <div
                   style={{
                     position: 'relative',
                     zIndex: 3,
-                    width: '82%',
-                    height: '82%',
+                    width: '84%',
+                    height: '84%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -509,7 +509,7 @@ export function IrisAssistantView({
                   />
                 </div>
 
-                <div className="orb-glass-specular" style={{ borderRadius: 'calc(24 * var(--u))' }} />
+                <div className="orb-glass-specular" />
               </div>
 
               {/* STAGE CONTROLS ROW */}
@@ -520,7 +520,7 @@ export function IrisAssistantView({
                   onClick={() => setIsPlaying((p) => !p)}
                   title={isPlaying ? 'Пауза' : 'Воспроизведение'}
                 >
-                  {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                  {isPlaying ? <Pause size={13} /> : <Play size={13} />}
                 </button>
 
                 <div className="stage-frame-counter">
@@ -567,179 +567,171 @@ export function IrisAssistantView({
 
               {/* HERO TYPOGRAPHY */}
               <div className="hero-text-block">
-                <p className="hero-greeting">#{templateItem.num} • {templateItem.category.toUpperCase()}</p>
+                <p className="hero-greeting">#{templateItem.num} • {templateItem.name}</p>
                 <h1 className="hero-headline">
-                  <span className="headline-word-mask">
-                    <span className="headline-word-inner">MAGNAT</span>
-                  </span>
-                  <span className="headline-word-mask">
-                    <span className="headline-word-inner">EMOJI</span>
-                  </span>
-                  <span className="headline-word-mask">
-                    <span className="headline-word-inner">STUDIO</span>
-                  </span>
+                  <span>MAGNAT</span>
+                  <span>EMOJI</span>
+                  <span>STUDIO</span>
                 </h1>
                 <p className="hero-subline">
-                  Персонализируйте надпись, цвета и логотип для вашего Telegram канала или бренда на лету.
+                  Персонализируйте надпись, цвета и векторный логотип для Telegram на лету.
                 </p>
               </div>
 
-              {/* COMPOSER (114u tall with gradient hairline border) */}
-              <div className="composer-wrap" style={{ height: 'auto', padding: 'calc(16 * var(--u))' }}>
-                <div className="composer-inner" style={{ display: 'flex', flexDirection: 'column', gap: 'calc(12 * var(--u))' }}>
-                  {/* Top text input row */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(10 * var(--u))' }}>
-                    <Type size={16} color="#8C8C8C" />
+              {/* COMPOSER (Crisp, perfectly aligned, zero overflow) */}
+              <div className="composer-wrap">
+                {/* Top text input row */}
+                <div className="composer-top-row">
+                  <Type size={18} color="#2F6BFF" />
+                  <input
+                    type="text"
+                    className="composer-main-input"
+                    placeholder="Впишите надпись (например MAGNAT)..."
+                    value={brandText}
+                    onChange={(e) => setBrandText(e.target.value)}
+                    maxLength={18}
+                  />
+                  <span className="composer-char-pill">{brandText.length}/18</span>
+                </div>
+
+                <div className="composer-divider" />
+
+                {/* Bottom chips and actions row */}
+                <div className="composer-bottom-row">
+                  <div className="composer-chips-group">
+                    {/* Font selector */}
+                    <select
+                      className="composer-chip-btn"
+                      value={selectedFontId}
+                      onChange={(e) => setSelectedFontId(e.target.value as FontId)}
+                      style={{ background: '#181818', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                    >
+                      {FONTS.map((f) => (
+                        <option key={f.id} value={f.id} style={{ background: '#151515', color: '#fff' }}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Fill color */}
+                    <button
+                      type="button"
+                      className="composer-chip-btn"
+                      onClick={() => fillInputRef.current?.click()}
+                      title="Цвет заливки"
+                    >
+                      <div
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          background: fillColor,
+                          border: '1px solid rgba(255,255,255,0.4)',
+                        }}
+                      />
+                      <span>Заливка: {fillColor}</span>
+                      <input
+                        ref={fillInputRef}
+                        type="color"
+                        value={fillColor}
+                        onChange={(e) => setFillColor(e.target.value)}
+                        hidden
+                      />
+                    </button>
+
+                    {/* Stroke color */}
+                    <button
+                      type="button"
+                      className="composer-chip-btn"
+                      onClick={() => strokeInputRef.current?.click()}
+                      title="Цвет обводки"
+                    >
+                      <div
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          background: strokeColor,
+                          border: '1px solid rgba(255,255,255,0.4)',
+                        }}
+                      />
+                      <span>Обводка: {strokeColor}</span>
+                      <input
+                        ref={strokeInputRef}
+                        type="color"
+                        value={strokeColor}
+                        onChange={(e) => setStrokeColor(e.target.value)}
+                        hidden
+                      />
+                    </button>
+
+                    {/* Upload Logo */}
+                    <button
+                      type="button"
+                      className="composer-chip-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Загрузить векторный логотип"
+                    >
+                      <Upload size={12} />
+                      <span>{uploadedLogo ? uploadedLogo.name : 'Логотип'}</span>
+                      {uploadedLogo && (
+                        <X
+                          size={12}
+                          style={{ marginLeft: 4 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedLogo(null);
+                          }}
+                        />
+                      )}
+                    </button>
                     <input
-                      type="text"
-                      className="composer-textarea"
-                      placeholder="Впишите текст (например MAGNAT)..."
-                      value={brandText}
-                      onChange={(e) => setBrandText(e.target.value)}
-                      maxLength={18}
-                      style={{ height: 'calc(34 * var(--u))', fontSize: 'calc(14 * var(--u))' }}
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.svg"
+                      hidden
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
+                        e.target.value = '';
+                      }}
                     />
                   </div>
 
-                  {/* Controls / Chips row */}
-                  <div className="composer-controls-row" style={{ flexWrap: 'wrap', gap: 'calc(8 * var(--u))' }}>
-                    <div className="composer-chips-left" style={{ flexWrap: 'wrap' }}>
-                      {/* Font selector */}
-                      <select
-                        className="composer-chip font-select"
-                        value={selectedFontId}
-                        onChange={(e) => setSelectedFontId(e.target.value as FontId)}
-                      >
-                        {FONTS.map((f) => (
-                          <option key={f.id} value={f.id} style={{ background: '#151515', color: '#fff' }}>
-                            {f.label}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* Fill color */}
-                      <button
-                        type="button"
-                        className="composer-chip"
-                        onClick={() => fillInputRef.current?.click()}
-                        title="Цвет заливки"
-                      >
-                        <div
-                          style={{
-                            width: 13,
-                            height: 13,
-                            borderRadius: '50%',
-                            background: fillColor,
-                            border: '1px solid rgba(255,255,255,0.4)',
-                            marginRight: 6,
-                          }}
-                        />
-                        <span>Заливка: {fillColor}</span>
-                        <input
-                          ref={fillInputRef}
-                          type="color"
-                          value={fillColor}
-                          onChange={(e) => setFillColor(e.target.value)}
-                          hidden
-                        />
-                      </button>
-
-                      {/* Stroke color */}
-                      <button
-                        type="button"
-                        className="composer-chip"
-                        onClick={() => strokeInputRef.current?.click()}
-                        title="Цвет обводки"
-                      >
-                        <div
-                          style={{
-                            width: 13,
-                            height: 13,
-                            borderRadius: '50%',
-                            background: strokeColor,
-                            border: '1px solid rgba(255,255,255,0.4)',
-                            marginRight: 6,
-                          }}
-                        />
-                        <span>Обводка: {strokeColor}</span>
-                        <input
-                          ref={strokeInputRef}
-                          type="color"
-                          value={strokeColor}
-                          onChange={(e) => setStrokeColor(e.target.value)}
-                          hidden
-                        />
-                      </button>
-
-                      {/* Upload Logo */}
-                      <button
-                        type="button"
-                        className="composer-chip"
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Загрузить векторный логотип"
-                      >
-                        <Upload size={13} style={{ marginRight: 5 }} />
-                        <span>{uploadedLogo ? uploadedLogo.name : 'Логотип'}</span>
-                        {uploadedLogo && (
-                          <X
-                            size={12}
-                            style={{ marginLeft: 6 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setUploadedLogo(null);
-                            }}
-                          />
-                        )}
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*,.svg"
-                        hidden
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
-                          e.target.value = '';
-                        }}
-                      />
-                    </div>
-
-                    {/* Actions right */}
-                    <div className="composer-actions-right">
-                      <button
-                        type="button"
-                        className="composer-send-btn"
-                        onClick={handleDownloadTgs}
-                        title="Скачать .tgs для Telegram"
-                      >
-                        <Download size={14} />
-                        <span>Скачать .tgs</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="composer-chip"
-                        onClick={handleSaveToPack}
-                        title="Добавить в пак"
-                        style={{ background: 'rgba(255, 255, 255, 0.08)' }}
-                      >
-                        <Sparkles size={13} color="#fbbf24" style={{ marginRight: 5 }} />
-                        <span>В пак</span>
-                      </button>
-                    </div>
+                  {/* Actions right */}
+                  <div className="composer-actions-group">
+                    <button
+                      type="button"
+                      className="composer-btn-gradient"
+                      onClick={handleDownloadTgs}
+                      title="Скачать официальный .tgs стикер"
+                    >
+                      <Download size={13} />
+                      <span>Скачать .tgs</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="composer-btn-glass"
+                      onClick={handleSaveToPack}
+                      title="Добавить в пак"
+                    >
+                      <Sparkles size={13} color="#fbbf24" />
+                      <span>В пак</span>
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* THREE QUICK-ACTION CARDS (Matching Prompt Architecture) */}
-              <div className="quick-action-cards">
+              {/* THREE QUICK-ACTION CARDS (Strict 3-column grid, zero overlap) */}
+              <div className="quick-actions-row">
                 <div
                   className="quick-card"
                   onClick={() => setActiveTab('catalog')}
                   title="Открыть все 284 шаблона"
                 >
-                  <div className="card-icon-wrap blue">
+                  <div className="card-icon-wrap card-icon-blue">
                     <LayoutGrid size={16} />
                   </div>
-                  <div className="card-text-block">
+                  <div className="card-content">
                     <div className="card-title">284 готовых шаблона</div>
                     <div className="card-subtitle">Персонажи, подарки, любовь, 3D значки</div>
                   </div>
@@ -750,10 +742,10 @@ export function IrisAssistantView({
                   onClick={() => fileInputRef.current?.click()}
                   title="Загрузить логотип"
                 >
-                  <div className="card-icon-wrap violet">
+                  <div className="card-icon-wrap card-icon-violet">
                     <ImageIcon size={16} />
                   </div>
-                  <div className="card-text-block">
+                  <div className="card-content">
                     <div className="card-title">Векторный брендинг</div>
                     <div className="card-subtitle">Загрузка логотипа прямо в слои</div>
                   </div>
@@ -764,10 +756,10 @@ export function IrisAssistantView({
                   onClick={onDownloadZip}
                   title="Скачать ZIP архив пака"
                 >
-                  <div className="card-icon-wrap indigo">
+                  <div className="card-icon-wrap card-icon-indigo">
                     <FolderOpen size={16} />
                   </div>
-                  <div className="card-text-block">
+                  <div className="card-content">
                     <div className="card-title">Экспорт в @Stickers</div>
                     <div className="card-subtitle">Готовый .zip архив эмодзи и стикеров</div>
                   </div>
@@ -775,60 +767,26 @@ export function IrisAssistantView({
               </div>
 
               {/* RECENT / POPULAR TEMPLATES CAROUSEL */}
-              <div className="recent-conversations-block">
-                <div className="recent-header-row">
-                  <span className="recent-title">Популярные шаблоны каталога</span>
-                  <span className="see-more-link" onClick={() => setActiveTab('catalog')}>
+              <div className="popular-shelf-wrap">
+                <div className="popular-shelf-header">
+                  <span className="popular-shelf-title">Популярные шаблоны каталога</span>
+                  <span className="popular-shelf-link" onClick={() => setActiveTab('catalog')}>
                     Смотреть все 284 →
                   </span>
                 </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 'calc(12 * var(--u))',
-                    overflowX: 'auto',
-                    paddingBottom: 'calc(8 * var(--u))',
-                    width: '100%',
-                  }}
-                >
+                <div className="popular-shelf-cards">
                   {popularTemplates.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => onSelectTemplate(item)}
-                      style={{
-                        flexShrink: 0,
-                        width: 'calc(90 * var(--u))',
-                        height: 'calc(90 * var(--u))',
-                        background: 'var(--surface-1)',
-                        border: `1px solid ${templateItem.id === item.id ? 'var(--accent-blue)' : 'var(--border-hairline)'}`,
-                        borderRadius: 'calc(12 * var(--u))',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        padding: 'calc(6 * var(--u))',
-                        transition: 'all 0.15s ease',
-                      }}
+                      className={`popular-tile-card ${templateItem.id === item.id ? 'selected' : ''}`}
                       title={`#${item.num} ${item.name}`}
                     >
-                      <div style={{ width: '70%', height: '70%' }}>
+                      <div className="popular-tile-thumb">
                         <LazyThumb item={item} />
                       </div>
-                      <span
-                        style={{
-                          fontSize: 'calc(10 * var(--u))',
-                          color: '#8C8C8C',
-                          marginTop: 3,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '90%',
-                        }}
-                      >
-                        {item.name}
-                      </span>
+                      <span className="popular-tile-name">{item.name}</span>
                     </div>
                   ))}
                 </div>
