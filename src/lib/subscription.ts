@@ -20,7 +20,7 @@ export interface SubscriptionState {
   userId?: number | string;
 }
 
-const STORAGE_KEY = 'magnat_subscription_state_v2';
+const STORAGE_KEY = 'magnat_subscription_state_v3';
 export const SUB_CHANGE_EVENT = 'magnat:sub_changed';
 
 /** Free tier allowed template IDs */

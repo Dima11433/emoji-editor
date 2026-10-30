@@ -175,23 +175,36 @@ export function TmaProfileView({
       if (data.ok && data.invoiceLink) {
         if (tg?.openInvoice) {
           tg.openInvoice(data.invoiceLink, (status: string) => {
+            setIsProcessingPayment(false);
             if (status === 'paid') {
               handleConfirmPayment();
             } else if (status === 'cancelled') {
               haptic('warning');
+            } else if (status === 'failed') {
+              haptic('error');
+              if (tg?.showAlert) {
+                tg.showAlert('Платеж Telegram Stars не был завершён.');
+              }
             }
           });
-          setIsProcessingPayment(false);
           return;
         } else {
           window.open(data.invoiceLink, '_blank');
+          setIsProcessingPayment(false);
+          return;
         }
+      } else {
+        const msg = data.error || 'Не удалось сформировать счёт Telegram Stars';
+        tg?.showAlert ? tg.showAlert(msg) : alert(msg);
       }
     } catch (err) {
       console.warn('Stars invoice API error:', err);
+      const tg = getTelegramWebApp();
+      const msg = 'Не удалось подключиться к серверу оплаты Telegram Stars.';
+      tg?.showAlert ? tg.showAlert(msg) : alert(msg);
+    } finally {
+      setIsProcessingPayment(false);
     }
-    handleConfirmPayment();
-    setIsProcessingPayment(false);
   };
 
   const handlePayCrypto = async () => {
@@ -210,23 +223,26 @@ export function TmaProfileView({
         }),
       });
       const data = await res.json();
-      const targetUrl = data.botInvoiceUrl || data.payUrl || 'https://t.me/CryptoBot';
       const tg = getTelegramWebApp();
-      if (tg?.openTelegramLink && targetUrl.startsWith('https://t.me/')) {
-        tg.openTelegramLink(targetUrl);
+      if (data.ok && (data.miniAppInvoiceUrl || data.botInvoiceUrl || data.payUrl)) {
+        const targetUrl = data.miniAppInvoiceUrl || data.botInvoiceUrl || data.payUrl;
+        if (tg?.openTelegramLink && targetUrl.startsWith('https://t.me/')) {
+          tg.openTelegramLink(targetUrl);
+        } else {
+          window.open(targetUrl, '_blank');
+        }
+        setShowCheckoutModal(false);
+        const msg = `Счёт на ${(checkoutTarget.rubPrice / 95).toFixed(2)} USDT сформирован в @CryptoBot. Баланс будет пополнен после оплаты счёта!`;
+        tg?.showAlert ? tg.showAlert(msg) : alert(msg);
       } else {
-        window.open(targetUrl, '_blank');
+        const msg = data.error || 'Не удалось создать счёт в CryptoBot';
+        tg?.showAlert ? tg.showAlert(msg) : alert(msg);
       }
-      handleConfirmPayment();
     } catch (err) {
       console.warn('Crypto invoice API error:', err);
       const tg = getTelegramWebApp();
-      if (tg?.openTelegramLink) {
-        tg.openTelegramLink('https://t.me/CryptoBot');
-      } else {
-        window.open('https://t.me/CryptoBot', '_blank');
-      }
-      handleConfirmPayment();
+      const msg = 'Ошибка при создании счёта CryptoBot.';
+      tg?.showAlert ? tg.showAlert(msg) : alert(msg);
     } finally {
       setIsProcessingPayment(false);
     }
@@ -742,15 +758,7 @@ export function TmaProfileView({
               </div>
             )}
 
-            <div style={{ marginTop: 14, textAlign: 'center' }}>
-              <button
-                type="button"
-                className="sub-link-btn"
-                onClick={handleConfirmPayment}
-              >
-                ⚡ Быстрая тестовая активация
-              </button>
-            </div>
+
           </div>
         </div>
       )}
