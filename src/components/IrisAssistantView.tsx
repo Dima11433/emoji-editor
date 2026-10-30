@@ -1,158 +1,248 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  Bell,
-  ChevronDown,
-  Circle,
+  Check,
+  Download,
   FolderOpen,
+  Image as ImageIcon,
   LayoutGrid,
-  Mic,
-  Plus,
+  MessageSquare,
+  Pause,
+  Play,
   Search,
-  Send,
-  Settings,
   Sparkles,
   Star,
+  Type,
+  Upload,
   Wand2,
+  X,
 } from 'lucide-react';
+import lottie, { type AnimationItem } from 'lottie-web/build/player/lottie_light';
+import type { LottieDoc } from '../lib/lottie';
+import { cleanForExport, toTgsAutoFit } from '../lib/tgs';
+import { applyBrandSlot, DEFAULT_BRAND_OPTIONS } from '../lib/brandSlot';
+import { FONTS, loadFont, type FontId } from '../lib/fonts';
+import { fileToVectorLogo, type VectorLogo } from '../lib/logoVector';
+import { CATALOG, TEMPLATE_CATEGORIES, type CatalogItem, type TemplateCategory } from '../lib/templates';
+import type { PackItem } from './PackTray';
 import type { SubscriptionState } from '../lib/subscription';
 import type { TelegramUser } from '../lib/telegram';
+import { haptic } from '../lib/telegram';
+import { LazyThumb } from './LazyThumb';
+import type { Font } from 'opentype.js';
 
 interface IrisAssistantViewProps {
+  initialDoc: LottieDoc;
+  templateItem: CatalogItem;
+  pack: PackItem[];
   subscription: SubscriptionState;
   telegramUser: TelegramUser | null;
-  onOpenStudio: () => void;
-  onOpenCatalog: () => void;
+  onSelectTemplate: (item: CatalogItem) => void;
+  onSaveSticker: (doc: LottieDoc, name: string) => void;
+  onDownloadZip: () => void;
   onOpenProfile: () => void;
-  onOpenPacks: () => void;
+  onOpenAdvancedStudio: () => void;
+}
+
+/** Single clean sticker player without duplicate SVGs */
+function IrisStickerPlayer({
+  doc,
+  playing = true,
+  speed = 1,
+  className,
+  onFrameUpdate,
+}: {
+  doc: LottieDoc;
+  playing?: boolean;
+  speed?: number;
+  className?: string;
+  onFrameUpdate?: (cur: number, total: number) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef<AnimationItem | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let anim: AnimationItem | null = null;
+    try {
+      containerRef.current.innerHTML = '';
+      anim = lottie.loadAnimation({
+        container: containerRef.current,
+        renderer: 'svg',
+        loop: true,
+        autoplay: playing,
+        animationData: cleanForExport(doc),
+      });
+      animRef.current = anim;
+      anim.setSpeed(speed);
+
+      if (onFrameUpdate) {
+        anim.addEventListener('enterFrame', () => {
+          if (anim) {
+            onFrameUpdate(Math.round(anim.currentFrame), Math.round(anim.totalFrames));
+          }
+        });
+      }
+    } catch {}
+
+    return () => {
+      anim?.destroy();
+      animRef.current = null;
+    };
+  }, [doc]);
+
+  useEffect(() => {
+    if (animRef.current) {
+      if (playing) animRef.current.play();
+      else animRef.current.pause();
+    }
+  }, [playing]);
+
+  useEffect(() => {
+    if (animRef.current) {
+      animRef.current.setSpeed(speed);
+    }
+  }, [speed]);
+
+  return <div ref={containerRef} className={className} />;
 }
 
 export function IrisAssistantView({
+  initialDoc,
+  templateItem,
+  pack,
   subscription,
   telegramUser,
-  onOpenStudio,
-  onOpenCatalog,
+  onSelectTemplate,
+  onSaveSticker,
+  onDownloadZip,
   onOpenProfile,
-  onOpenPacks,
+  onOpenAdvancedStudio: _onOpenAdvancedStudio,
 }: IrisAssistantViewProps) {
-  const [activeTab, setActiveTab] = useState<'chat' | 'overview'>('chat');
-  const [inputText, setInputText] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [activeTab, setActiveTab] = useState<'editor' | 'catalog' | 'packs' | 'chat'>('editor');
+  const [brandText, setBrandText] = useState('MAGNAT');
+  const [fillColor, setFillColor] = useState('#131822');
+  const [strokeColor, setStrokeColor] = useState('#a8c7ef');
+  const [selectedFontId, setSelectedFontId] = useState<FontId>('montserrat');
+  const [uploadedLogo, setUploadedLogo] = useState<VectorLogo | null>(null);
+  const [fonts, setFonts] = useState<Font[] | null>(null);
 
-  const userName = telegramUser?.first_name || 'magnat';
+  // Playback state
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [playSpeed, setPlaySpeed] = useState(1);
+  const [frameInfo, setFrameInfo] = useState({ current: 0, total: 180 });
+  const [backdropMode, setBackdropMode] = useState<'orb' | 'dark' | 'light' | 'alpha'>('orb');
 
-  // Procedural Living Glass Orb Animation (Swirling blue-violet core)
+  // Catalog tab filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
+
+  // Toast feedback
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fillInputRef = useRef<HTMLInputElement>(null);
+  const strokeInputRef = useRef<HTMLInputElement>(null);
+
+  const userName = telegramUser?.first_name || 'MAGNAT';
+
+  // Load font
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    loadFont(selectedFontId)
+      .then((f) => setFonts(f))
+      .catch(() => {});
+  }, [selectedFontId]);
 
-    let animId: number;
-    let t = 0;
+  // Compute live styled LottieDoc
+  const customizedDoc = useMemo(() => {
+    const clone = structuredClone(initialDoc);
+    if (fonts) {
+      applyBrandSlot(
+        clone,
+        {
+          ...DEFAULT_BRAND_OPTIONS,
+          mode: uploadedLogo ? 'logo+text' : 'text',
+          logo: uploadedLogo,
+          text: brandText.trim() || 'MAGNAT',
+          plateText: brandText.trim() || 'MAGNAT',
+          fillHex: fillColor,
+          strokeHex: strokeColor,
+          strokeWidth: strokeColor ? 4 : 0,
+          useOriginalGlyphs: false,
+        },
+        fonts,
+      );
+    }
+    return clone;
+  }, [initialDoc, brandText, fillColor, strokeColor, uploadedLogo, fonts]);
 
-    const render = () => {
-      t += 0.024;
-      const w = canvas.width;
-      const h = canvas.height;
-      const cx = w / 2;
-      const cy = h / 2;
-
-      ctx.clearRect(0, 0, w, h);
-
-      // Spherical glass gradient
-      const baseGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, w * 0.48);
-      baseGrad.addColorStop(0, '#100e26');
-      baseGrad.addColorStop(0.5, '#070a1a');
-      baseGrad.addColorStop(1, '#000000');
-      ctx.fillStyle = baseGrad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, w * 0.48, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Swirling plasma filaments
-      const layers = 5;
-      for (let i = 0; i < layers; i++) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(t * (0.35 + i * 0.12) * (i % 2 === 0 ? 1 : -1));
-
-        const radius = (w * 0.38) * (0.4 + 0.6 * Math.sin(t * 0.8 + i));
-        const grad = ctx.createRadialGradient(
-          Math.sin(t + i) * 20, Math.cos(t + i) * 20, 2,
-          0, 0, radius
-        );
-
-        if (i % 3 === 0) {
-          grad.addColorStop(0, 'rgba(47, 107, 255, 0.9)');
-          grad.addColorStop(0.5, 'rgba(90, 76, 245, 0.4)');
-          grad.addColorStop(1, 'transparent');
-        } else if (i % 3 === 1) {
-          grad.addColorStop(0, 'rgba(0, 210, 255, 0.8)');
-          grad.addColorStop(0.6, 'rgba(47, 107, 255, 0.3)');
-          grad.addColorStop(1, 'transparent');
-        } else {
-          grad.addColorStop(0, 'rgba(124, 72, 240, 0.85)');
-          grad.addColorStop(0.5, 'rgba(47, 107, 255, 0.4)');
-          grad.addColorStop(1, 'transparent');
-        }
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(
-          Math.sin(t + i) * 14,
-          Math.cos(t * 0.7 + i) * 14,
-          radius,
-          radius * 0.72,
-          t * 0.5 + i,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Bright inner core pulse
-      const pulseSize = (w * 0.18) + Math.sin(t * 1.8) * 8;
-      const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseSize);
-      coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-      coreGrad.addColorStop(0.25, 'rgba(64, 110, 255, 0.85)');
-      coreGrad.addColorStop(0.65, 'rgba(124, 72, 240, 0.4)');
-      coreGrad.addColorStop(1, 'transparent');
-
-      ctx.fillStyle = coreGrad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, pulseSize, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Glass rim caustics
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, w * 0.46, 0, Math.PI * 2);
-      ctx.stroke();
-
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      cancelAnimationFrame(animId);
-    };
-  }, []);
-
-  const handleSend = (text?: string) => {
-    const q = (text || inputText).trim();
-    if (!q) return;
-
-    setAiResponse(
-      `Запрос принят: «${q}». Сгенерирован персональный план 60 FPS Telegram эмодзи-пака. Все 284 векторных шаблона MAGNAT подготовлены к экспорту в @Stickers.`
-    );
-    setInputText('');
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
   };
+
+  // Download .tgs directly
+  const handleDownloadTgs = () => {
+    haptic('medium');
+    try {
+      const docToExport = customizedDoc || initialDoc;
+      const rawTgs = toTgsAutoFit(docToExport);
+      const blob = new Blob([rawTgs], { type: 'application/x-tgsticker' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${templateItem.id}_magnat.tgs`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(`Файл «${templateItem.name}.tgs» успешно скачан!`);
+    } catch {
+      showToast('Ошибка при экспорте .tgs');
+    }
+  };
+
+  // Save to user pack
+  const handleSaveToPack = () => {
+    haptic('success');
+    const docToSave = customizedDoc || initialDoc;
+    const name = `${templateItem.name} (${brandText.trim() || 'MAGNAT'})`;
+    onSaveSticker(docToSave, name);
+    showToast(`«${name}» сохранён в ваши паки!`);
+  };
+
+  // Handle logo upload
+  const handleLogoUpload = async (file: File) => {
+    try {
+      const logo = await fileToVectorLogo(file);
+      setUploadedLogo(logo);
+      haptic('success');
+      showToast(`Логотип «${logo.name}» встроен в слои!`);
+    } catch {
+      haptic('error');
+      showToast('Не удалось векторизовать логотип');
+    }
+  };
+
+  // Filtered catalog
+  const filteredCatalog = useMemo(() => {
+    let list = CATALOG;
+    if (selectedCategory !== 'all') {
+      list = list.filter((item) => item.category === selectedCategory);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (item) => item.name.toLowerCase().includes(q) || item.id.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [selectedCategory, searchQuery]);
+
+  // Top popular templates for carousel
+  const popularTemplates = useMemo(() => CATALOG.slice(0, 16), []);
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   return (
     <div className="iris-page-root">
@@ -167,7 +257,11 @@ export function IrisAssistantView({
         {/* LEFT RAIL (48u) */}
         <aside className="left-rail">
           {/* Logo Tile */}
-          <div className="rail-logo-tile" onClick={onOpenCatalog} title="MAGNAT">
+          <div
+            className="rail-logo-tile"
+            onClick={() => setActiveTab('editor')}
+            title="MAGNAT Emoji Studio"
+          >
             <Sparkles size={18} color="#0E0E0E" />
           </div>
 
@@ -175,57 +269,69 @@ export function IrisAssistantView({
           <nav className="rail-group">
             <button
               type="button"
-              className="rail-tile active"
-              title="AI Assistant (Iris)"
-            >
-              <Circle size={16} />
-            </button>
-            <button
-              type="button"
-              className="rail-tile"
-              onClick={onOpenCatalog}
-              title="Каталог шаблонов"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button
-              type="button"
-              className="rail-tile"
-              onClick={onOpenStudio}
-              title="Редактор / Студия"
+              className={`rail-tile ${activeTab === 'editor' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('editor');
+                haptic('select');
+              }}
+              title="Студия / Редактор"
             >
               <Wand2 size={16} />
             </button>
+
             <button
               type="button"
-              className="rail-tile"
-              onClick={onOpenPacks}
+              className={`rail-tile ${activeTab === 'catalog' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('catalog');
+                haptic('select');
+              }}
+              title="Каталог 284 шаблонов"
+            >
+              <LayoutGrid size={16} />
+            </button>
+
+            <button
+              type="button"
+              className={`rail-tile ${activeTab === 'packs' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('packs');
+                haptic('select');
+              }}
               title="Мои паки"
             >
               <FolderOpen size={16} />
             </button>
+
             <button
               type="button"
-              className="rail-tile"
-              onClick={onOpenProfile}
-              title="Тарифы и Звёзды"
+              className={`rail-tile ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('chat');
+                haptic('select');
+              }}
+              title="Превью в Telegram чате"
             >
-              <Star size={16} />
+              <MessageSquare size={16} />
             </button>
           </nav>
 
           {/* Bottom user & settings */}
           <div className="rail-bottom">
-            <div className="rail-user-tile" onClick={onOpenProfile} title="Профиль">
+            <div
+              className="rail-user-tile"
+              onClick={onOpenProfile}
+              title={`Профиль: ${userName} • Баланс: ${subscription.generationsBalance} ✨`}
+            >
               {userName[0].toUpperCase()}
             </div>
             <button
               type="button"
               className="rail-tile"
               onClick={onOpenProfile}
-              title="Настройки"
+              title="Настройки тарифа и VIP"
             >
-              <Settings size={16} />
+              <Star size={16} />
             </button>
           </div>
         </aside>
@@ -238,41 +344,69 @@ export function IrisAssistantView({
               <button
                 type="button"
                 className="nav-arrow-tile"
-                onClick={onOpenCatalog}
-                title="Назад"
+                onClick={() => setActiveTab('catalog')}
+                title="Все шаблоны"
               >
                 <ArrowLeft size={14} />
               </button>
               <button
                 type="button"
                 className="nav-arrow-tile"
-                onClick={onOpenStudio}
-                title="Вперёд"
+                onClick={() => setActiveTab('editor')}
+                title="Редактор"
               >
                 <ArrowRight size={14} />
               </button>
               <nav className="breadcrumbs">
-                <span className="breadcrumb-item" onClick={onOpenCatalog}>
-                  Home
+                <span className="breadcrumb-item" onClick={() => setActiveTab('catalog')}>
+                  MAGNAT
                 </span>
                 <span className="breadcrumb-separator">›</span>
-                <span className="breadcrumb-current">AI Assistant</span>
+                <span className="breadcrumb-item" onClick={() => setActiveTab('editor')}>
+                  Студия эмодзи
+                </span>
+                <span className="breadcrumb-separator">›</span>
+                <span className="breadcrumb-current">
+                  #{templateItem.num} {templateItem.name}
+                </span>
               </nav>
             </div>
 
             <div className="top-bar-right">
+              {/* Search */}
               <div className="glass-search-box">
                 <Search size={13} className="search-icon" />
                 <input
                   type="text"
                   className="search-input"
-                  placeholder="Search Anything..."
+                  placeholder="Поиск по 284 шаблонам..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (activeTab !== 'catalog') setActiveTab('catalog');
+                  }}
                 />
               </div>
 
-              <button type="button" className="top-icon-btn" title="Уведомления">
-                <Bell size={15} />
-                <span className="unread-dot" />
+              {/* Quick Actions in Top Bar */}
+              <button
+                type="button"
+                className="top-action-btn primary"
+                onClick={handleDownloadTgs}
+                title="Экспортировать официальный .tgs стикер"
+              >
+                <Download size={13} />
+                <span>Скачать .tgs</span>
+              </button>
+
+              <button
+                type="button"
+                className="top-action-btn"
+                onClick={handleSaveToPack}
+                title="Сохранить стикер в ваш пак"
+              >
+                <Sparkles size={13} color="#fbbf24" />
+                <span>В пак</span>
               </button>
 
               <div
@@ -292,263 +426,636 @@ export function IrisAssistantView({
             <div className="segmented-toggle">
               <button
                 type="button"
-                className={`toggle-segment ${activeTab === 'chat' ? 'active' : ''}`}
-                onClick={() => setActiveTab('chat')}
+                className={`toggle-segment ${activeTab === 'editor' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('editor');
+                  haptic('select');
+                }}
               >
-                Chat Mode
+                🎨 Редактор
               </button>
               <button
                 type="button"
-                className={`toggle-segment ${activeTab === 'overview' ? 'active' : ''}`}
-                onClick={onOpenStudio}
+                className={`toggle-segment ${activeTab === 'catalog' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('catalog');
+                  haptic('select');
+                }}
               >
-                Overview
+                ▦ Каталог (284)
+              </button>
+              <button
+                type="button"
+                className={`toggle-segment ${activeTab === 'packs' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('packs');
+                  haptic('select');
+                }}
+              >
+                📂 Мои паки ({pack.length})
+              </button>
+              <button
+                type="button"
+                className={`toggle-segment ${activeTab === 'chat' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('chat');
+                  haptic('select');
+                }}
+              >
+                💬 Чат
               </button>
             </div>
 
             <div className="status-pill-glass">
               <span className="status-pulse-dot" />
-              <span className="status-pill-text">AI Agents Running</span>
-              <span className="status-count-badge">17</span>
+              <span className="status-pill-text">MAGNAT Engine • 284 готовых шаблона</span>
+              <span className="status-count-badge">60 FPS</span>
             </div>
           </section>
 
-          {/* HERO CONTAINER (708u WIDE) */}
-          <section className="hero-container">
-            {/* LIVING GLASS ORB LAYER (145u, -30.5u margin) */}
-            <div className="orb-stage-layer">
-              <div className="orb-still-plate" />
-              <canvas
-                ref={canvasRef}
-                className="orb-canvas-core"
-                width={290}
-                height={290}
-              />
-              <div className="orb-glass-specular" />
-            </div>
+          {/* TAB 1: THE MAIN EDITOR VIEW */}
+          {activeTab === 'editor' && (
+            <section className="hero-container">
+              {/* THE LIVING GLASS STAGE LAYER (145u square, -30.5u margin) */}
+              <div
+                className={`orb-stage-layer ${backdropMode !== 'orb' ? `backdrop-${backdropMode}` : ''}`}
+                style={{
+                  width: 'calc(260 * var(--u))',
+                  height: 'calc(260 * var(--u))',
+                  margin: 'calc(10 * var(--u)) 0',
+                  borderRadius: 'calc(24 * var(--u))',
+                }}
+              >
+                <div className="orb-still-plate" style={{ borderRadius: 'calc(24 * var(--u))' }} />
 
-            {/* HERO TYPOGRAPHY */}
-            <div className="hero-text-block">
-              <p className="hero-greeting">Good Morning, {userName}</p>
-              <h1 className="hero-headline">
-                <span className="headline-word-mask">
-                  <span className="headline-word-inner">WHAT'S</span>
-                </span>
-                <span className="headline-word-mask">
-                  <span className="headline-word-inner">ON</span>
-                </span>
-                <span className="headline-word-mask">
-                  <span className="headline-word-inner">YOUR</span>
-                </span>
-                <span className="headline-word-mask">
-                  <span className="headline-word-inner">MIND?</span>
-                </span>
-              </h1>
-              <p className="hero-subline">
-                Get personalized financial insights, smarter recommendations & 60 FPS Telegram animated emojis.
-              </p>
-            </div>
-
-            {/* COMPOSER (114u tall, #151515, 14u radius, 1.2u gradient hairline border) */}
-            <div className="composer-wrap">
-              <div className="composer-input-row">
-                <textarea
-                  className="composer-textarea"
-                  placeholder="Ask Anything... (например: собери анимированный пак MAGNAT с золотой плашкой)"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
+                {/* Animated Lottie Sticker inside Stage */}
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 3,
+                    width: '82%',
+                    height: '82%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                />
+                >
+                  <IrisStickerPlayer
+                    doc={customizedDoc}
+                    playing={isPlaying}
+                    speed={playSpeed}
+                    className="tma-editor-choice-player"
+                    onFrameUpdate={(cur, tot) => setFrameInfo({ current: cur, total: tot })}
+                  />
+                </div>
+
+                <div className="orb-glass-specular" style={{ borderRadius: 'calc(24 * var(--u))' }} />
               </div>
 
-              <div className="composer-controls-row">
-                <div className="composer-chips-left">
+              {/* STAGE CONTROLS ROW */}
+              <div className="stage-controls-bar">
+                <button
+                  type="button"
+                  className="stage-ctrl-btn"
+                  onClick={() => setIsPlaying((p) => !p)}
+                  title={isPlaying ? 'Пауза' : 'Воспроизведение'}
+                >
+                  {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                </button>
+
+                <div className="stage-frame-counter">
+                  {frameInfo.current} / {frameInfo.total} к/с
+                </div>
+
+                <div className="stage-speed-chips">
+                  {[0.5, 1, 1.5, 2].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`speed-chip ${playSpeed === s ? 'active' : ''}`}
+                      onClick={() => setPlaySpeed(s)}
+                    >
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+
+                <div className="stage-backdrop-chips">
                   <button
                     type="button"
-                    className="composer-chip icon-only"
-                    title="Прикрепить шаблон"
-                    onClick={onOpenCatalog}
+                    className={`backdrop-chip ${backdropMode === 'orb' ? 'active' : ''}`}
+                    onClick={() => setBackdropMode('orb')}
                   >
-                    <Plus size={12} />
+                    Студия
                   </button>
-                  <button type="button" className="composer-chip">
-                    <span>Normal</span>
-                    <ChevronDown size={11} />
+                  <button
+                    type="button"
+                    className={`backdrop-chip ${backdropMode === 'dark' ? 'active' : ''}`}
+                    onClick={() => setBackdropMode('dark')}
+                  >
+                    Тёмный
                   </button>
-                  <button type="button" className="composer-chip">
-                    <span>Deep Think</span>
-                    <ChevronDown size={11} />
+                  <button
+                    type="button"
+                    className={`backdrop-chip ${backdropMode === 'alpha' ? 'active' : ''}`}
+                    onClick={() => setBackdropMode('alpha')}
+                  >
+                    Сетка
+                  </button>
+                </div>
+              </div>
+
+              {/* HERO TYPOGRAPHY */}
+              <div className="hero-text-block">
+                <p className="hero-greeting">#{templateItem.num} • {templateItem.category.toUpperCase()}</p>
+                <h1 className="hero-headline">
+                  <span className="headline-word-mask">
+                    <span className="headline-word-inner">MAGNAT</span>
+                  </span>
+                  <span className="headline-word-mask">
+                    <span className="headline-word-inner">EMOJI</span>
+                  </span>
+                  <span className="headline-word-mask">
+                    <span className="headline-word-inner">STUDIO</span>
+                  </span>
+                </h1>
+                <p className="hero-subline">
+                  Персонализируйте надпись, цвета и логотип для вашего Telegram канала или бренда на лету.
+                </p>
+              </div>
+
+              {/* COMPOSER (114u tall with gradient hairline border) */}
+              <div className="composer-wrap" style={{ height: 'auto', padding: 'calc(16 * var(--u))' }}>
+                <div className="composer-inner" style={{ display: 'flex', flexDirection: 'column', gap: 'calc(12 * var(--u))' }}>
+                  {/* Top text input row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'calc(10 * var(--u))' }}>
+                    <Type size={16} color="#8C8C8C" />
+                    <input
+                      type="text"
+                      className="composer-textarea"
+                      placeholder="Впишите текст (например MAGNAT)..."
+                      value={brandText}
+                      onChange={(e) => setBrandText(e.target.value)}
+                      maxLength={18}
+                      style={{ height: 'calc(34 * var(--u))', fontSize: 'calc(14 * var(--u))' }}
+                    />
+                  </div>
+
+                  {/* Controls / Chips row */}
+                  <div className="composer-controls-row" style={{ flexWrap: 'wrap', gap: 'calc(8 * var(--u))' }}>
+                    <div className="composer-chips-left" style={{ flexWrap: 'wrap' }}>
+                      {/* Font selector */}
+                      <select
+                        className="composer-chip font-select"
+                        value={selectedFontId}
+                        onChange={(e) => setSelectedFontId(e.target.value as FontId)}
+                      >
+                        {FONTS.map((f) => (
+                          <option key={f.id} value={f.id} style={{ background: '#151515', color: '#fff' }}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Fill color */}
+                      <button
+                        type="button"
+                        className="composer-chip"
+                        onClick={() => fillInputRef.current?.click()}
+                        title="Цвет заливки"
+                      >
+                        <div
+                          style={{
+                            width: 13,
+                            height: 13,
+                            borderRadius: '50%',
+                            background: fillColor,
+                            border: '1px solid rgba(255,255,255,0.4)',
+                            marginRight: 6,
+                          }}
+                        />
+                        <span>Заливка: {fillColor}</span>
+                        <input
+                          ref={fillInputRef}
+                          type="color"
+                          value={fillColor}
+                          onChange={(e) => setFillColor(e.target.value)}
+                          hidden
+                        />
+                      </button>
+
+                      {/* Stroke color */}
+                      <button
+                        type="button"
+                        className="composer-chip"
+                        onClick={() => strokeInputRef.current?.click()}
+                        title="Цвет обводки"
+                      >
+                        <div
+                          style={{
+                            width: 13,
+                            height: 13,
+                            borderRadius: '50%',
+                            background: strokeColor,
+                            border: '1px solid rgba(255,255,255,0.4)',
+                            marginRight: 6,
+                          }}
+                        />
+                        <span>Обводка: {strokeColor}</span>
+                        <input
+                          ref={strokeInputRef}
+                          type="color"
+                          value={strokeColor}
+                          onChange={(e) => setStrokeColor(e.target.value)}
+                          hidden
+                        />
+                      </button>
+
+                      {/* Upload Logo */}
+                      <button
+                        type="button"
+                        className="composer-chip"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Загрузить векторный логотип"
+                      >
+                        <Upload size={13} style={{ marginRight: 5 }} />
+                        <span>{uploadedLogo ? uploadedLogo.name : 'Логотип'}</span>
+                        {uploadedLogo && (
+                          <X
+                            size={12}
+                            style={{ marginLeft: 6 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadedLogo(null);
+                            }}
+                          />
+                        )}
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,.svg"
+                        hidden
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+
+                    {/* Actions right */}
+                    <div className="composer-actions-right">
+                      <button
+                        type="button"
+                        className="composer-send-btn"
+                        onClick={handleDownloadTgs}
+                        title="Скачать .tgs для Telegram"
+                      >
+                        <Download size={14} />
+                        <span>Скачать .tgs</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="composer-chip"
+                        onClick={handleSaveToPack}
+                        title="Добавить в пак"
+                        style={{ background: 'rgba(255, 255, 255, 0.08)' }}
+                      >
+                        <Sparkles size={13} color="#fbbf24" style={{ marginRight: 5 }} />
+                        <span>В пак</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* THREE QUICK-ACTION CARDS (Matching Prompt Architecture) */}
+              <div className="quick-action-cards">
+                <div
+                  className="quick-card"
+                  onClick={() => setActiveTab('catalog')}
+                  title="Открыть все 284 шаблона"
+                >
+                  <div className="card-icon-wrap blue">
+                    <LayoutGrid size={16} />
+                  </div>
+                  <div className="card-text-block">
+                    <div className="card-title">284 готовых шаблона</div>
+                    <div className="card-subtitle">Персонажи, подарки, любовь, 3D значки</div>
+                  </div>
+                </div>
+
+                <div
+                  className="quick-card"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Загрузить логотип"
+                >
+                  <div className="card-icon-wrap violet">
+                    <ImageIcon size={16} />
+                  </div>
+                  <div className="card-text-block">
+                    <div className="card-title">Векторный брендинг</div>
+                    <div className="card-subtitle">Загрузка логотипа прямо в слои</div>
+                  </div>
+                </div>
+
+                <div
+                  className="quick-card"
+                  onClick={onDownloadZip}
+                  title="Скачать ZIP архив пака"
+                >
+                  <div className="card-icon-wrap indigo">
+                    <FolderOpen size={16} />
+                  </div>
+                  <div className="card-text-block">
+                    <div className="card-title">Экспорт в @Stickers</div>
+                    <div className="card-subtitle">Готовый .zip архив эмодзи и стикеров</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RECENT / POPULAR TEMPLATES CAROUSEL */}
+              <div className="recent-conversations-block">
+                <div className="recent-header-row">
+                  <span className="recent-title">Популярные шаблоны каталога</span>
+                  <span className="see-more-link" onClick={() => setActiveTab('catalog')}>
+                    Смотреть все 284 →
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 'calc(12 * var(--u))',
+                    overflowX: 'auto',
+                    paddingBottom: 'calc(8 * var(--u))',
+                    width: '100%',
+                  }}
+                >
+                  {popularTemplates.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => onSelectTemplate(item)}
+                      style={{
+                        flexShrink: 0,
+                        width: 'calc(90 * var(--u))',
+                        height: 'calc(90 * var(--u))',
+                        background: 'var(--surface-1)',
+                        border: `1px solid ${templateItem.id === item.id ? 'var(--accent-blue)' : 'var(--border-hairline)'}`,
+                        borderRadius: 'calc(12 * var(--u))',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 'calc(6 * var(--u))',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title={`#${item.num} ${item.name}`}
+                    >
+                      <div style={{ width: '70%', height: '70%' }}>
+                        <LazyThumb item={item} />
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 'calc(10 * var(--u))',
+                          color: '#8C8C8C',
+                          marginTop: 3,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '90%',
+                        }}
+                      >
+                        {item.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* TAB 2: FULL CATALOG (284 TEMPLATES) */}
+          {activeTab === 'catalog' && (
+            <div className="iris-catalog-container">
+              {/* Category Filter Pills */}
+              <div className="iris-catalog-filters">
+                <button
+                  type="button"
+                  className={`iris-filter-btn ${selectedCategory === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('all')}
+                >
+                  Все ({CATALOG.length})
+                </button>
+                {TEMPLATE_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`iris-filter-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    {cat.label} ({CATALOG.filter((c) => c.category === cat.id).length})
+                  </button>
+                ))}
+              </div>
+
+              {/* Grid of 284 Templates */}
+              <div className="iris-grid-cards">
+                {filteredCatalog.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`iris-template-card ${templateItem.id === item.id ? 'selected' : ''}`}
+                    onClick={() => {
+                      onSelectTemplate(item);
+                      setActiveTab('editor');
+                      haptic('select');
+                    }}
+                  >
+                    <span className="iris-template-num">#{item.num}</span>
+                    <div className="iris-template-thumb">
+                      <LazyThumb item={item} />
+                    </div>
+                    <span className="iris-template-name">{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: PACKS VIEW */}
+          {activeTab === 'packs' && (
+            <div className="iris-catalog-container" style={{ maxWidth: 'calc(780 * var(--u))' }}>
+              <div
+                style={{
+                  background: 'var(--surface-1)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'calc(18 * var(--u))',
+                  padding: 'calc(24 * var(--u))',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'calc(16 * var(--u))',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h2 style={{ fontSize: 'calc(18 * var(--u))', fontWeight: 600 }}>Мой стикерпак</h2>
+                    <p style={{ fontSize: 'calc(12 * var(--u))', color: '#8C8C8C', marginTop: 4 }}>
+                      Готово к публикации в официальном боте @Stickers • {pack.length} эмодзи
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="top-action-btn primary"
+                    onClick={onDownloadZip}
+                    disabled={pack.length === 0}
+                    style={{ height: 'calc(38 * var(--u))', padding: '0 calc(16 * var(--u))' }}
+                  >
+                    <Download size={14} />
+                    <span>Скачать ZIP для Telegram</span>
                   </button>
                 </div>
 
-                <div className="composer-actions-right">
-                  <button
-                    type="button"
-                    className="voice-btn"
-                    title="Голосовой ввод"
+                {pack.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 'calc(40 * var(--u)) 0', color: '#6E6E6E' }}>
+                    В паке пока нет сохранённых стикеров. Выберите шаблон в редакторе и нажмите «В пак»!
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(calc(90 * var(--u)), 1fr))',
+                      gap: 'calc(12 * var(--u))',
+                      marginTop: 'calc(10 * var(--u))',
+                    }}
                   >
-                    <Mic size={15} />
+                    {pack.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: 'var(--surface-2)',
+                          borderRadius: 'calc(10 * var(--u))',
+                          padding: 'calc(8 * var(--u))',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          border: '1px solid var(--border-hairline)',
+                        }}
+                      >
+                        <div style={{ width: '80%', aspectRatio: '1' }}>
+                          <LazyThumb doc={item.doc} />
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 'calc(10 * var(--u))',
+                            color: '#CBD5E1',
+                            marginTop: 4,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '90%',
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: TELEGRAM CHAT SIMULATION */}
+          {activeTab === 'chat' && (
+            <div className="iris-catalog-container" style={{ maxWidth: 'calc(620 * var(--u))' }}>
+              <div
+                style={{
+                  background: 'var(--surface-1)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'calc(20 * var(--u))',
+                  padding: 'calc(24 * var(--u))',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'calc(16 * var(--u))',
+                }}
+              >
+                <div style={{ fontSize: 'calc(13 * var(--u))', color: '#8C8C8C', fontWeight: 600 }}>
+                  ПРЕВЬЮ АНИМАЦИИ В СООБЩЕНИИ TELEGRAM
+                </div>
+
+                <div
+                  style={{
+                    background: '#0B0E14',
+                    borderRadius: 'calc(16 * var(--u))',
+                    padding: 'calc(20 * var(--u))',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: '#1F2937',
+                      borderRadius: 'calc(14 * var(--u)) calc(14 * var(--u)) calc(14 * var(--u)) calc(4 * var(--u))',
+                      padding: 'calc(10 * var(--u)) calc(14 * var(--u))',
+                      maxWidth: '70%',
+                    }}
+                  >
+                    <div style={{ color: '#fff', fontSize: 'calc(14 * var(--u))' }}>
+                      Смотри какой анимированный эмодзи сделал в MAGNAT! 🔥
+                    </div>
+                    <div style={{ color: '#9CA3AF', fontSize: 'calc(10 * var(--u))', textAlign: 'right', marginTop: 4 }}>
+                      {timeStr} ✓✓
+                    </div>
+                  </div>
+
+                  <div style={{ width: 'calc(70 * var(--u))', height: 'calc(70 * var(--u))', flexShrink: 0 }}>
+                    <IrisStickerPlayer doc={customizedDoc} playing={true} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'calc(10 * var(--u))' }}>
+                  <button type="button" className="top-action-btn primary" onClick={handleDownloadTgs}>
+                    <Download size={13} />
+                    <span>Скачать .tgs</span>
                   </button>
-                  <button
-                    type="button"
-                    className="send-gradient-btn"
-                    onClick={() => handleSend()}
-                    title="Отправить"
-                  >
-                    <Send size={14} />
+                  <button type="button" className="top-action-btn" onClick={handleSaveToPack}>
+                    <Sparkles size={13} color="#fbbf24" />
+                    <span>В пак</span>
                   </button>
                 </div>
               </div>
             </div>
-
-            {/* AI RESULT FLYOUT */}
-            {aiResponse && (
-              <div className="ai-response-card show">
-                <div className="response-head">
-                  <Sparkles size={15} />
-                  <span>AI Iris Assistant • MAGNAT Core</span>
-                </div>
-                <div className="response-body">{aiResponse}</div>
-                <div className="response-actions">
-                  <button
-                    type="button"
-                    className="action-btn-small"
-                    onClick={onOpenStudio}
-                  >
-                    <Wand2 size={13} />
-                    Открыть в Студии
-                  </button>
-                  <button
-                    type="button"
-                    className="action-btn-small"
-                    onClick={onOpenPacks}
-                  >
-                    <FolderOpen size={13} />
-                    Перейти к Пакам
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* THREE QUICK-ACTION CARDS */}
-            <div className="quick-actions-row">
-              <div
-                className="quick-card"
-                onClick={() =>
-                  handleSend('Собрать персональный финансовый смарт-пак MAGNAT с золотым логотипом')
-                }
-              >
-                <div className="card-icon-wrap card-icon-blue">
-                  <Sparkles size={18} />
-                </div>
-                <div className="card-content">
-                  <span className="card-title">Smart Budget Plan</span>
-                  <span className="card-subtitle">Create My Budget</span>
-                </div>
-              </div>
-
-              <div
-                className="quick-card"
-                onClick={() =>
-                  handleSend('Сгенерировать 3D плашку с градиентом #2F6BFF для Telegram эмодзи')
-                }
-              >
-                <div className="card-icon-wrap card-icon-violet">
-                  <Star size={18} />
-                </div>
-                <div className="card-content">
-                  <span className="card-title">Set a Saving Goal</span>
-                  <span className="card-subtitle">Set a Goal</span>
-                </div>
-              </div>
-
-              <div
-                className="quick-card"
-                onClick={() =>
-                  handleSend('Подготовить архив .tgs файлов для заливки в официальный бот @Stickers')
-                }
-              >
-                <div className="card-icon-wrap card-icon-indigo">
-                  <LayoutGrid size={18} />
-                </div>
-                <div className="card-content">
-                  <span className="card-title">Track My Expenses</span>
-                  <span className="card-subtitle">Monitor Spending</span>
-                </div>
-              </div>
-            </div>
-
-            {/* RECENT CONVERSATIONS (TREE LINE) */}
-            <div className="recent-conversations-block">
-              <div className="recent-header-row">
-                <span className="recent-title">Recent Conversations</span>
-                <span className="see-more-link" onClick={onOpenPacks}>
-                  See More →
-                </span>
-              </div>
-
-              <div className="tree-container">
-                <div
-                  className="tree-item"
-                  onClick={() =>
-                    handleSend('How much did I spend on dining out this month?')
-                  }
-                >
-                  <span className="tree-node-dot" />
-                  <span className="tree-question-text">
-                    How much did I spend on dining out this month?
-                  </span>
-                  <span className="tree-time-tag">10m ago</span>
-                </div>
-
-                <div
-                  className="tree-item"
-                  onClick={() =>
-                    handleSend('Can I afford a weekend trip to Lisbon next week?')
-                  }
-                >
-                  <span className="tree-node-dot" />
-                  <span className="tree-question-text">
-                    Can I afford a weekend trip to Lisbon next week?
-                  </span>
-                  <span className="tree-time-tag">2h ago</span>
-                </div>
-
-                <div
-                  className="tree-item"
-                  onClick={() =>
-                    handleSend('Set an automated rule to save 15% of upcoming payouts')
-                  }
-                >
-                  <span className="tree-node-dot" />
-                  <span className="tree-question-text">
-                    Set an automated rule to save 15% of upcoming payouts
-                  </span>
-                  <span className="tree-time-tag">Yesterday</span>
-                </div>
-
-                <div
-                  className="tree-item"
-                  onClick={() =>
-                    handleSend('Optimize recurring subscription costs across all services')
-                  }
-                >
-                  <span className="tree-node-dot" />
-                  <span className="tree-question-text">
-                    Optimize recurring subscription costs across all services
-                  </span>
-                  <span className="tree-time-tag">3 days ago</span>
-                </div>
-              </div>
-            </div>
-          </section>
+          )}
         </main>
       </div>
+
+      {/* FLOATING TOAST */}
+      {toastMsg && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 'calc(24 * var(--u))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #2F6BFF, #5A4CF5)',
+            color: '#ffffff',
+            padding: 'calc(10 * var(--u)) calc(20 * var(--u))',
+            borderRadius: 'calc(999 * var(--u))',
+            fontSize: 'calc(13 * var(--u))',
+            fontWeight: 600,
+            boxShadow: '0 8px 32px rgba(47, 107, 255, 0.4)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <Check size={16} />
+          <span>{toastMsg}</span>
+        </div>
+      )}
     </div>
   );
 }

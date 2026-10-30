@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ChevronRight,
   Pencil,
-  Sliders,
   Check,
   X,
 } from 'lucide-react';
@@ -66,7 +65,7 @@ export function TmaEditorView({
   templateItem,
   subscription: _subscription,
   onBackToCatalog,
-  onOpenAdvancedStudio,
+  onOpenAdvancedStudio: _onOpenAdvancedStudio,
   onSaveSticker,
   onOpenTemplatesModal,
   onOpenProModal,
@@ -78,6 +77,7 @@ export function TmaEditorView({
   const [uploadedLogo, setUploadedLogo] = useState<VectorLogo | null>(null);
   const [fonts, setFonts] = useState<Font[] | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showAdvancedColors, setShowAdvancedColors] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fillInputRef = useRef<HTMLInputElement>(null);
@@ -172,18 +172,7 @@ export function TmaEditorView({
           MAGNAT
         </span>
 
-        <button
-          type="button"
-          className="tma-adv-toggle-btn"
-          onClick={() => {
-            haptic('light');
-            onOpenAdvancedStudio();
-          }}
-          title="Открыть расширенный студийный редактор"
-        >
-          <Sliders size={14} />
-          <span>студия</span>
-        </button>
+        <div style={{ width: 68 }} />
       </div>
 
       <div className="tma-editor-scroll-content">
@@ -307,93 +296,8 @@ export function TmaEditorView({
           </div>
         </div>
 
-        {/* SECTION 4: СОХРАНЁННЫЕ СТИЛИ */}
-        <div className="tma-editor-section">
-          <div
-            className="tma-editor-card tma-editor-clickable-card"
-            onClick={() => {
-              haptic('medium');
-              onOpenProModal();
-            }}
-          >
-            <div className="tma-editor-row" style={{ borderBottom: 'none' }}>
-              <span className="tma-editor-row-label">сохранённые стили</span>
-              <div className="tma-editor-row-right">
-                <span className="tma-editor-pro-badge">pro</span>
-                <ChevronRight size={16} color="#787f95" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 5: ЦВЕТА */}
-        <div className="tma-editor-section">
-          <div className="tma-editor-label">цвета</div>
-          <div className="tma-editor-card">
-            {/* Заливка */}
-            <div
-              className="tma-editor-row"
-              onClick={() => fillInputRef.current?.click()}
-            >
-              <span className="tma-editor-row-label">заливка</span>
-              <div className="tma-editor-row-right">
-                <span className="tma-editor-hex">{fillColor.toLowerCase()}</span>
-                <div
-                  className="tma-editor-color-circle"
-                  style={{ backgroundColor: fillColor }}
-                >
-                  <input
-                    ref={fillInputRef}
-                    type="color"
-                    value={fillColor}
-                    onChange={(e) => setFillColor(e.target.value)}
-                    className="tma-editor-hidden-color"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Обводка */}
-            <div
-              className="tma-editor-row"
-              onClick={() => strokeInputRef.current?.click()}
-            >
-              <span className="tma-editor-row-label">обводка</span>
-              <div className="tma-editor-row-right">
-                <span className="tma-editor-hex">{strokeColor.toLowerCase()}</span>
-                <div
-                  className="tma-editor-color-circle"
-                  style={{ backgroundColor: strokeColor }}
-                >
-                  <input
-                    ref={strokeInputRef}
-                    type="color"
-                    value={strokeColor}
-                    onChange={(e) => setStrokeColor(e.target.value)}
-                    className="tma-editor-hidden-color"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 6: ПРЕВЬЮ В ЧАТЕ */}
-        <div className="tma-editor-section">
-          <div className="tma-editor-label">превью в чате</div>
-          <div className="tma-editor-chat-box">
-            <div className="tma-editor-chat-bubble">
-              <span className="tma-editor-chat-bubble-text">го делать паки</span>
-              <span className="tma-editor-chat-bubble-time">{timeStr}</span>
-            </div>
-            <div className="tma-editor-chat-emoji-wrap">
-              <StickerPlayer doc={customizedDoc} className="tma-editor-chat-player" />
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 7: СОЗДАТЬ ЭМОДЗИ-ПАК BUTTON */}
-        <div className="tma-editor-section" style={{ marginTop: 24, marginBottom: 12 }}>
+        {/* PRIMARY ACTION BUTTON (Exact match to reference screenshot) */}
+        <div className="tma-editor-section" style={{ marginTop: 22, marginBottom: 8 }}>
           <button
             type="button"
             className={`tma-editor-create-btn ${savedSuccess ? 'success' : ''}`}
@@ -401,13 +305,120 @@ export function TmaEditorView({
           >
             {savedSuccess ? (
               <>
-                <Check size={18} /> Эмодзи создан и скачан!
+                <Check size={18} /> {packType === 'emoji' ? 'Эмодзи добавлен в пак!' : 'Стикер добавлен в пак!'}
               </>
             ) : (
-              'создать эмодзи-пак'
+              packType === 'emoji' ? 'создать эмодзи-пак' : 'создать стикер-пак'
             )}
           </button>
         </div>
+
+        {/* ADVANCED COLORS TOGGLE */}
+        <div style={{ textAlign: 'center', margin: '4px 0 16px 0' }}>
+          <button
+            type="button"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#64748b',
+              fontSize: '12.5px',
+              cursor: 'pointer',
+              padding: '6px 12px',
+            }}
+            onClick={() => setShowAdvancedColors((v) => !v)}
+          >
+            {showAdvancedColors ? '▴ скрыть доп. настройки' : '🎨 цвета и превью ▾'}
+          </button>
+        </div>
+
+        {showAdvancedColors && (
+          <>
+            {/* SECTION 4: СОХРАНЁННЫЕ СТИЛИ */}
+            <div className="tma-editor-section">
+              <div
+                className="tma-editor-card tma-editor-clickable-card"
+                onClick={() => {
+                  haptic('medium');
+                  onOpenProModal();
+                }}
+              >
+                <div className="tma-editor-row" style={{ borderBottom: 'none' }}>
+                  <span className="tma-editor-row-label">сохранённые стили</span>
+                  <div className="tma-editor-row-right">
+                    <span className="tma-editor-pro-badge">pro</span>
+                    <ChevronRight size={16} color="#787f95" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 5: ЦВЕТА */}
+            <div className="tma-editor-section">
+              <div className="tma-editor-label">цвета</div>
+              <div className="tma-editor-card">
+                {/* Заливка */}
+                <div
+                  className="tma-editor-row"
+                  onClick={() => fillInputRef.current?.click()}
+                >
+                  <span className="tma-editor-row-label">заливка</span>
+                  <div className="tma-editor-row-right">
+                    <span className="tma-editor-hex">{fillColor.toLowerCase()}</span>
+                    <div
+                      className="tma-editor-color-circle"
+                      style={{ backgroundColor: fillColor }}
+                    >
+                      <input
+                        ref={fillInputRef}
+                        type="color"
+                        value={fillColor}
+                        onChange={(e) => setFillColor(e.target.value)}
+                        className="tma-editor-hidden-color"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Обводка */}
+                <div
+                  className="tma-editor-row"
+                  onClick={() => strokeInputRef.current?.click()}
+                >
+                  <span className="tma-editor-row-label">обводка</span>
+                  <div className="tma-editor-row-right">
+                    <span className="tma-editor-hex">{strokeColor.toLowerCase()}</span>
+                    <div
+                      className="tma-editor-color-circle"
+                      style={{ backgroundColor: strokeColor }}
+                    >
+                      <input
+                        ref={strokeInputRef}
+                        type="color"
+                        value={strokeColor}
+                        onChange={(e) => setStrokeColor(e.target.value)}
+                        className="tma-editor-hidden-color"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 6: ПРЕВЬЮ В ЧАТЕ */}
+            <div className="tma-editor-section">
+              <div className="tma-editor-label">превью в чате</div>
+              <div className="tma-editor-chat-box">
+                <div className="tma-editor-chat-bubble">
+                  <span className="tma-editor-chat-bubble-text">го делать паки</span>
+                  <span className="tma-editor-chat-bubble-time">{timeStr}</span>
+                </div>
+                <div className="tma-editor-chat-emoji-wrap">
+                  <StickerPlayer doc={customizedDoc} className="tma-editor-chat-player" />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* FOOTER */}
         <div className="tma-editor-footer">@magnat_emoji_bot</div>

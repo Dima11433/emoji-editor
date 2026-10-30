@@ -199,7 +199,7 @@ export function Preview({
     : viewPref === 'auto'
       ? isBannerSet
         ? 'banner'
-        : 'grid'
+        : 'single'
       : viewPref === 'banner' && multiCount > 6
         ? 'grid'
         : viewPref;

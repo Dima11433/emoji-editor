@@ -5471,3 +5471,211 @@ button:disabled {
   font-weight: 500;
   letter-spacing: 0.2px;
 }
+
+
+/* ==========================================================================
+   GLASS IRIS EMBEDDED EXTENSIONS (Catalog, Stage Controls, Top Actions)
+   ========================================================================== */
+.iris-page-root .top-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--u));
+  height: calc(32 * var(--u));
+  padding: 0 calc(12 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-white);
+  font-size: calc(12 * var(--u));
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.iris-page-root .top-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--border-subtle);
+}
+
+.iris-page-root .top-action-btn.primary {
+  background: linear-gradient(135deg, #2F6BFF, #5A4CF5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 10px rgba(47, 107, 255, 0.35);
+}
+
+.iris-page-root .top-action-btn.primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.iris-page-root .stage-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--u));
+  margin-top: calc(8 * var(--u));
+  background: var(--surface-1);
+  padding: calc(6 * var(--u)) calc(14 * var(--u));
+  border-radius: calc(999 * var(--u));
+  border: 1px solid var(--border-hairline);
+}
+
+.iris-page-root .stage-ctrl-btn {
+  width: calc(26 * var(--u));
+  height: calc(26 * var(--u));
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-hairline);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.iris-page-root .stage-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.iris-page-root .stage-frame-counter {
+  font-size: calc(11 * var(--u));
+  color: var(--text-muted);
+  font-family: monospace;
+  min-width: calc(65 * var(--u));
+}
+
+.iris-page-root .stage-speed-chips,
+.iris-page-root .stage-backdrop-chips {
+  display: flex;
+  align-items: center;
+  gap: calc(4 * var(--u));
+}
+
+.iris-page-root .speed-chip,
+.iris-page-root .backdrop-chip {
+  height: calc(22 * var(--u));
+  padding: 0 calc(7 * var(--u));
+  border-radius: calc(6 * var(--u));
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: calc(11 * var(--u));
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.iris-page-root .speed-chip:hover,
+.iris-page-root .backdrop-chip:hover {
+  color: var(--text-white);
+}
+
+.iris-page-root .speed-chip.active,
+.iris-page-root .backdrop-chip.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-subtle);
+  color: var(--text-white);
+}
+
+.iris-page-root .composer-chip.font-select {
+  outline: none;
+  cursor: pointer;
+}
+
+/* Embedded Catalog in Iris */
+.iris-page-root .iris-catalog-container {
+  width: 100%;
+  max-width: calc(1200 * var(--u));
+  margin: 0 auto;
+  padding: calc(20 * var(--u)) calc(24 * var(--u)) calc(60 * var(--u));
+}
+
+.iris-page-root .iris-catalog-filters {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  margin-bottom: calc(20 * var(--u));
+  flex-wrap: wrap;
+}
+
+.iris-page-root .iris-filter-btn {
+  height: calc(32 * var(--u));
+  padding: 0 calc(14 * var(--u));
+  border-radius: calc(8 * var(--u));
+  background: var(--surface-1);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+  font-size: calc(12.5 * var(--u));
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.iris-page-root .iris-filter-btn.active,
+.iris-page-root .iris-filter-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-white);
+  border-color: var(--border-subtle);
+}
+
+.iris-page-root .iris-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(140 * var(--u)), 1fr));
+  gap: calc(16 * var(--u));
+}
+
+.iris-page-root .iris-template-card {
+  aspect-ratio: 1;
+  background: var(--surface-1);
+  border: 1px solid var(--border-hairline);
+  border-radius: calc(16 * var(--u));
+  padding: calc(12 * var(--u));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.iris-page-root .iris-template-card:hover {
+  transform: translateY(calc(-3 * var(--u)));
+  border-color: rgba(47, 107, 255, 0.5);
+  box-shadow: 0 calc(8 * var(--u)) calc(24 * var(--u)) rgba(47, 107, 255, 0.2);
+  background: var(--surface-2);
+}
+
+.iris-page-root .iris-template-card.selected {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.iris-page-root .iris-template-thumb {
+  width: 76%;
+  height: 76%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iris-page-root .iris-template-num {
+  position: absolute;
+  top: calc(8 * var(--u));
+  left: calc(10 * var(--u));
+  font-size: calc(10.5 * var(--u));
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.iris-page-root .iris-template-name {
+  font-size: calc(11.5 * var(--u));
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: calc(4 * var(--u));
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 90%;
+}

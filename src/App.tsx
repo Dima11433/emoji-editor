@@ -251,10 +251,15 @@ export default function App() {
       if (params.get('mode') === 'iris' || params.get('iris') === '1') {
         return 'iris_assistant';
       }
-      if (isTelegramWebApp() || window.innerWidth < 900) {
+      if (params.get('mode') === 'tma') {
+        return 'tma_catalog';
+      }
+      // If mobile viewport width (< 900px), use Telegram Mini App mobile catalog
+      if (window.innerWidth < 900) {
         return 'tma_catalog';
       }
     }
+    // Desktop / Website (wide screen >= 900px): use Glass Iris Studio Editor
     return 'iris_assistant';
   });
 
@@ -1242,7 +1247,7 @@ export default function App() {
     );
   }
 
-  if (mainView === 'tma_editor') {
+  if (mainView === 'tma_editor' || (mainView === 'studio' && (inTma || (typeof window !== 'undefined' && window.innerWidth < 900)))) {
     return (
       <>
         <TmaEditorView
@@ -1373,23 +1378,30 @@ export default function App() {
     return (
       <>
         <IrisAssistantView
+          initialDoc={primarySticker.doc}
+          templateItem={selectedCatalogItem || CATALOG[0]}
+          pack={pack}
           subscription={sub}
           telegramUser={tgUser}
-          onOpenStudio={() => {
-            setMainView('studio');
-            haptic('select');
+          onSelectTemplate={(item) => {
+            loadCatalogDoc(item).then((d) => {
+              openSingleSticker(d, item.name, item.id);
+              setSelectedCatalogItem(item);
+              say(`Открыт #${item.num} «${item.name}»`);
+            });
           }}
-          onOpenCatalog={() => {
-            setMainView('tma_catalog');
-            haptic('select');
+          onSaveSticker={(newDoc, name) => {
+            addToPack(newDoc, name, selectedCatalogItem?.id ?? null);
+            say(`«${name}» сохранён в ваши паки!`);
           }}
+          onDownloadZip={() => downloadZipList(pack, 'magnat_emoji_pack')}
           onOpenProfile={() => {
             setMainView('tma_profile');
             haptic('select');
           }}
-          onOpenPacks={() => {
-            setMainView('tma_packs');
-            haptic('select');
+          onOpenAdvancedStudio={() => {
+            setMainView('studio');
+            haptic('light');
           }}
         />
         {toast && <div className={`toast ${toast.bad ? 'bad' : ''}`}>{toast.text}</div>}
