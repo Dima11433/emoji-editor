@@ -397,7 +397,7 @@ export function SubscriptionModal({
                   <input
                     type="text"
                     className="sub-promo-input"
-                    placeholder="Например: MAGNAT_VIP или TGSTARS"
+                    placeholder="Введите ваш промокод..."
                     value={promoCodeInput}
                     onChange={(e) => setPromoCodeInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
@@ -411,12 +411,6 @@ export function SubscriptionModal({
                     {promoMessage.text}
                   </div>
                 )}
-                <div className="sub-promo-hints">
-                  <span>💡 Доступные коды для тестирования: </span>
-                  <code onClick={() => setPromoCodeInput('MAGNAT_VIP')}>MAGNAT_VIP</code> (Lifetime),{' '}
-                  <code onClick={() => setPromoCodeInput('TGSTARS')}>TGSTARS</code> (1 месяц),{' '}
-                  <code onClick={() => setPromoCodeInput('DEMO')}>DEMO</code> (7 дней)
-                </div>
               </div>
             </div>
           )}
@@ -425,9 +419,6 @@ export function SubscriptionModal({
         {/* Footer info */}
         <div className="sub-modal-footer">
           <span>🔒 Безопасные платежи Telegram WebApp & P2P</span>
-          <button type="button" className="sub-link-btn" onClick={handleDirectActivateTest}>
-            ⚡ Быстрая тестовая активация
-          </button>
         </div>
       </div>
     </div>

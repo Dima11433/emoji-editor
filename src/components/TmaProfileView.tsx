@@ -571,32 +571,7 @@ export function TmaProfileView({
 
         </div>
 
-        {/* SECTION 5: ПОЛЕЗНОЕ И ПРОМОКОД */}
-        <div className="tma-useful-section">
-          <div className="tma-section-title">полезное</div>
 
-          <div className="tma-card-box tma-promo-inline-card">
-            <span style={{ fontSize: '13px', fontWeight: 600 }}>Ввести промокод</span>
-            <div className="tma-promo-row">
-              <input
-                type="text"
-                className="tma-promo-input"
-                placeholder="MAGNAT_VIP или MAX"
-                value={promoCodeInput}
-                onChange={(e) => setPromoCodeInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
-              />
-              <button type="button" className="tma-btn-blue" onClick={handleApplyPromo}>
-                Применить
-              </button>
-            </div>
-            {promoFeedback && (
-              <div className={`tma-feedback ${promoFeedback.bad ? 'bad' : 'good'}`}>
-                {promoFeedback.text}
-              </div>
-            )}
-          </div>
-        </div>
 
         <div style={{ height: 100 }} />
       </div>

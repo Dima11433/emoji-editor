@@ -313,45 +313,16 @@ export function isTemplateLocked(item: CatalogItem, isProUser: boolean): boolean
 /** Redeem Promo Code */
 export function redeemPromoCode(rawCode: string): { success: boolean; message: string; state?: SubscriptionState } {
   const code = rawCode.trim().toUpperCase();
-
-  if (code === 'MAGNAT' || code === 'MAGNAT_VIP' || code === 'FOUNDER' || code === 'ADMIN') {
-    const next = activateSubscription('lifetime', 'year', code);
+  if (!code) {
     return {
-      success: true,
-      message: '🎉 Промокод активирован! Вам предоставлен вечный тариф LIFETIME VIP!',
-      state: next,
+      success: false,
+      message: 'Введите промокод.',
     };
   }
 
-  if (code === 'TIER_MAX' || code === 'MAX') {
-    const next = activateSubscription('max', 'month', code);
-    return {
-      success: true,
-      message: '🎉 Промокод активирован! Тариф MAX без лимитов подключён!',
-      state: next,
-    };
-  }
-
-  if (code === 'TIER_PRO' || code === 'PRO' || code === 'TGSTARS') {
-    const next = activateSubscription('pro', 'month', code);
-    return {
-      success: true,
-      message: '🎉 Промокод активирован! Тариф PRO (150 генераций) подключён!',
-      state: next,
-    };
-  }
-
-  if (code === 'DEMO' || code === 'FREE20') {
-    const next = addGenerations(20);
-    return {
-      success: true,
-      message: '🎉 Начислено +20 бесплатных генераций!',
-      state: next,
-    };
-  }
-
+  // No hardcoded free bonus loopholes
   return {
     success: false,
-    message: 'Неверный промокод. Проверьте правильность ввода.',
+    message: 'Промокод не найден или срок его действия истёк.',
   };
 }
